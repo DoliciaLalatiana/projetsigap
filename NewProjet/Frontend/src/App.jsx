@@ -1,12 +1,16 @@
 import React from "react";
-import InterfaceMapResponsive from "./Components/InterfaceMapResponsive";
-
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import InterfaceMapResponsive from "./Components/Interface";
+import Statistique from "./Components/Statistique";
 
 function App() {
   return (
-    <div className="App">
-      <InterfaceMapResponsive />
-    </div>
+    
+      <Routes>
+        <Route path="/" element={<InterfaceMapResponsive />} />
+        <Route path="/statistique" element={<Statistique />} />
+      </Routes>
+    
   );
 }
 
