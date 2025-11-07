@@ -15,11 +15,15 @@ import {
 } from "lucide-react";
 import { GoogleMap, LoadScript } from "@react-google-maps/api";
 import Statistique from "./Statistique";
+import Residences from "./Residences";
 
 export default function Interface() {
   const [openDropdown, setOpenDropdown] = useState(false);
   const [isLeftHovered, setIsLeftHovered] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Nouvel état pour afficher les résidences
+  const [showResidences, setShowResidences] = useState(false);
 
   // Sauvegarde de l'état de statistique
   const [showStatistique, setShowStatistique] = useState(() => {
@@ -48,15 +52,14 @@ export default function Interface() {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    // Logique de recherche ici
     console.log("Recherche:", searchQuery);
   };
 
-  const containerStyle = { 
-    width: "100%", 
-    height: "100vh"
+  const containerStyle = {
+    width: "100%",
+    height: "100vh",
   };
-  
+
   const center = { lat: -18.9136896, lng: 47.5494648 };
   const options = {
     mapTypeId: "roadmap",
@@ -74,27 +77,23 @@ export default function Interface() {
           user={{ name: "Jean D." }}
           onBack={() => setShowStatistique(false)}
         />
+      ) : showResidences ? (
+        <Residences onBack={() => setShowResidences(false)} />
       ) : (
         <>
           {/* === LIGNE PRINCIPALE : MENU + BARRE + ICONES === */}
           <div className="absolute top-3 left-4 right-4 flex items-start justify-between">
-            
             {/* === MENU GAUCHE === */}
-            <div
-              className="relative flex-shrink-0 z-20"
-              onMouseEnter={() => setIsLeftHovered(true)}
-              onMouseLeave={() => setIsLeftHovered(false)}
-            >
-              <div className={`bg-white/60 hover:bg-white/90 rounded-2xl shadow-lg py-3 flex flex-col items-start space-y-3 transition-all duration-300 ease-out backdrop-blur-sm ${
-                isLeftHovered ? 'w-72 px-4' : 'w-16 px-3'
-              }`}>
-                <button className="w-full flex items-center justify-start space-x-3 rounded-lg hover:bg-blue-50 transition-all duration-150 py-2.5">
+            <div className="relative flex-shrink-0 z-20">
+              <div className="bg-white/60 hover:bg-white/90 hover:opacity-100 opacity-80 rounded-2xl shadow-lg py-3 flex flex-col items-start space-y-3 transition-all duration-300 ease-out backdrop-blur-sm w-72 px-4">
+                <button
+                  onClick={() => setShowResidences(true)}
+                  className="w-full flex items-center justify-start space-x-3 rounded-lg hover:bg-blue-50 transition-all duration-150 py-2.5"
+                >
                   <div className="p-2 bg-blue-100 rounded-full flex-shrink-0">
                     <MapPin size={18} className="text-blue-600" />
                   </div>
-                  <span className={`text-sm text-gray-800 font-medium whitespace-nowrap transition-all duration-200 ${
-                    isLeftHovered ? 'opacity-100' : 'opacity-0 w-0'
-                  }`}>
+                  <span className="text-sm text-gray-800 font-medium whitespace-nowrap transition-all duration-200">
                     Nouvelle résidence
                   </span>
                 </button>
@@ -106,9 +105,7 @@ export default function Interface() {
                   <div className="p-2 bg-green-100 rounded-full flex-shrink-0">
                     <BarChart3 size={18} className="text-green-600" />
                   </div>
-                  <span className={`text-sm text-gray-800 font-medium whitespace-nowrap transition-all duration-200 ${
-                    isLeftHovered ? 'opacity-100' : 'opacity-0 w-0'
-                  }`}>
+                  <span className="text-sm text-gray-800 font-medium whitespace-nowrap transition-all duration-200">
                     Statistique
                   </span>
                 </button>
@@ -118,8 +115,14 @@ export default function Interface() {
             {/* === BARRE DE RECHERCHE FIXE === */}
             <div className="absolute left-1/2 transform -translate-x-1/2 z-20">
               <div className="bg-white shadow-lg rounded-full flex items-center px-6 py-3 w-96">
-                <Search className="text-gray-500 mr-3 flex-shrink-0" size={20} />
-                <form onSubmit={handleSearchSubmit} className="flex-1 flex items-center">
+                <Search
+                  className="text-gray-500 mr-3 flex-shrink-0"
+                  size={20}
+                />
+                <form
+                  onSubmit={handleSearchSubmit}
+                  className="flex-1 flex items-center"
+                >
                   <input
                     ref={searchRef}
                     type="text"
@@ -141,7 +144,10 @@ export default function Interface() {
             </div>
 
             {/* === CONTENEUR DROIT === */}
-            <div className="flex items-center space-x-3 relative flex-shrink-0 z-20" ref={dropdownRef}>
+            <div
+              className="flex items-center space-x-3 relative flex-shrink-0 z-20"
+              ref={dropdownRef}
+            >
               <div className="bg-white shadow-lg rounded-full flex items-center px-4 py-2 space-x-3">
                 {/* Bouton Ajouter une nouvelle adresse */}
                 <button
@@ -158,7 +164,7 @@ export default function Interface() {
                 <div className="w-px h-6 bg-gray-200"></div>
 
                 {/* Notification */}
-                <button 
+                <button
                   className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-50 transition-all duration-200"
                   title="Notifications"
                 >
@@ -226,10 +232,14 @@ export default function Interface() {
           {/* === ZOOM ET CENTRAGE === */}
           <div className="fixed right-6 bottom-24 z-10 flex flex-col items-center space-y-2">
             <button className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all duration-200 border border-gray-200 hover:shadow-xl">
-              <span className="text-xl text-gray-700 font-light"><Plus size={20} /></span>
+              <span className="text-xl text-gray-700 font-light">
+                <Plus size={20} />
+              </span>
             </button>
             <button className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all duration-200 border border-gray-200 hover:shadow-xl">
-              <span className="text-xl text-gray-700 font-light"><Minus size={20} /></span>
+              <span className="text-xl text-gray-700 font-light">
+                <Minus size={20} />
+              </span>
             </button>
             <button
               className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all duration-200 border border-gray-200 hover:shadow-xl"
