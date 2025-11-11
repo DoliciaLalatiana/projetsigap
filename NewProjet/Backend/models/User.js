@@ -40,7 +40,18 @@ class User {
 
   static async findById(id) {
     return new Promise((resolve, reject) => {
-      const query = 'SELECT id, immatricule, nom_complet, username, role, is_active FROM users WHERE id = ?';
+      const query = 'SELECT id, immatricule, nom_complet, username, role, is_active, photo FROM users WHERE id = ?';
+      connection.query(query, [id], (err, results) => {
+        if (err) reject(err);
+        else resolve(results[0]);
+      });
+    });
+  }
+
+  // Nouvelle méthode pour récupérer avec le mot de passe (pour vérification)
+  static async findByIdWithPassword(id) {
+    return new Promise((resolve, reject) => {
+      const query = 'SELECT * FROM users WHERE id = ?';
       connection.query(query, [id], (err, results) => {
         if (err) reject(err);
         else resolve(results[0]);
@@ -50,7 +61,7 @@ class User {
 
   static async getAll() {
     return new Promise((resolve, reject) => {
-      const query = 'SELECT id, immatricule, nom_complet, username, role, is_active, created_at FROM users';
+      const query = 'SELECT id, immatricule, nom_complet, username, role, is_active, created_at, photo FROM users';
       connection.query(query, (err, results) => {
         if (err) reject(err);
         else resolve(results);

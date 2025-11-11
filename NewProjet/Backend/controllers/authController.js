@@ -1,6 +1,39 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { connection } = require('../config/database');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Configuration multer pour l'upload des photos
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, '../uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'profile-' + req.user.id + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB max
+  },
+  fileFilter: function (req, file, cb) {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Seules les images sont autorisées!'), false);
+    }
+  }
+});
 
 class AuthController {
     static async login(req, res) {
@@ -37,11 +70,106 @@ class AuthController {
                     immatricule: user.immatricule,
                     nom_complet: user.nom_complet,
                     username: user.username,
-                    role: user.role
+                    role: user.role,
+                    photo: user.photo
                 }
             });
         } catch (error) {
             console.error('Erreur login:', error);
+            res.status(500).json({ message: 'Erreur serveur' });
+        }
+    }
+
+    // Nouvelle méthode pour récupérer les données utilisateur
+    static async getCurrentUser(req, res) {
+        try {
+            const user = await User.findById(req.user.id);
+            if (!user) {
+                return res.status(404).json({ message: 'Utilisateur non trouvé' });
+            }
+            res.json(user);
+        } catch (error) {
+            console.error('Erreur récupération utilisateur:', error);
+            res.status(500).json({ message: 'Erreur serveur' });
+        }
+    }
+
+    // Nouvelle méthode pour uploader la photo de profil
+    static async uploadProfilePhoto(req, res) {
+        try {
+            if (!req.file) {
+                return res.status(400).json({ message: 'Aucun fichier uploadé' });
+            }
+
+            // Supprimer l'ancienne photo si elle existe
+            const currentUser = await User.findById(req.user.id);
+            if (currentUser.photo) {
+                const oldPhotoPath = path.join(__dirname, '../uploads', currentUser.photo);
+                if (fs.existsSync(oldPhotoPath)) {
+                    fs.unlinkSync(oldPhotoPath);
+                }
+            }
+
+            // Mettre à jour la photo dans la base de données
+            const query = 'UPDATE users SET photo = ? WHERE id = ?';
+            connection.query(query, [req.file.filename, req.user.id], (err) => {
+                if (err) {
+                    console.error('Erreur mise à jour photo:', err);
+                    return res.status(500).json({ message: 'Erreur mise à jour photo' });
+                }
+
+                res.json({
+                    message: 'Photo de profil mise à jour avec succès',
+                    photo: req.file.filename
+                });
+            });
+        } catch (error) {
+            console.error('Erreur upload photo:', error);
+            res.status(500).json({ message: 'Erreur serveur' });
+        }
+    }
+
+    // Nouvelle méthode pour changer le mot de passe (avec approbation admin)
+    static async changePassword(req, res) {
+        try {
+            const { oldPassword, newPassword } = req.body;
+            const userId = req.user.id;
+
+            if (!oldPassword || !newPassword) {
+                return res.status(400).json({ message: 'Ancien et nouveau mot de passe requis' });
+            }
+
+            // Vérifier l'ancien mot de passe
+            const user = await User.findByIdWithPassword(userId);
+            if (!user) {
+                return res.status(404).json({ message: 'Utilisateur non trouvé' });
+            }
+
+            const isOldPasswordValid = await User.comparePassword(oldPassword, user.password);
+            if (!isOldPasswordValid) {
+                return res.status(401).json({ message: 'Ancien mot de passe incorrect' });
+            }
+
+            // Créer une demande de changement de mot de passe
+            const query = `
+                INSERT INTO password_change_requests (user_id, new_password_hash, status) 
+                VALUES (?, ?, 'pending')
+            `;
+            
+            const newPasswordHash = await bcrypt.hash(newPassword, 10);
+            
+            connection.query(query, [userId, newPasswordHash], (err) => {
+                if (err) {
+                    console.error('Erreur création demande changement:', err);
+                    return res.status(500).json({ message: 'Erreur serveur' });
+                }
+
+                res.json({
+                    message: 'Demande de changement de mot de passe envoyée. Attendez l\'approbation de l\'administrateur.'
+                });
+            });
+        } catch (error) {
+            console.error('Erreur changement mot de passe:', error);
             res.status(500).json({ message: 'Erreur serveur' });
         }
     }
@@ -65,9 +193,9 @@ class AuthController {
             }
 
             const query = `
-        INSERT INTO password_reset_requests (user_id, immatricule) 
-        VALUES (?, ?)
-      `;
+                INSERT INTO password_reset_requests (user_id, immatricule) 
+                VALUES (?, ?)
+            `;
 
             connection.query(query, [user.id, immatricule], (err) => {
                 if (err) {
@@ -80,7 +208,8 @@ class AuthController {
                     user: {
                         id: user.id,
                         nom_complet: user.nom_complet,
-                        immatricule: user.immatricule
+                        immatricule: user.immatricule,
+                        username: user.username
                     }
                 });
             });
@@ -93,11 +222,11 @@ class AuthController {
     static async getPendingResetRequests(req, res) {
         try {
             const query = `
-        SELECT prr.*, u.nom_complet, u.username, u.role 
-        FROM password_reset_requests prr 
-        JOIN users u ON prr.user_id = u.id 
-        WHERE prr.status = 'pending'
-      `;
+                SELECT prr.*, u.nom_complet, u.username, u.role 
+                FROM password_reset_requests prr 
+                JOIN users u ON prr.user_id = u.id 
+                WHERE prr.status = 'pending'
+            `;
 
             connection.query(query, (err, results) => {
                 if (err) {
@@ -108,6 +237,29 @@ class AuthController {
             });
         } catch (error) {
             console.error('Erreur get pending requests:', error);
+            res.status(500).json({ message: 'Erreur serveur' });
+        }
+    }
+
+    // Nouvelle méthode pour récupérer les demandes de changement de mot de passe
+    static async getPendingPasswordChangeRequests(req, res) {
+        try {
+            const query = `
+                SELECT pcr.*, u.nom_complet, u.username, u.role, u.immatricule
+                FROM password_change_requests pcr 
+                JOIN users u ON pcr.user_id = u.id 
+                WHERE pcr.status = 'pending'
+            `;
+
+            connection.query(query, (err, results) => {
+                if (err) {
+                    console.error('Erreur récupération demandes changement:', err);
+                    return res.status(500).json({ message: 'Erreur serveur' });
+                }
+                res.json(results);
+            });
+        } catch (error) {
+            console.error('Erreur get pending change requests:', error);
             res.status(500).json({ message: 'Erreur serveur' });
         }
     }
@@ -151,6 +303,54 @@ class AuthController {
         }
     }
 
+    // Nouvelle méthode pour approuver le changement de mot de passe
+    static async approvePasswordChange(req, res) {
+        try {
+            const { requestId } = req.body;
+
+            if (!requestId) {
+                return res.status(400).json({ message: 'ID de demande requis' });
+            }
+
+            const getRequestQuery = 'SELECT * FROM password_change_requests WHERE id = ? AND status = "pending"';
+            connection.query(getRequestQuery, [requestId], async (err, results) => {
+                if (err) {
+                    console.error('Erreur récupération demande changement:', err);
+                    return res.status(500).json({ message: 'Erreur serveur' });
+                }
+
+                if (results.length === 0) {
+                    return res.status(404).json({ message: 'Demande non trouvée' });
+                }
+
+                const request = results[0];
+
+                // Mettre à jour le mot de passe directement avec le hash stocké
+                const updatePasswordQuery = 'UPDATE users SET password = ? WHERE id = ?';
+                connection.query(updatePasswordQuery, [request.new_password_hash, request.user_id], (err) => {
+                    if (err) {
+                        console.error('Erreur mise à jour mot de passe:', err);
+                        return res.status(500).json({ message: 'Erreur serveur' });
+                    }
+
+                    // Marquer la demande comme approuvée
+                    const updateRequestQuery = 'UPDATE password_change_requests SET status = "approved" WHERE id = ?';
+                    connection.query(updateRequestQuery, [requestId], (err) => {
+                        if (err) {
+                            console.error('Erreur mise à jour demande:', err);
+                            return res.status(500).json({ message: 'Erreur serveur' });
+                        }
+
+                        res.json({ message: 'Changement de mot de passe approuvé avec succès' });
+                    });
+                });
+            });
+        } catch (error) {
+            console.error('Erreur approbation changement:', error);
+            res.status(500).json({ message: 'Erreur serveur' });
+        }
+    }
+
     static async invalidatePassword(req, res) {
         try {
             const { userId, tempPassword } = req.body;
@@ -181,7 +381,7 @@ class AuthController {
             }
 
             // Invalider le mot de passe
-            const hashedTempPassword = await bcrypt.hash(tempPassword, 12); // Salt rounds augmentés
+            const hashedTempPassword = await bcrypt.hash(tempPassword, 12);
 
             return new Promise((resolve, reject) => {
                 const query = 'UPDATE users SET password = ?, must_change_password = TRUE WHERE id = ?';
@@ -197,7 +397,6 @@ class AuthController {
 
                     resolve({
                         message: 'Mot de passe invalidé avec succès',
-                        // En production, envoyer le tempPassword par email
                         tempPassword: tempPassword
                     });
                 });
@@ -215,7 +414,6 @@ class AuthController {
             res.status(500).json({ message: 'Erreur serveur' });
         }
     }
-
 }
 
-module.exports = AuthController;
+module.exports = { AuthController, upload };

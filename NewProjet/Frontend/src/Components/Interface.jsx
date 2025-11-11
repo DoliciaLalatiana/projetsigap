@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   MapPin,
   BarChart3,
@@ -17,8 +18,10 @@ import {
 import { GoogleMap, LoadScript } from "@react-google-maps/api";
 import Statistique from "./Statistique";
 import ForgotPassword from "./ForgotPassword";
+import UserPage from "./UserPage";
 
 export default function Interface({ user }) {
+  const navigate = useNavigate();
   const [openDropdown, setOpenDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showStatistique, setShowStatistique] = useState(false);
@@ -50,6 +53,16 @@ export default function Interface({ user }) {
     window.location.href = '/login';
   };
 
+  // Fonction pour naviguer vers la page de profil
+  const handleUserIconClick = () => {
+    navigate('/userPage');
+  };
+
+  // Fonction pour naviguer vers la page résidence
+  const handleResidenceClick = () => {
+    navigate('/residence');
+  };
+
   const containerStyle = {
     width: "100%",
     height: "100vh",
@@ -68,12 +81,16 @@ export default function Interface({ user }) {
         {/* === MENU GAUCHE === */}
         <div className="relative flex-shrink-0 z-20">
           <div className="bg-white/60 hover:bg-white/90 hover:opacity-100 opacity-80 rounded-2xl shadow-lg py-3 flex flex-col items-start space-y-3 transition-all duration-300 ease-out backdrop-blur-sm w-72 px-4">
-            <button className="w-full flex items-center justify-start space-x-3 rounded-lg hover:bg-blue-50 transition-all duration-150 py-2.5">
+            {/* MODIFICATION ICI : Changement du texte et ajout du onClick */}
+            <button 
+              onClick={handleResidenceClick}
+              className="w-full flex items-center justify-start space-x-3 rounded-lg hover:bg-blue-50 transition-all duration-150 py-2.5"
+            >
               <div className="p-2 bg-blue-100 rounded-full flex-shrink-0">
                 <MapPin size={18} className="text-blue-600" />
               </div>
               <span className="text-sm text-gray-800 font-medium whitespace-nowrap transition-all duration-200">
-                Nouvelle résidence
+                Résidence {/* MODIFICATION : "Nouvelle résidence" → "Résidence" */}
               </span>
             </button>
 
@@ -150,67 +167,14 @@ export default function Interface({ user }) {
               <Bell size={20} className="text-gray-700" />
             </button>
 
-            {/* === MENU DÉROULANT UTILISATEUR === */}
-            <div className="relative">
-              <button
-                onClick={() => setOpenDropdown(!openDropdown)}
-                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-50 transition-all duration-200"
-                title="Profil"
-              >
-                <User size={20} className="text-gray-700" />
-              </button>
-
-              {openDropdown && (
-                <div className="absolute top-14 right-0 bg-white rounded-2xl shadow-2xl py-3 px-4 flex flex-col items-start space-y-3 w-72 border border-gray-100 z-50">
-                  <button className="w-full flex items-center justify-start space-x-3 px-3 py-2.5 rounded-lg hover:bg-blue-50 transition-all duration-150">
-                    <div className="p-2 bg-blue-100 rounded-full">
-                      <Info size={18} className="text-blue-600" />
-                    </div>
-                    <span className="text-sm text-gray-800 font-medium">
-                      Informations
-                    </span>
-                  </button>
-
-                  <button className="w-full flex items-center justify-start space-x-3 px-3 py-2.5 rounded-lg hover:bg-green-50 transition-all duration-150">
-                    <div className="p-2 bg-green-100 rounded-full">
-                      <Settings size={18} className="text-green-600" />
-                    </div>
-                    <span className="text-sm text-gray-800 font-medium">
-                      Paramètres
-                    </span>
-                  </button>
-
-                  {/* Bouton Mot de passe oublié pour agents et secrétaires */}
-                  {currentUser && ['agent', 'secretaire'].includes(currentUser.role) && (
-                    <button 
-                      onClick={() => setShowForgotPassword(true)}
-                      className="w-full flex items-center justify-start space-x-3 px-3 py-2.5 rounded-lg hover:bg-orange-50 transition-all duration-150"
-                    >
-                      <div className="p-2 bg-orange-100 rounded-full">
-                        <Key size={18} className="text-orange-600" />
-                      </div>
-                      <span className="text-sm text-gray-800 font-medium">
-                        Mot de passe oublié
-                      </span>
-                    </button>
-                  )}
-
-                  <div className="border-t border-gray-100 w-full my-1"></div>
-
-                  <button 
-                    onClick={handleLogout}
-                    className="w-full flex items-center justify-start space-x-3 px-3 py-2.5 rounded-lg hover:bg-red-50 transition-all duration-150"
-                  >
-                    <div className="p-2 bg-red-100 rounded-full">
-                      <LogOut size={18} className="text-red-600" />
-                    </div>
-                    <span className="text-sm text-gray-800 font-medium">
-                      Déconnexion
-                    </span>
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Icône utilisateur */}
+            <button
+              onClick={handleUserIconClick}
+              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-50 transition-all duration-200"
+              title="Profil"
+            >
+              <User size={20} className="text-gray-700" />
+            </button>
           </div>
         </div>
       </div>

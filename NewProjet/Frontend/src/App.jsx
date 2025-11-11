@@ -4,6 +4,8 @@ import Interface from './Components/Interface';
 import Statistique from './Components/Statistique';
 import AdminPanel from './Components/AdminPanel';
 import Login from './Components/Login';
+import UserPage from './Components/UserPage';
+import ResidencePage from './Components/ResidencePage'; // Ajoutez cette ligne
 
 function App() {
   const [user, setUser] = useState(null);
@@ -69,6 +71,19 @@ function App() {
         path="/statistique" 
         element={
           user ? <Statistique user={user} onBack={() => window.history.back()} /> : <Navigate to="/login" />
+        } 
+      />
+      <Route 
+        path="/userPage" 
+        element={
+          user ? <UserPage user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
+        } 
+      />
+      {/* AJOUTEZ CETTE NOUVELLE ROUTE */}
+      <Route 
+        path="/residence" 
+        element={
+          user ? <ResidencePage user={user} onBack={() => window.history.back()} /> : <Navigate to="/login" />
         } 
       />
       <Route 
