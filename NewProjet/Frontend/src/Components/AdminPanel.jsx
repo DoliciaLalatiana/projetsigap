@@ -11,13 +11,16 @@ import {
   Power,
   Search,
   UserCheck,
-  Clock
+  Clock,
+  Lock,
+  RefreshCw
 } from 'lucide-react';
 
 const AdminPanel = ({ onLogout, currentUser }) => {
   const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState([]);
   const [resetRequests, setResetRequests] = useState([]);
+  const [passwordChangeRequests, setPasswordChangeRequests] = useState([]);
   const [showUserForm, setShowUserForm] = useState(false);
   const [newUser, setNewUser] = useState({
     immatricule: '',
@@ -30,8 +33,8 @@ const AdminPanel = ({ onLogout, currentUser }) => {
   useEffect(() => {
     if (activeTab === 'users') {
       fetchUsers();
-    } else if (activeTab === 'reset-requests') {
-      fetchResetRequests();
+    } else if (activeTab === 'demandes') {
+      fetchAllRequests();
     }
   }, [activeTab]);
 
@@ -56,20 +59,30 @@ const AdminPanel = ({ onLogout, currentUser }) => {
     }
   };
 
-  const fetchResetRequests = async () => {
+  const fetchAllRequests = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/auth/reset-requests', {
+      
+      // Récupérer les demandes de réinitialisation
+      const resetResponse = await fetch('http://localhost:5000/api/auth/reset-requests', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
-      if (response.status === 401) {
+      // Récupérer les demandes de changement de mot de passe
+      const changeResponse = await fetch('http://localhost:5000/api/auth/password-change-requests', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (resetResponse.status === 401 || changeResponse.status === 401) {
         onLogout();
         return;
       }
 
-      const data = await response.json();
-      if (response.ok) setResetRequests(data);
+      const resetData = await resetResponse.json();
+      const changeData = await changeResponse.json();
+
+      if (resetResponse.ok) setResetRequests(resetData);
+      if (changeResponse.ok) setPasswordChangeRequests(changeData);
     } catch (error) {
       console.error('Erreur récupération demandes:', error);
       alert('Erreur de connexion au serveur');
@@ -108,12 +121,49 @@ const AdminPanel = ({ onLogout, currentUser }) => {
 
       if (response.ok) {
         alert(`✅ Mot de passe réinitialisé avec succès !\n\nNouveau mot de passe: ${data.newPassword}\n\nCommuniquez ce mot de passe à l'utilisateur.`);
-        fetchResetRequests(); // Recharger les demandes
+        fetchAllRequests(); // Recharger les demandes
       } else {
         alert(data.message || 'Erreur lors de la réinitialisation');
       }
     } catch (error) {
       console.error('Erreur approbation reset:', error);
+      alert('Erreur de connexion au serveur');
+    }
+  };
+
+  // FONCTION POUR APPROUVER LE CHANGEMENT DE MOT DE PASSE
+  const handleApprovePasswordChange = async (requestId) => {
+    if (!confirm('Êtes-vous sûr de vouloir approuver ce changement de mot de passe ?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/auth/approve-password-change', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ requestId })
+      });
+
+      if (response.status === 401) {
+        alert('Session expirée. Veuillez vous reconnecter.');
+        onLogout();
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('✅ Changement de mot de passe approuvé avec succès !');
+        fetchAllRequests(); // Recharger les demandes
+      } else {
+        alert(data.message || 'Erreur lors de l\'approbation');
+      }
+    } catch (error) {
+      console.error('Erreur approbation changement:', error);
       alert('Erreur de connexion au serveur');
     }
   };
@@ -262,6 +312,9 @@ const AdminPanel = ({ onLogout, currentUser }) => {
     text: isActive ? 'Actif' : 'Inactif'
   });
 
+  // Calcul du nombre total de demandes pour la notification
+  const totalDemands = resetRequests.length + passwordChangeRequests.length;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
       {/* Header */}
@@ -286,9 +339,9 @@ const AdminPanel = ({ onLogout, currentUser }) => {
             <div className="flex items-center space-x-3">
               <button className="relative p-2 text-slate-600 hover:text-slate-800 transition-colors">
                 <Bell className="w-5 h-5" />
-                {resetRequests.length > 0 && (
+                {totalDemands > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-                    {resetRequests.length}
+                    {totalDemands}
                   </span>
                 )}
               </button>
@@ -311,7 +364,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
           <div className="flex space-x-1 bg-slate-100/50 rounded-2xl p-1.5 w-fit">
             {[
               { id: 'users', icon: Users, label: 'Utilisateurs', count: users.length },
-              { id: 'reset-requests', icon: Key, label: 'Demandes', count: resetRequests.length }
+              { id: 'demandes', icon: Key, label: 'Demandes', count: totalDemands }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -474,66 +527,136 @@ const AdminPanel = ({ onLogout, currentUser }) => {
           </div>
         )}
 
-        {activeTab === 'reset-requests' && (
+        {activeTab === 'demandes' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-                  Demandes de Réinitialisation
+                  Demandes en Attente
                 </h2>
                 <p className="text-slate-600 mt-1">
-                  {resetRequests.length} demande(s) en attente
+                  {totalDemands} demande(s) nécessitent votre attention
                 </p>
               </div>
+              <button
+                onClick={fetchAllRequests}
+                className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+              >
+                <RefreshCw size={16} />
+                <span>Actualiser</span>
+              </button>
             </div>
 
-            {resetRequests.length === 0 ? (
+            {/* Demandes de réinitialisation */}
+            {resetRequests.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-slate-700 flex items-center space-x-2">
+                  <Key className="w-5 h-5 text-orange-500" />
+                  <span>Demandes de Réinitialisation ({resetRequests.length})</span>
+                </h3>
+                <div className="grid gap-4">
+                  {resetRequests.map((request) => {
+                    const roleBadge = getRoleBadge(request.role);
+                    
+                    return (
+                      <div key={request.id} className="bg-white rounded-2xl shadow-lg border border-orange-200/60 p-6 hover:shadow-xl transition-all duration-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className="bg-gradient-to-br from-orange-100 to-orange-50 p-3 rounded-xl">
+                              <Key className="w-6 h-6 text-orange-500" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-slate-800 text-lg">
+                                <span className="text-orange-600 font-bold">🔐 {request.nom_complet}</span> demande la réinitialisation de son mot de passe
+                              </h3>
+                              <div className="flex items-center space-x-4 mt-2 text-sm text-slate-600">
+                                <span><strong>Immatricule:</strong> {request.immatricule}</span>
+                                <span><strong>Username:</strong> @{request.username}</span>
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${roleBadge.color} text-white`}>
+                                  {roleBadge.text}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-1 mt-1 text-slate-500 text-xs">
+                                <Clock className="w-3 h-3" />
+                                <span>Demandé le {new Date(request.created_at).toLocaleDateString('fr-FR')} à {new Date(request.created_at).toLocaleTimeString('fr-FR')}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <button
+                            onClick={() => handleApproveReset(request.id)}
+                            className="flex items-center space-x-2 bg-gradient-to-r from-orange-500 to-red-600 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                          >
+                            <CheckCircle size={16} />
+                            <span>Générer nouveau mot de passe</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Demandes de changement de mot de passe */}
+            {passwordChangeRequests.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-slate-700 flex items-center space-x-2">
+                  <Lock className="w-5 h-5 text-blue-500" />
+                  <span>Demandes de Changement de Mot de Passe ({passwordChangeRequests.length})</span>
+                </h3>
+                <div className="grid gap-4">
+                  {passwordChangeRequests.map((request) => {
+                    const roleBadge = getRoleBadge(request.role);
+                    
+                    return (
+                      <div key={request.id} className="bg-white rounded-2xl shadow-lg border border-blue-200/60 p-6 hover:shadow-xl transition-all duration-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className="bg-gradient-to-br from-blue-100 to-blue-50 p-3 rounded-xl">
+                              <Lock className="w-6 h-6 text-blue-500" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-slate-800 text-lg">
+                                <span className="text-blue-600 font-bold">🔄 {request.nom_complet}</span> veut personnaliser son mot de passe
+                              </h3>
+                              <div className="flex items-center space-x-4 mt-2 text-sm text-slate-600">
+                                <span><strong>Immatricule:</strong> {request.immatricule}</span>
+                                <span><strong>Username:</strong> @{request.username}</span>
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${roleBadge.color} text-white`}>
+                                  {roleBadge.text}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-1 mt-1 text-slate-500 text-xs">
+                                <Clock className="w-3 h-3" />
+                                <span>Demandé le {new Date(request.created_at).toLocaleDateString('fr-FR')} à {new Date(request.created_at).toLocaleTimeString('fr-FR')}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <button
+                            onClick={() => handleApprovePasswordChange(request.id)}
+                            className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-cyan-600 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                          >
+                            <CheckCircle size={16} />
+                            <span>Approuver le changement</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Aucune demande */}
+            {totalDemands === 0 && (
               <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-12 text-center">
                 <div className="bg-gradient-to-br from-green-100 to-green-50 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-10 h-10 text-green-500" />
                 </div>
                 <h3 className="text-xl font-semibold text-slate-800 mb-2">Aucune demande en attente</h3>
-                <p className="text-slate-600">Toutes les demandes de réinitialisation ont été traitées.</p>
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {resetRequests.map((request) => {
-                  const roleBadge = getRoleBadge(request.role);
-                  
-                  return (
-                    <div key={request.id} className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 hover:shadow-xl transition-all duration-200">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className="bg-gradient-to-br from-orange-100 to-orange-50 p-3 rounded-xl">
-                            <Clock className="w-6 h-6 text-orange-500" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-slate-800 text-lg">{request.nom_complet}</h3>
-                            <div className="flex items-center space-x-4 mt-2 text-sm text-slate-600">
-                              <span><strong>Immatricule:</strong> {request.immatricule}</span>
-                              <span><strong>Username:</strong> @{request.username}</span>
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${roleBadge.color} text-white`}>
-                                {roleBadge.text}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-1 mt-1 text-slate-500 text-xs">
-                              <Clock className="w-3 h-3" />
-                              <span>Demandé le {new Date(request.created_at).toLocaleDateString('fr-FR')} à {new Date(request.created_at).toLocaleTimeString('fr-FR')}</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <button
-                          onClick={() => handleApproveReset(request.id)}
-                          className="flex items-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-                        >
-                          <CheckCircle size={16} />
-                          <span>Approuver</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                <p className="text-slate-600">Toutes les demandes ont été traitées.</p>
               </div>
             )}
           </div>

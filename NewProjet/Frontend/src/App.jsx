@@ -5,7 +5,7 @@ import Statistique from './Components/Statistique';
 import AdminPanel from './Components/AdminPanel';
 import Login from './Components/Login';
 import UserPage from './Components/UserPage';
-import ResidencePage from './Components/ResidencePage'; // Ajoutez cette ligne
+import ResidencePage from './Components/ResidencePage';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -35,6 +35,7 @@ function App() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    // Redirection vers login
     window.location.href = '/login';
   };
 
@@ -70,7 +71,7 @@ function App() {
       <Route 
         path="/statistique" 
         element={
-          user ? <Statistique user={user} onBack={() => window.history.back()} /> : <Navigate to="/login" />
+          user ? <Statistique user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
         } 
       />
       <Route 
@@ -79,17 +80,16 @@ function App() {
           user ? <UserPage user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
         } 
       />
-      {/* AJOUTEZ CETTE NOUVELLE ROUTE */}
       <Route 
         path="/residence" 
         element={
-          user ? <ResidencePage user={user} onBack={() => window.history.back()} /> : <Navigate to="/login" />
+          user ? <ResidencePage user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
         } 
       />
       <Route 
         path="/" 
         element={
-          user ? <Interface user={user} /> : <Navigate to="/login" />
+          user ? <Interface user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
         } 
       />
     </Routes>
