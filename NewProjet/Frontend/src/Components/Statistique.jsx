@@ -1,20 +1,8 @@
 import React, { useState } from "react";
 import {
   Users,
-  Home,
-  Building2,
-  MapPin,
-  ArrowLeft,
-  TrendingUp,
-  BarChart3,
-  Zap,
-  Navigation,
-  Layers,
-  Satellite,
   Filter,
   Printer,
-  Calendar,
-  User,
 } from "lucide-react";
 import {
   BarChart,
@@ -26,7 +14,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const Statistique = ({ user, onBack }) => {
+const Statistique = ({ onBack }) => {
   const [selectedFokontany, setSelectedFokontany] = useState("Tsimenantsy");
 
   const fokontanyData = {
@@ -65,41 +53,6 @@ const Statistique = ({ user, onBack }) => {
   };
 
   const data = fokontanyData[selectedFokontany];
-
-  const dernieresActivites = [
-    {
-      id: 1,
-      titre: "Nouvelle résidence cartographiée",
-      temps: "Il y a 5 minutes",
-      couleur: "from-red-500 to-pink-500",
-      icon: MapPin,
-      statut: "success",
-    },
-    {
-      id: 2,
-      titre: "Recensement habitants mis à jour",
-      temps: "Il y a 2 heures",
-      couleur: "from-green-500 to-emerald-500",
-      icon: Users,
-      statut: "processing",
-    },
-    {
-      id: 3,
-      titre: "Rapport Tsimenantsy généré",
-      temps: "Il y a 1 jour",
-      couleur: "from-blue-500 to-cyan-500",
-      icon: Satellite,
-      statut: "completed",
-    },
-    {
-      id: 4,
-      titre: "Zone Antanetibe digitalisée",
-      temps: "Il y a 2 jours",
-      couleur: "from-orange-500 to-amber-500",
-      icon: Layers,
-      statut: "completed",
-    },
-  ];
 
   const genererPDF = () => {
     const date = new Date().toLocaleDateString("fr-FR", {
@@ -206,346 +159,212 @@ const Statistique = ({ user, onBack }) => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
-      <div className="flex-shrink-0 bg-white/80 backdrop-blur-xl shadow-2xl p-6 border-b border-white/20">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
-              <button
-                onClick={onBack}
-                className="flex items-center space-x-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white px-4 py-2 rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-300 shadow-lg"
-              >
-                <ArrowLeft size={16} />
-                <span className="font-semibold text-sm">Retour</span>
-              </button>
+    <div className="h-full flex flex-col">
+      {/* Header avec contrôles à droite */}
+      <div className="flex-shrink-0 flex items-center justify-between p-8 border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <h1 className="font-bold text-3xl text-gray-800 bg-white py-1.5 px-4 rounded-2xl">
+          Statistiques
+        </h1>
+        
+        {/* Contrôles en haut à droite */}
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 bg-white border border-gray-300 rounded-lg px-3 py-2">
+            <Filter className="w-4 h-4 text-gray-500" />
+            <select
+              value={selectedFokontany}
+              onChange={(e) => setSelectedFokontany(e.target.value)}
+              className="bg-transparent outline-none text-sm focus:ring-0 focus:border-transparent"
+            >
+              <option value="Tsimenantsy">Tsimenantsy</option>
+            </select>
+          </div>
+          <button
+            onClick={genererPDF}
+            className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all duration-200 text-sm"
+          >
+            <Printer size={14} />
+            <span>Générer PDF</span>
+          </button>
+        </div>
+      </div>
 
-              {user?.role === 'admin' && (
-                <a href="/admin" className="text-blue-600 hover:text-blue-800 font-semibold">
-                  Admin
-                </a>
-              )}
-
-              <div className="relative">
-                <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-3 rounded-2xl shadow-lg">
-                  <BarChart3 className="text-white w-6 h-6" />
-                </div>
-                <div className="absolute -top-1 -right-1 bg-red-500 rounded-full p-1 shadow-lg">
-                  <Zap className="text-white w-2 h-2" />
-                </div>
-              </div>
-
+      {/* Statistiques compactes */}
+      <div className="flex-shrink-0 p-4 border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div className="grid grid-cols-4 gap-4 ml-12 mr-12">
+          
+          {/* Résidences */}
+          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                  Tableau de Bord Fokontany
-                </h1>
-                <div className="flex items-center space-x-4 mt-2">
-                  <div className="flex items-center space-x-2 bg-white/50 rounded-lg px-3 py-1">
-                    <Filter className="w-4 h-4 text-gray-500" />
-                    <select
-                      value={selectedFokontany}
-                      onChange={(e) => setSelectedFokontany(e.target.value)}
-                      className="bg-transparent border-none text-sm focus:outline-none focus:ring-0"
-                    >
-                      <option value="Tsimenantsy">Tsimenantsy</option>
-                    </select>
-                  </div>
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <User className="w-4 h-4" />
-                    <span className="text-sm">
-                      Chef: {user?.name || "Jean Rakoto"}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <Calendar className="w-4 h-4" />
-                    <span className="text-sm">
-                      {new Date().toLocaleDateString("fr-FR")}
-                    </span>
-                  </div>
+                <div className="text-2xl font-bold text-gray-800">
+                  {data.residences}
                 </div>
+                <div className="text-xs text-gray-600 mt-1">Résidences</div>
+              </div>
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <div className="w-6 h-6 bg-blue-500 rounded-full"></div>
               </div>
             </div>
+            <div className="mt-2 flex items-center text-xs text-green-600">
+              <span>▲ 25%</span>
+              <span className="text-gray-500 ml-1">vs last month</span>
+            </div>
+          </div>
 
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={genererPDF}
-                className="flex items-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg"
-              >
-                <Printer size={16} />
-                <span className="font-semibold text-sm">Générer PDF</span>
-              </button>
+          {/* Habitants */}
+          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-gray-800">
+                  {data.habitants}
+                </div>
+                <div className="text-xs text-gray-600 mt-1">Habitants</div>
+              </div>
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <div className="w-6 h-6 bg-green-500 rounded-full"></div>
+              </div>
+            </div>
+            <div className="mt-2 flex items-center text-xs text-green-600">
+              <span>▲ 18%</span>
+              <span className="text-gray-500 ml-1">vs last month</span>
+            </div>
+          </div>
+
+          {/* Hommes */}
+          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-gray-800">
+                  {data.hommes}
+                </div>
+                <div className="text-xs text-gray-600 mt-1">Hommes</div>
+              </div>
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <Users className="w-5 h-5 text-blue-600" />
+              </div>
+            </div>
+            <div className="mt-2 flex items-center text-xs text-blue-600">
+              <span>{Math.round((data.hommes / data.habitants) * 100)}%</span>
+              <span className="text-gray-500 ml-1">of total</span>
+            </div>
+          </div>
+
+          {/* Femmes */}
+          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-gray-800">
+                  {data.femmes}
+                </div>
+                <div className="text-xs text-gray-600 mt-1">Femmes</div>
+              </div>
+              <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
+                <Users className="w-5 h-5 text-pink-600" />
+              </div>
+            </div>
+            <div className="mt-2 flex items-center text-xs text-pink-600">
+              <span>{Math.round((data.femmes / data.habitants) * 100)}%</span>
+              <span className="text-gray-500 ml-1">of total</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-6 space-y-8 max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                title: "Résidences",
-                value: data.residences,
-                change: "+25%",
-                icon: Home,
-                gradient: "from-red-500 to-pink-500",
-                description: "Cartographiées",
-                detail: `${data.menages} ménages • ${data.messages} messages`,
-              },
-              {
-                title: "Habitants",
-                value: data.habitants,
-                change: "+18%",
-                icon: Users,
-                gradient: "from-green-500 to-emerald-500",
-                description: "Enregistrés",
-                detail: `${data.hommes}H / ${data.femmes}F`,
-              },
-              {
-                title: "Densité",
-                value: data.densite,
-                change: "+5.2%",
-                icon: Building2,
-                gradient: "from-blue-500 to-cyan-500",
-                description: "hab./résidence",
-                detail: "Moyenne nationale: 28.3",
-              },
-              {
-                title: "Zones",
-                value: data.zones,
-                change: "+1",
-                icon: MapPin,
-                gradient: "from-purple-500 to-indigo-500",
-                description: "secteurs actifs",
-                detail: "100% couverture",
-              },
-            ].map((card, index) => (
-              <div
-                key={index}
-                className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 border border-white/30 shadow-xl hover:shadow-2xl transition-all duration-300"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div
-                    className={`bg-gradient-to-br ${card.gradient} p-3 rounded-xl shadow-lg`}
-                  >
-                    <card.icon className="text-white w-6 h-6" />
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center justify-end space-x-1">
-                      <TrendingUp className="w-4 h-4 text-green-500" />
-                      <span className="text-green-600 text-sm font-semibold">
-                        {card.change}
-                      </span>
-                    </div>
-                    <span className="text-gray-500 text-xs">
-                      {card.description}
-                    </span>
-                  </div>
-                </div>
-                <h3 className="text-3xl font-bold text-gray-800 mb-2">
-                  {card.value}
-                </h3>
-                <p className="text-gray-600 text-sm font-medium">
-                  {card.title}
-                </p>
-                <p className="text-gray-400 text-xs mt-1">{card.detail}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-8">
-            <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-2xl border border-white/30">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-800">
-                  📈 Évolution Démographique
+      {/* Contenu scrollable SEULEMENT */}
+      <div className="flex-1 min-h-0 overflow-y-auto mb-10">
+        <div className="p-6 space-y-6 bg-gradient-to-r from-blue-50 to-indigo-50 h-full">
+          
+          {/* Graphiques */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Évolution Démographique */}
+            <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-800 text-sm">
+                  Évolution Démographique
                 </h3>
                 <div className="flex space-x-2">
-                  <span className="px-3 py-1 bg-red-100 text-red-600 rounded-full text-sm font-medium">
+                  <span className="px-2 py-1 bg-red-100 text-red-600 rounded-full text-xs">
                     Résidences
                   </span>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-sm font-medium">
+                  <span className="px-2 py-1 bg-blue-100 text-blue-600 rounded-full text-xs">
                     Habitants
                   </span>
                 </div>
               </div>
-              <div className="h-80">
+              <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={data.croissanceData}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="#e5e7eb"
-                      opacity={0.5}
-                    />
-                    <XAxis dataKey="mois" stroke="#6b7280" fontSize={12} />
-                    <YAxis stroke="#6b7280" fontSize={12} />
+                  <BarChart data={data.croissanceData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="mois" fontSize={10} />
+                    <YAxis fontSize={10} />
                     <Tooltip />
-                    <Bar
-                      dataKey="residences"
-                      name="Résidences"
-                      fill="#ef4444"
-                      radius={[8, 8, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="habitants"
-                      name="Habitants"
-                      fill="#3b82f6"
-                      radius={[8, 8, 0, 0]}
-                    />
+                    <Bar dataKey="residences" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="habitants" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-2xl border border-white/30">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-800">
-                  👥 Pyramide des Âges
+            {/* Pyramide des Âges */}
+            <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-800 text-sm">
+                  Pyramide des Âges
                 </h3>
                 <div className="flex space-x-2">
                   <div className="flex items-center space-x-1">
-                    <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded"></div>
                     <span className="text-xs text-gray-600">Hommes</span>
                   </div>
                   <div className="flex items-center space-x-1">
-                    <div className="w-3 h-3 bg-pink-500 rounded"></div>
+                    <div className="w-2 h-2 bg-pink-500 rounded"></div>
                     <span className="text-xs text-gray-600">Femmes</span>
                   </div>
                 </div>
               </div>
-              <div className="h-80 space-y-4">
-                {data.pyramideAges.map((groupe, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-xl"
-                  >
-                    <span className="font-semibold text-gray-700 w-16 text-sm">
-                      {groupe.groupe}
-                    </span>
-                    <div className="flex-1 mx-4">
-                      <div className="flex h-8 rounded-lg overflow-hidden shadow-sm">
-                        <div
-                          className="bg-blue-500 transition-all duration-500 flex items-center justify-end pr-2 text-white text-xs font-medium"
-                          style={{ width: `${(groupe.hommes / 100) * 100}%` }}
-                        >
-                          {groupe.hommes > 15 && `${groupe.hommes}%`}
-                        </div>
-                        <div
-                          className="bg-pink-500 transition-all duration-500 flex items-center justify-start pl-2 text-white text-xs font-medium"
-                          style={{ width: `${(groupe.femmes / 100) * 100}%` }}
-                        >
-                          {groupe.femmes > 15 && `${groupe.femmes}%`}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right text-sm text-gray-600 min-w-20">
-                      <div className="font-semibold">♂ {groupe.hommes}%</div>
-                      <div className="font-semibold">♀ {groupe.femmes}%</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-8">
-            <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-2xl border border-white/30">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">
-                🗺️ Analyse Spatiale
-              </h3>
               <div className="space-y-3">
-                {data.densiteData.map((zone, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100"
-                  >
-                    <div>
-                      <p className="font-semibold text-gray-800">{zone.zone}</p>
-                      <p className="text-gray-500 text-sm">
-                        {zone.residences} résidences
-                      </p>
+                {data.pyramideAges.map((groupe, index) => (
+                  <div key={index} className="flex items-center space-x-2 text-xs">
+                    <span className="w-12 font-medium text-gray-700">{groupe.groupe}</span>
+                    <div className="flex-1 flex h-4 bg-gray-100 rounded overflow-hidden">
+                      <div
+                        className="bg-blue-500 transition-all duration-300"
+                        style={{ width: `${(groupe.hommes / 100) * 100}%` }}
+                      />
+                      <div
+                        className="bg-pink-500 transition-all duration-300"
+                        style={{ width: `${(groupe.femmes / 100) * 100}%` }}
+                      />
                     </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-green-600">
-                        {zone.densite}
-                      </p>
-                      <p className="text-green-500 text-sm font-medium">
-                        +{zone.progression}%
-                      </p>
+                    <div className="w-16 text-right text-xs">
+                      <span className="text-blue-600">♂{groupe.hommes}</span>
+                      <span className="text-pink-600 ml-1">♀{groupe.femmes}</span>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-2xl border border-white/30">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">
-                📋 Journal des Activités
-              </h3>
-              <div className="space-y-4">
-                {dernieresActivites.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center space-x-4 p-4 rounded-xl bg-gray-50 border border-gray-100"
-                  >
-                    <div
-                      className={`bg-gradient-to-br ${item.couleur} p-3 rounded-xl shadow-md`}
-                    >
-                      <item.icon className="text-white w-5 h-5" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-800 text-sm">
-                        {item.titre}
-                      </p>
-                      <p className="text-gray-500 text-xs mt-1">{item.temps}</p>
-                    </div>
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        item.statut === "success"
-                          ? "bg-green-500"
-                          : item.statut === "processing"
-                          ? "bg-blue-500 animate-pulse"
-                          : "bg-gray-400"
-                      }`}
-                    ></div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="flex-shrink-0 bg-white/90 backdrop-blur-lg border-t border-gray-200/50">
-        <div className="max-w-7xl mx-auto px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-2">
-                <div className="bg-green-500 rounded-full p-1">
-                  <Navigation className="text-white w-3 h-3" />
+          {/* Analyse Spatiale */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200">
+            <h3 className="font-semibold text-gray-800 text-sm mb-4">
+              Analyse Spatiale par Zone
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              {data.densiteData.map((zone, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                  <div>
+                    <p className="font-semibold text-gray-800 text-sm">{zone.zone}</p>
+                    <p className="text-gray-500 text-xs">{zone.residences} résidences</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-green-600">{zone.densite}</p>
+                    <p className="text-green-500 text-xs">+{zone.progression}%</p>
+                  </div>
                 </div>
-                <span className="text-sm font-semibold text-gray-700">
-                  SIGAP v2.1
-                </span>
-              </div>
-              <div className="text-xs text-gray-500">
-                Fokontany {selectedFokontany} • Données mises à jour en temps
-                réel
-              </div>
-            </div>
-            <div className="flex items-center space-x-4 text-xs text-gray-500">
-              <div className="flex items-center space-x-1">
-                <User className="w-3 h-3" />
-                <span>Chef: {user?.name || "Jean Rakoto"}</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <Calendar className="w-3 h-3" />
-                <span>{new Date().toLocaleDateString("fr-FR")}</span>
-              </div>
-              <div className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
-                ● En ligne
-              </div>
+              ))}
             </div>
           </div>
         </div>

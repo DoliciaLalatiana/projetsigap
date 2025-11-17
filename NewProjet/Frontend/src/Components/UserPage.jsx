@@ -206,22 +206,8 @@ const UserPage = ({ user, onLogout }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4 relative overflow-hidden">
-      {/* Background Animation */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-200/20 via-purple-200/20 to-pink-200/20 animate-pulse"></div>
-      <div className="absolute top-10 left-10 w-64 h-64 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-      <div className="absolute top-10 right-10 w-64 h-64 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
-      <div className="absolute bottom-10 left-20 w-64 h-64 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
-
-      {/* Bouton Retour */}
-      <button
-        onClick={handleBack}
-        className="absolute top-6 left-6 flex items-center space-x-2 text-white hover:text-gray-100 transition-colors duration-200 font-medium bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 rounded-xl px-4 py-2 shadow-lg backdrop-blur-sm z-50 transform hover:scale-105 transition-all"
-      >
-        <ArrowLeft size={18} />
-        <span>Retour</span>
-      </button>
-
+    <div className="min-h-screen bg-gradient-to-r from-blue-50 to-indigo-50 py-8 px-4 relative overflow-hidden">
+      
       {/* Message de notification */}
       {message && (
         <div className="max-w-lg mx-auto mb-4 relative z-10">
@@ -244,7 +230,7 @@ const UserPage = ({ user, onLogout }) => {
       )}
 
       {/* Conteneur principal */}
-      <div className="max-w-lg mx-auto relative mt-16 z-10">
+      <div className="max-w-lg mx-auto relative z-10">
         
         {/* Vue Paramètres du Profil - avec animation slide */}
         <div className={`transition-all duration-500 ease-in-out transform ${
@@ -332,7 +318,7 @@ const UserPage = ({ user, onLogout }) => {
           </div>
 
           {/* Bouton Déconnexion en dehors de la carte */}
-          <div className="mt-8 transition-opacity duration-500">
+          <div className="mt-2 transition-opacity duration-500">
             <button
               onClick={handleLogout}
               className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:from-red-600 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center space-x-2"
@@ -361,6 +347,19 @@ const UserPage = ({ user, onLogout }) => {
 
             <div className="p-6">
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
+
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="flex items-start space-x-3">
+                    <Lock className="text-blue-500 w-5 h-5 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-blue-800 text-sm font-medium">Processus sécurisé</p>
+                      <p className="text-blue-700 text-xs mt-1">
+                        Votre demande sera envoyée à l'administrateur pour approbation. Vous recevrez une notification une fois le changement effectué.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="group">
                   <label className="text-gray-700 text-sm font-medium mb-2 block">Ancien mot de passe</label>
                   <div className="relative">
@@ -417,19 +416,9 @@ const UserPage = ({ user, onLogout }) => {
                   </div>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <div className="flex items-start space-x-3">
-                    <Lock className="text-blue-500 w-5 h-5 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-blue-800 text-sm font-medium">Processus sécurisé</p>
-                      <p className="text-blue-700 text-xs mt-1">
-                        Votre demande sera envoyée à l'administrateur pour approbation. Vous recevrez une notification une fois le changement effectué.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                
 
-                <div className="flex space-x-3 pt-4">
+                <div className="flex space-x-3 pt-4 mb-3">
                   <button
                     type="button"
                     onClick={handleCloseModal}
