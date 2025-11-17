@@ -206,7 +206,7 @@ const UserPage = ({ user, onLogout }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-blue-50 to-indigo-50 py-8 px-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-r from-blue-50 to-indigo-50 py-4 px-4 relative overflow-hidden">
       
       {/* Message de notification */}
       {message && (
@@ -243,7 +243,7 @@ const UserPage = ({ user, onLogout }) => {
             <div className="bg-gradient-to-r from-blue-500 to-purple-600 py-6 px-6">
               <div className="text-center">
                 <h1 className="text-2xl font-bold text-white">
-                  Paramètres du Profil
+                  Paramètres du Compte
                 </h1>
               </div>
             </div>
@@ -346,7 +346,7 @@ const UserPage = ({ user, onLogout }) => {
             </div>
 
             <div className="p-6">
-              <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              <form onSubmit={handlePasswordSubmit} className="space-y-3">
 
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                   <div className="flex items-start space-x-3">

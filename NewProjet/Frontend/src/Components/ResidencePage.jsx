@@ -170,13 +170,12 @@ const mockResidences = [
   },
 ];
 
-export default function ResidencePage({ onBack }) {
+export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
   const [selectedResidence, setSelectedResidence] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingResidence, setEditingResidence] = useState(null);
   const [editedResidents, setEditedResidents] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("name");
   const [expandedResidence, setExpandedResidence] = useState(null);
@@ -252,13 +251,13 @@ export default function ResidencePage({ onBack }) {
     );
   };
 
-  // Filtrage et tri des résidences
+  // Filtrage et tri des résidences avec la searchQuery passée en props
   const filteredResidences = mockResidences
     .filter((residence) => {
       const matchesSearch =
-        residence.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        residence.adresse.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        residence.proprietaire.toLowerCase().includes(searchTerm.toLowerCase());
+        residence.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        residence.adresse.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        residence.proprietaire.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus =
         statusFilter === "all" || residence.status === statusFilter;
       return matchesSearch && matchesStatus;
@@ -293,8 +292,8 @@ export default function ResidencePage({ onBack }) {
 
   return (
     <div className="h-full">
-      <div className="flex items-center justify-between p-8  border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-          <h1 className="font-bold text-3xl text-gray-800 bg-white py-1.5 px-4 rounded-2xl ">Résidences</h1>    
+      <div className="flex items-center justify-between p-8 border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <h1 className="font-bold text-3xl text-gray-800 bg-white py-1.5 px-4 rounded-2xl">Résidences</h1>
       </div>
 
       {/* Statistiques compactes */}
@@ -382,57 +381,71 @@ export default function ResidencePage({ onBack }) {
       {/* Liste des résidences avec scroll */}
       <div className="h-[calc(100%-180px)] overflow-y-auto bg-gradient-to-r from-blue-50 to-indigo-50">
         <div className="p-4 space-y-3 mr-3.3 ml-4">
-          {filteredResidences.map((residence) => (
-            <div
-              key={residence.id}
-              className="bg-white border border-gray-200 rounded-lg hover:shadow-md transition-all duration-200"
-            >
-              {/* En-tête compact */}
-              <div className="p-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-3 flex-1">
-                    <div className="w-12 h-10 rounded-md overflow-hidden flex-shrink-0">
-                      <img
-                        src={residence.photo}
-                        alt={residence.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-800 text-sm truncate">
-                        {residence.adresse}
-                      </h3>
-                      <div className="flex items-center space-x-1 mt-1 text-gray-600">
-                        <MapPin size={12} />
-                        <span className="text-xs truncate">
+          {filteredResidences.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Search className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="font-semibold text-gray-600 text-lg mb-2">
+                Aucune résidence trouvée
+              </h3>
+              <p className="text-gray-500 text-sm">
+                Aucune résidence ne correspond à votre recherche "{searchQuery}"
+              </p>
+            </div>
+          ) : (
+            filteredResidences.map((residence) => (
+              <div
+                key={residence.id}
+                className="bg-white border border-gray-200 rounded-lg hover:shadow-md transition-all duration-200"
+              >
+                {/* En-tête compact */}
+                <div className="p-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3 flex-1">
+                      <div className="w-12 h-10 rounded-md overflow-hidden flex-shrink-0">
+                        <img
+                          src={residence.photo}
+                          alt={residence.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-800 text-sm truncate">
                           {residence.adresse}
-                        </span>
+                        </h3>
+                        <div className="flex items-center space-x-1 mt-1 text-gray-600">
+                          <MapPin size={12} />
+                          <span className="text-xs truncate">
+                            {residence.adresse}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center space-x-1 ml-2">
-                    <button
-                      onClick={() => handleViewDetails(residence)}
-                      className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex"
-                      title="Détails"
-                    >
-                      <Eye className="mt-2" size={12} />
-                      <span className="px-3">Details</span>
-                    </button>
-                    <button
-                      onClick={() => handleViewOnMap(residence)}
-                      className="p-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex"
-                      title="Carte"
-                    >
-                      <Map className="mt-2" size={12} />
-                      <span className="px-2" >Carte</span>
-                    </button>
+                    <div className="flex items-center space-x-1 ml-2">
+                      <button
+                        onClick={() => handleViewDetails(residence)}
+                        className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex"
+                        title="Détails"
+                      >
+                        <Eye className="mt-2" size={12} />
+                        <span className="px-3">Details</span>
+                      </button>
+                      <button
+                        onClick={() => handleViewOnMap(residence)}
+                        className="p-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex"
+                        title="Carte"
+                      >
+                        <Map className="mt-2" size={12} />
+                        <span className="px-2">Carte</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -476,6 +489,72 @@ export default function ResidencePage({ onBack }) {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Informations détaillées */}
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Propriétaire:</span>
+                  <span className="text-sm font-medium">{selectedResidence.proprietaire}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Téléphone:</span>
+                  <span className="text-sm font-medium">{selectedResidence.telephone}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Email:</span>
+                  <span className="text-sm font-medium">{selectedResidence.email}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Total résidents:</span>
+                  <span className="text-sm font-medium">{selectedResidence.totalResidents}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Date création:</span>
+                  <span className="text-sm font-medium">
+                    {new Date(selectedResidence.dateCreation).toLocaleDateString('fr-FR')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Liste des résidents */}
+              <div className="mt-6">
+                <h4 className="font-semibold text-gray-800 mb-3">Liste des résidents ({selectedResidence.residents.length})</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {selectedResidence.residents.map((resident) => (
+                    <div key={resident.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                      <div>
+                        <span className="text-sm font-medium">{resident.name}</span>
+                        <span className={`ml-2 text-xs px-2 py-1 rounded ${
+                          resident.genre === 'homme' 
+                            ? 'bg-blue-100 text-blue-600' 
+                            : 'bg-pink-100 text-pink-600'
+                        }`}>
+                          {resident.genre === 'homme' ? '♂' : '♀'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {resident.age} ans • {resident.profession}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Boutons d'action */}
+              <div className="flex space-x-3 mt-6 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => handleEditResidents(selectedResidence)}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                >
+                  Modifier les résidents
+                </button>
+                <button
+                  onClick={() => handleViewOnMap(selectedResidence)}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                >
+                  Voir sur la carte
+                </button>
               </div>
             </div>
           </div>
@@ -531,6 +610,19 @@ export default function ResidencePage({ onBack }) {
                       <option value="homme">H</option>
                       <option value="femme">F</option>
                     </select>
+                    <input
+                      type="number"
+                      value={resident.age}
+                      onChange={(e) =>
+                        handleResidentChange(
+                          resident.id,
+                          "age",
+                          e.target.value
+                        )
+                      }
+                      className="w-16 px-2 py-2 border border-gray-300 rounded text-sm"
+                      placeholder="Âge"
+                    />
                     <button
                       onClick={() => handleRemoveResident(resident.id)}
                       className="p-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
