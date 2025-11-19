@@ -38,9 +38,18 @@ export default function Interface({ user }) {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [isSelectingLocation, setIsSelectingLocation] = useState(false);
   const [map, setMap] = useState(null);
-  const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
   const [mapType, setMapType] = useState("satellite");
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [addressDetails, setAddressDetails] = useState({
+    lot: "",
+    quartier: "",
+    ville: ""
+  });
+
+  // NOUVEL ÉTAT : pour gérer l'état interne de UserPage
+  const [userPageState, setUserPageState] = useState({
+    showPasswordModal: false
+  });
 
   const dropdownRef = useRef(null);
   const searchRef = useRef(null);
@@ -93,8 +102,8 @@ export default function Interface({ user }) {
     if (showResidence) {
       // Recherche dans les résidences - sera gérée par le composant ResidencePage
       console.log("Recherche dans les résidences:", searchQuery);
-    } else if (showStatistique) {
-      // Recherche désactivée pour les statistiques
+    } else if (showStatistique || showUserPage) {
+      // Recherche désactivée pour les statistiques et userpage
       return;
     } else {
       // Recherche sur la carte (interface principale)
@@ -108,15 +117,15 @@ export default function Interface({ user }) {
   const getSearchPlaceholder = () => {
     if (showResidence) {
       return "Rechercher une résidence, une adresse ou un propriétaire...";
-    } else if (showStatistique) {
-      return "Recherche désactivée en mode statistique";
+    } else if (showStatistique || showUserPage) {
+      return "Recherche désactivée";
     } else {
       return "Rechercher un lieu, une adresse ou une personne...";
     }
   };
 
   // Vérifier si la recherche est désactivée
-  const isSearchDisabled = showStatistique;
+  const isSearchDisabled = showStatistique || showUserPage;
 
   const handleLogout = () => {
     // Nettoyer le localStorage lors de la déconnexion
@@ -126,21 +135,38 @@ export default function Interface({ user }) {
     window.location.href = "/login";
   };
 
-  // Fonction pour gérer le clic sur SIGAP/Retour
+  // FONCTION MODIFIÉE : Gérer le clic sur SIGAP/Retour
   const handleLogoClick = () => {
-    if (isAnyPageOpen) {
+    // Si UserPage est ouverte ET on est dans le mode "changer mot de passe"
+    if (showUserPage && userPageState.showPasswordModal) {
+      // Fermer seulement le modal de changement de mot de passe
+      setUserPageState(prev => ({ ...prev, showPasswordModal: false }));
+    } 
+    // Si UserPage est ouverte mais PAS dans le mode "changer mot de passe"
+    else if (showUserPage) {
+      // Fermer complètement la UserPage
+      setShowUserPage(false);
+      setUserPageState({ showPasswordModal: false });
+    }
+    // Si d'autres pages sont ouvertes
+    else if (isAnyPageOpen) {
       // Fermer toutes les pages
       setShowResidence(false);
       setShowStatistique(false);
       setShowUserPage(false);
+      setUserPageState({ showPasswordModal: false });
     }
-    // Si aucune page n'est ouverte, ne rien faire (ou ajouter une autre action si nécessaire)
+    // Si aucune page n'est ouverte, ne rien faire
   };
 
   // Fonction pour afficher/masquer la page utilisateur
   const handleUserIconClick = () => {
     const newShowUserPage = !showUserPage;
     setShowUserPage(newShowUserPage);
+    // Réinitialiser l'état de UserPage quand on l'ouvre
+    if (newShowUserPage) {
+      setUserPageState({ showPasswordModal: false });
+    }
     // Fermer les autres pages si UserPage s'ouvre
     if (newShowUserPage) {
       setShowResidence(false);
@@ -156,6 +182,19 @@ export default function Interface({ user }) {
     if (newShowResidence) {
       setShowStatistique(false);
       setShowUserPage(false);
+      setUserPageState({ showPasswordModal: false });
+    }
+    // Fermer la sélection d'adresse si elle est active
+    if (isSelectingLocation || showAddAddress) {
+      setIsSelectingLocation(false);
+      setShowAddAddress(false);
+      setSelectedLocation(null);
+      setSelectedAddress("");
+      setAddressDetails({
+        lot: "",
+        quartier: "",
+        ville: ""
+      });
     }
   };
 
@@ -167,6 +206,19 @@ export default function Interface({ user }) {
     if (newShowStatistique) {
       setShowResidence(false);
       setShowUserPage(false);
+      setUserPageState({ showPasswordModal: false });
+    }
+    // Fermer la sélection d'adresse si elle est active
+    if (isSelectingLocation || showAddAddress) {
+      setIsSelectingLocation(false);
+      setShowAddAddress(false);
+      setSelectedLocation(null);
+      setSelectedAddress("");
+      setAddressDetails({
+        lot: "",
+        quartier: "",
+        ville: ""
+      });
     }
   };
 
@@ -177,6 +229,11 @@ export default function Interface({ user }) {
     setIsSelectingLocation(true);
     setSelectedLocation(null);
     setShowAddAddress(false);
+    setAddressDetails({
+      lot: "",
+      quartier: "",
+      ville: ""
+    });
   };
 
   // Fonction pour gérer le clic sur la carte
@@ -184,10 +241,8 @@ export default function Interface({ user }) {
     if (isSelectingLocation) {
       const lat = event.latLng.lat();
       const lng = event.latLng.lng();
-      setSelectedLocation({ lat, lng });
       
-      // Calculer la position du modal vers la droite
-      calculateModalPosition(lat, lng);
+      setSelectedLocation({ lat, lng });
       
       // Récupérer l'adresse à partir des coordonnées (géocodage inversé)
       getAddressFromCoordinates(lat, lng);
@@ -197,36 +252,55 @@ export default function Interface({ user }) {
     }
   };
 
-  // Fonction pour calculer la position du modal vers la droite
-  const calculateModalPosition = (lat, lng) => {
-    const mapRect = document.querySelector('.absolute.inset-0')?.getBoundingClientRect();
-    if (mapRect) {
-      // Positionner le modal vers la droite (70% de la largeur)
-      const left = mapRect.width * 0.7; // 70% vers la droite
-      const top = (mapRect.height - 500) / 2; // Toujours centré verticalement
-      
-      setModalPosition({ top, left });
-    }
-  };
-
   // Fonction pour obtenir l'adresse à partir des coordonnées
   const getAddressFromCoordinates = (lat, lng) => {
-    // Simulation du géocodage inversé
-    const addresses = [
-      "123 Avenue de l'Indépendance, Antananarivo",
-      "456 Rue Ratsimilaho, Antsirabe", 
-      "789 Boulevard de la Libération, Toamasina",
-      "101 Avenue des Fleurs, Fianarantsoa",
-      "202 Rue du Commerce, Mahajanga"
+    // Simulation du géocodage inversé avec des données plus réalistes
+    const addressData = [
+      { 
+        address: "123 Rue d'Analakely, Antananarivo",
+        lot: "Lot 123",
+        quartier: "Analakely",
+        ville: "Antananarivo"
+      },
+      { 
+        address: "456 Avenue de l'Indépendance, Antananarivo",
+        lot: "Lot 456", 
+        quartier: "Analakely",
+        ville: "Antananarivo"
+      },
+      { 
+        address: "789 Rue Ratsimilaho, Antananarivo",
+        lot: "Lot 789",
+        quartier: "Isoraka",
+        ville: "Antananarivo"
+      }
     ];
     
-    const randomAddress = addresses[Math.floor(Math.random() * addresses.length)];
-    setSelectedAddress(randomAddress);
+    const randomAddressData = addressData[Math.floor(Math.random() * addressData.length)];
+    setSelectedAddress(randomAddressData.address);
+    setAddressDetails({
+      lot: randomAddressData.lot,
+      quartier: randomAddressData.quartier,
+      ville: randomAddressData.ville
+    });
     
     // Afficher le modal d'ajout après la sélection
     setTimeout(() => {
       setShowAddAddress(true);
     }, 300);
+  };
+
+  // NOUVELLE FONCTION : Pour retourner à la sélection d'adresse (utilisée par X et Changer d'adresse)
+  const handleReturnToSelection = () => {
+    setShowAddAddress(false);
+    setIsSelectingLocation(true);
+    setSelectedAddress("");
+    setSelectedLocation(null);
+    setAddressDetails({
+      lot: "",
+      quartier: "",
+      ville: ""
+    });
   };
 
   // Fonction pour fermer complètement (retour au bouton Ajouter)
@@ -235,25 +309,31 @@ export default function Interface({ user }) {
     setIsSelectingLocation(false);
     setSelectedAddress("");
     setSelectedLocation(null);
-  };
-
-  // Fonction pour changer d'adresse (retour à la sélection)
-  const handleChangeAddress = () => {
-    setShowAddAddress(false);
-    setIsSelectingLocation(true);
-    setSelectedAddress("");
-    setSelectedLocation(null);
+    setAddressDetails({
+      lot: "",
+      quartier: "",
+      ville: ""
+    });
   };
 
   // Fonction pour confirmer l'ajout de l'adresse
   const handleConfirmAddress = () => {
     if (selectedAddress) {
       // Logique pour ajouter l'adresse à la base de données
-      console.log("Ajout de l'adresse:", selectedAddress);
+      console.log("Ajout de l'adresse:", {
+        address: selectedAddress,
+        details: addressDetails,
+        location: selectedLocation
+      });
       setShowAddAddress(false);
       setIsSelectingLocation(false);
       setSelectedAddress("");
       setSelectedLocation(null);
+      setAddressDetails({
+        lot: "",
+        quartier: "",
+        ville: ""
+      });
     }
   };
 
@@ -262,6 +342,19 @@ export default function Interface({ user }) {
     setIsSelectingLocation(false);
     setSelectedLocation(null);
     setSelectedAddress("");
+    setAddressDetails({
+      lot: "",
+      quartier: "",
+      ville: ""
+    });
+  };
+
+  // Fonction pour mettre à jour les détails de l'adresse
+  const handleAddressDetailsChange = (field, value) => {
+    setAddressDetails(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   // Fonction pour fermer la page résidence
@@ -277,6 +370,12 @@ export default function Interface({ user }) {
   // Fonction pour fermer la page utilisateur
   const handleCloseUserPage = () => {
     setShowUserPage(false);
+    setUserPageState({ showPasswordModal: false });
+  };
+
+  // NOUVELLE FONCTION : Callback pour mettre à jour l'état de UserPage
+  const handleUserPageStateChange = (newState) => {
+    setUserPageState(newState);
   };
 
   // Fonctions pour les contrôles de zoom
@@ -309,7 +408,7 @@ export default function Interface({ user }) {
     setMapLoaded(true);
   };
 
-  // Options de la carte - définies après le chargement
+  // Options de la carte - définies après le chargement (avec contrôles désactivés)
   const getMapOptions = () => {
     if (!mapLoaded) {
       return {
@@ -320,20 +419,13 @@ export default function Interface({ user }) {
 
     return {
       mapTypeId: mapType,
-      streetViewControl: true,
-      zoomControl: false,
-      mapTypeControl: true,
-      mapTypeControlOptions: {
-        style: window.google.maps.MapTypeControlStyle.DROPDOWN_MENU,
-        position: window.google.maps.ControlPosition.TOP_RIGHT
-      },
-      fullscreenControl: true,
-      fullscreenControlOptions: {
-        position: window.google.maps.ControlPosition.RIGHT_BOTTOM
-      },
-      scaleControl: true,
-      rotateControl: true,
-      disableDefaultUI: false,
+      streetViewControl: false, // Désactivé
+      zoomControl: false, // Désactivé
+      mapTypeControl: false, // Désactivé
+      fullscreenControl: false, // Désactivé
+      scaleControl: false, // Désactivé
+      rotateControl: false, // Désactivé
+      disableDefaultUI: true, // Tous les contrôles par défaut désactivés
     };
   };
 
@@ -347,271 +439,284 @@ export default function Interface({ user }) {
 
   return (
     <div className="relative w-full h-screen bg-gradient-to-r from-blue-50 to-indigo-50 overflow-hidden">
-      {/* === HEADER AVEC LA MÊME COULEUR QUE LA SIDEBAR === */}
-      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 py-4 z-20 bg-white/30 hover:bg-gradient-to-r from-blue-50/90 to-indigo-50/90 backdrop-blur-sm border-b border-gray-200/30 hover:border-blue-200/80 transition-all duration-300">
-        
-        {/* === LOGO SIGAP QUI DEVIENT BOUTON RETOUR === */}
-        <button 
-          onClick={handleLogoClick}
-          className="flex items-center space-x-3 cursor-pointer transition-all duration-300 hover:scale-105"
-        >
-          {isAnyPageOpen ? (
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-700 transition-all duration-300">
-              <ArrowLeft size={20} className="text-white" />
-            </div>
-          ) : (
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">SG</span>
-            </div>
-          )}
-          <h1 className="text-2xl font-bold text-gray-800/70 hover:text-gray-800 transition-all duration-300">
-            {isAnyPageOpen ? "Retour" : "SIGAP"}
-          </h1>
-        </button>
-
-        {/* === BARRE DE RECHERCHE DYNAMIQUE === */}
-        <div className={`absolute transition-all duration-150 ease-out ${
-          (showResidence || showStatistique) 
-            ? "left-80"
-            : "left-1/2 transform -translate-x-1/2"
+      {/* === NAVBAR SÉPARÉE EN DEUX PARTIES === */}
+      
+      {/* Partie gauche - Barre de recherche avec opacité */}
+      <div className={`absolute top-5 z-30 transition-all px-7 py-2  rounded-3xl bg-white/30 hover:bg-white/50 duration-300 ease-out ${
+        isAnyPageOpen ? "left-64" : "left-1/2 transform -translate-x-1/2"
+      }`}>
+        <div className={`rounded-full flex items-center px-6 py-1 w-96 border transition-all duration-300 ${
+          isSearchDisabled
+            ? "bg-gray-100/80 border-gray-300 cursor-not-allowed backdrop-blur-sm"
+            : "bg-white/50 backdrop-blur-sm border-gray-200/60 hover:bg-white hover:border-gray-300/80"
         }`}>
-          <div className={`rounded-full flex items-center px-6 py-3 w-96 border transition-all duration-300 ${
-            isSearchDisabled
-              ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-              : "bg-white/80 shadow-lg border-gray-200/60 hover:bg-white hover:border-gray-300"
-          }`}>
-            <Search className={`mr-3 flex-shrink-0 ${
-              isSearchDisabled ? "text-gray-400" : "text-gray-500"
-            }`} size={20} />
-            <form
-              onSubmit={handleSearchSubmit}
-              className="flex-1 flex items-center"
-            >
-              <input
-                ref={searchRef}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={getSearchPlaceholder()}
-                disabled={isSearchDisabled}
-                className={`w-full p-1 bg-transparent outline-none text-sm ${
-                  isSearchDisabled
-                    ? "text-gray-400 placeholder-gray-400 cursor-not-allowed"
-                    : "text-gray-700 placeholder-gray-500"
-                }`}
-              />
-            </form>
-          </div>
-        </div>
-
-        {/* === CONTROLES DROITE === */}
-        <div className="flex items-center space-x-4">
-          {/* Bouton Ajouter - DÉSACTIVÉ si une page est ouverte */}
-          <button
-            onClick={handleAddAddressClick}
-            disabled={isAnyPageOpen}
-            className={`flex items-center px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap ${
-              isAnyPageOpen
-                ? "bg-gray-400 text-gray-200 cursor-not-allowed"
-                : isSelectingLocation
-                ? "bg-orange-500 text-white hover:bg-orange-600"
-                : "bg-green-600 text-white hover:bg-green-700"
-            }`}
-            title={isAnyPageOpen ? "Fermez les autres pages pour ajouter une adresse" : "Ajouter une nouvelle adresse"}
+          <Search className={`mr-3 flex-shrink-0 ${
+            isSearchDisabled ? "text-gray-400" : "text-gray-600"
+          }`} size={20} />
+          <form
+            onSubmit={handleSearchSubmit}
+            className="flex-1 flex items-center"
           >
-            {isSelectingLocation ? (
-              <Navigation size={18} className="mr-2 flex-shrink-0" />
-            ) : (
-              <Plus size={18} className="mr-2 flex-shrink-0" />
-            )}
-            <span className="text-sm font-medium">
-              {isSelectingLocation ? "Sélection en cours..." : "Ajouter une nouvelle adresse"}
-            </span>
-          </button>
-
-          {/* Notification */}
-          <button
-            className="w-10 h-10 rounded-full flex items-center justify-center bg-white/30 hover:bg-white/80 transition-all duration-300"
-            title="Notifications"
-          >
-            <Bell size={20} className="text-gray-700/70 hover:text-gray-700 transition-all duration-300" />
-          </button>
-
-          {/* Utilisateur */}
-          <button
-            onClick={handleUserIconClick}
-            className="w-10 h-10 rounded-full flex items-center justify-center bg-white/30 hover:bg-white/80 transition-all duration-300"
-            title="Profil"
-          >
-            <User size={20} className="text-gray-700/70 hover:text-gray-700 transition-all duration-300" />
-          </button>
+            <input
+              ref={searchRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={getSearchPlaceholder()}
+              disabled={isSearchDisabled}
+              className={`w-full p-1 bg-transparent outline-none text-sm ${
+                isSearchDisabled
+                  ? "text-gray-400 placeholder-gray-400 cursor-not-allowed"
+                  : "text-gray-700 placeholder-gray-600"
+              }`}
+            />
+          </form>
         </div>
       </div>
 
-      {/* === OVERLAY DE SÉLECTION D'ADRESSE === */}
-      {isSelectingLocation && (
-        <div className="absolute inset-0 z-40 flex flex-col items-center justify-start pt-32 pointer-events-none">
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-6 max-w-md mx-4 border border-orange-200 relative">
+      {/* Partie droite - Bouton et icônes avec background fixe */}
+      <div className="absolute top-6 right-4 z-20">
+        <div className="bg-white/30 hover:bg-white/50  rounded-2xl shadow-lg border border-gray-200/60 hover:border-gray-300/80 transition-all duration-300">
+          <div className="flex items-center justify-end px-4 py-1 space-x-4">
+            
+            {/* Bouton Ajouter - CHANGE EN "Cliquez sur la carte" quand la sélection est active */}
             <button
-              onClick={handleCancelSelection}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-all duration-200 pointer-events-auto"
-              title="Fermer"
+              onClick={handleAddAddressClick}
+              disabled={isAnyPageOpen}
+              className={`flex items-center px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap ${
+                isAnyPageOpen
+                  ? "bg-gray-400/80 text-gray-200 cursor-not-allowed backdrop-blur-sm"
+                  : isSelectingLocation
+                  ? "bg-green-600 text-white hover:bg-green-700 backdrop-blur-sm"
+                  : "bg-green-600 text-white hover:bg-green-700 backdrop-blur-sm"
+              }`}
+              title={isAnyPageOpen ? "Fermez les autres pages pour ajouter une adresse" : "Ajouter une nouvelle adresse"}
             >
-              <X size={20} />
+              {isSelectingLocation ? (
+                <Navigation size={18} className="mr-2 flex-shrink-0" />
+              ) : (
+                <Plus size={18} className="mr-2 flex-shrink-0" />
+              )}
+              <span className="text-sm font-medium">
+                {isSelectingLocation ? "Cliquez sur la carte" : "Ajouter une nouvelle adresse"}
+              </span>
             </button>
 
-            <div className="flex items-center space-x-3 mb-4 pr-8">
-              <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center">
-                <Navigation size={20} className="text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-800">Sélectionnez une adresse sur la carte</h3>
-                <p className="text-sm text-gray-600">Cliquez sur la carte pour choisir l'emplacement</p>
-              </div>
-            </div>
+            {/* Notification */}
+            <button
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80"
+              title="Notifications"
+            >
+              <Bell size={20} className="text-gray-600 hover:text-gray-800 transition-all duration-300" />
+            </button>
+
+            {/* Utilisateur */}
+            <button
+              onClick={handleUserIconClick}
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-white/30 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80"
+              title="Profil"
+            >
+              <User size={20} className="text-gray-600 hover:text-gray-800 transition-all duration-300" />
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* === MODAL AJOUT ADRESSE - DÉPLACÉ VERS LA DROITE === */}
-      {showAddAddress && (
-        <div 
-          ref={addAddressRef}
-          className="absolute z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 w-96"
-          style={{
-            top: `${modalPosition.top}px`,
-            left: `${modalPosition.left}px`,
-          }}
-        >
-          {/* En-tête */}
-          <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4 flex items-center justify-between">
-            <h3 className="text-white font-semibold text-lg">Ajouter une adresse</h3>
-            <button
-              onClick={handleCloseComplete}
-              className="text-white/80 hover:text-white transition-all duration-200"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          {/* Contenu */}
-          <div className="p-6">
-            {/* Adresse sélectionnée */}
-            <div className="mb-6">
-              <div className="flex items-start space-x-3 mb-3">
-                <MapPin size={20} className="text-green-600 flex-shrink-0 mt-1" />
+      {/* === OVERLAY DE SÉLECTION D'ADRESSE - MODIFIÉ POUR ÊTRE SUR UNE SEULE LIGNE === */}
+      {isSelectingLocation && (
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-end pb-8 pointer-events-none">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-4 mx-4 border border-orange-200 relative w-full max-w-2xl">
+            <div className="flex items-center justify-between space-x-4">
+              {/* Partie gauche : Icône Navigation et texte */}
+              <div className="flex items-center space-x-3 flex-1">
+                <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Navigation size={20} className="text-white" />
+                </div>
                 <div className="flex-1">
-                  <p className="font-medium text-gray-800 text-base mb-1">Adresse sélectionnée :</p>
-                  <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    {selectedAddress}
+                  <p className="text-gray-800 font-medium">
+                    Cliquez sur la carte pour sélectionner une adresse
                   </p>
                 </div>
               </div>
-            </div>
 
-            {/* Champs de formulaire */}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-base font-medium text-gray-700 mb-2">
-                  Lot de l'adresse *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: Lot 123, Lot ABC"
-                  className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-base font-medium text-gray-700 mb-2">
-                  Quartier *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: Analakely, Isoraka"
-                  className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-base font-medium text-gray-700 mb-2">
-                  Ville *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: Antananarivo, Antsirabe"
-                  className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Boutons d'action */}
-            <div className="flex space-x-4 pt-6 border-t border-gray-200">
+              {/* Partie droite : Bouton Annuler */}
               <button
-                onClick={handleChangeAddress}
-                className="flex-1 px-6 py-3 text-base border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium"
+                onClick={handleCancelSelection}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-all duration-200 pointer-events-auto flex items-center space-x-2 flex-shrink-0"
+                title="Annuler"
               >
-                Changer d'adresse
-              </button>
-              <button
-                onClick={handleConfirmAddress}
-                className="flex-1 px-6 py-3 text-base bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 font-medium"
-              >
-                Confirmer
+                <X size={16} />
+                <span className="text-sm font-medium">Annuler</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* === SIDEBAR GAUCHE AVEC OPACITÉ - BLEU SEULEMENT AU SURVOL === */}
-      <div className="absolute top-20 left-6 z-20">
-        <div className="bg-white/30 hover:bg-gradient-to-r from-blue-50/90 to-indigo-50/90 rounded-2xl shadow-lg py-4 flex flex-col items-center space-y-3 transition-all duration-300 ease-out backdrop-blur-sm w-48 border border-gray-200/30 hover:border-blue-200/80">
+      {/* === MODAL AJOUT ADRESSE - AU CENTRE AVEC FOND ASSOMBRI === */}
+      {showAddAddress && (
+        <>
+          {/* Overlay sombre */}
+          <div className="fixed inset-0 bg-black/50 z-40"></div>
           
-          {/* Bouton Résidence */}
+          {/* Modal */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div 
+              ref={addAddressRef}
+              className="bg-white rounded-2xl overflow-hidden shadow-2xl border border-gray-200 w-full max-w-md"
+            >
+              {/* En-tête */}
+              <div className="bg-gradient-to-r from-green-500 to-green-600 px-6 py-4 flex items-center justify-between">
+                <h3 className="text-white font-semibold text-lg">Ajouter une adresse</h3>
+                {/* MODIFICATION : Le bouton X utilise maintenant handleReturnToSelection */}
+                <button
+                  onClick={handleReturnToSelection}
+                  className="text-white/80 hover:text-white transition-all duration-200"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Contenu */}
+              <div className="p-5">
+                {/* Adresse sélectionnée */}
+                <div className="mb-6">
+                  <div className="flex items-start space-x-3 mb-3">
+                    <MapPin size={20} className="text-green-600 flex-shrink-0 mt-1" />
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-800 text-base mb-1">Adresse sélectionnée :</p>
+                      <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        {selectedAddress}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Champs de formulaire */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-base font-medium text-gray-700 mb-2">
+                      Lot de la maison *
+                    </label>
+                    <input
+                      type="text"
+                      value={addressDetails.lot}
+                      onChange={(e) => handleAddressDetailsChange('lot', e.target.value)}
+                      placeholder="Ex: Lot 123, Lot ABC"
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-base font-medium text-gray-700 mb-2">
+                      Quartier *
+                    </label>
+                    <input
+                      type="text"
+                      value={addressDetails.quartier}
+                      onChange={(e) => handleAddressDetailsChange('quartier', e.target.value)}
+                      placeholder="Ex: Analakely, Isoraka"
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-base font-medium text-gray-700 mb-2">
+                      Ville *
+                    </label>
+                    <input
+                      type="text"
+                      value={addressDetails.ville}
+                      onChange={(e) => handleAddressDetailsChange('ville', e.target.value)}
+                      placeholder="Ex: Antananarivo, Antsirabe"
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Boutons d'action */}
+                <div className="flex space-x-4 mt-2 border-gray-200">
+                  {/* MODIFICATION : Changer d'adresse utilise handleReturnToSelection */}
+                  <button
+                    onClick={handleReturnToSelection}
+                    className="flex-1 px-1 py-3 text-base bg-gray-100 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
+                  >
+                    Changer d'adresse
+                  </button>
+                  <button
+                    onClick={handleConfirmAddress}
+                    className="flex-1 px-1 py-3 text-base bg-blue-400 text-white rounded-lg hover:bg-blue-500 transition-all duration-200 font-medium"
+                  >
+                    Confirmer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* === SIDEBAR GAUCHE AVEC OPACITÉ === */}
+      <div className="absolute top-1 left-6 z-20">
+        <div className="bg-white/30 hover:bg-white/50  rounded-2xl shadow-lg py-4 flex flex-col items-center space-y-6 transition-all duration-300 ease-out w-55 border border-gray-200/60 hover:border-gray-300/80">
+          
+          {/* === SIGAP - MONTE VERS LE HAUT === */}
+          <button 
+            onClick={handleLogoClick}
+            className="w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 bg-transparent hover:bg-white"
+          >
+            <div className="p-2 rounded-full flex-shrink-0 bg-blue-100/70">
+              <span className="text-blue-600 font-bold text-sm">SG</span>
+            </div>
+            <span className="text-gray-800 font-medium whitespace-nowrap transition-all duration-300">
+              SIGAP {/* Toujours afficher "SIGAP" */}
+            </span>
+          </button>
+
+          {/* Bouton Résidence - BACKGROUND BLANC AU SURVOL */}
           <button
             onClick={handleResidenceClick}
             className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${
               showResidence 
-                ? "bg-white border border-blue-200/80" 
-                : "bg-transparent hover:bg-white hover:border-blue-200/50"
+                ? "bg-white border border-blue-200/60" 
+                : "bg-transparent hover:bg-white hover:border-blue-200/60"
             }`}
           >
             <div className={`p-2 rounded-full flex-shrink-0 ${
               showResidence ? "bg-blue-100/70" : "bg-blue-100/70"
             }`}>
               <MapPin size={18} className={`${
-                showResidence ? "text-blue-600" : "text-blue-600/80 hover:text-blue-600"
+                showResidence ? "text-blue-600" : "text-blue-600"
               } transition-all duration-300`} />
             </div>
             <span className={`${
-              showResidence ? "text-gray-800" : "text-gray-800/80 hover:text-gray-800"
+              showResidence ? "text-gray-800" : "text-gray-800"
             } font-medium whitespace-nowrap transition-all duration-300`}>
               Résidence
             </span>
           </button>
 
-          {/* Bouton Statistique */}
+          {/* Bouton Statistique - BACKGROUND BLANC AU SURVOL */}
           <button
             onClick={handleStatistiqueClick}
             className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${
               showStatistique 
-                ? "bg-white border border-green-200/80" 
-                : "bg-transparent hover:bg-white hover:border-green-200/50"
+                ? "bg-white border border-green-200/60" 
+                : "bg-transparent hover:bg-white hover:border-green-200/60"
             }`}
           >
             <div className={`p-2 rounded-full flex-shrink-0 ${
               showStatistique ? "bg-green-100/70" : "bg-green-100/70"
             }`}>
               <BarChart3 size={18} className={`${
-                showStatistique ? "text-green-600" : "text-green-600/80 hover:text-green-600"
+                showStatistique ? "text-green-600" : "text-green-600"
               } transition-all duration-300`} />
             </div>
             <span className={`${
-              showStatistique ? "text-gray-800" : "text-gray-800/80 hover:text-gray-800"
+              showStatistique ? "text-gray-800" : "text-gray-800"
             } font-medium whitespace-nowrap transition-all duration-300`}>
               Statistique
             </span>
@@ -621,52 +726,58 @@ export default function Interface({ user }) {
 
       {/* === PAGE RÉSIDENCE EN HAUT À GAUCHE === */}
       {showResidence && (
-        <div className="absolute top-22 left-65 z-30 bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200 h-[76vh] w-315">
+        <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[86vh] w-315">
           <ResidencePage 
             onBack={handleCloseResidence} 
-            searchQuery={searchQuery} // Passer la requête de recherche
-            onSearchChange={setSearchQuery} // Passer le setter pour la recherche
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
           />
         </div>
       )}
 
       {/* === PAGE STATISTIQUE EN HAUT À GAUCHE === */}
       {showStatistique && (
-        <div className="absolute top-22 left-65 z-30 bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200 h-[85vh] w-315">
+        <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[85vh] w-315">
           <Statistique onBack={handleCloseStatistique} />
         </div>
       )}
 
       {/* === PAGE UTILISATEUR EN HAUT À GAUCHE === */}
       {showUserPage && (
-        <div className="absolute top-22 left-65 z-30 bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200 h-[87vh] w-250">
-          <UserPage user={currentUser} onBack={handleCloseUserPage} onLogout={handleLogout} />
+        <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[87vh] w-250">
+          <UserPage 
+            user={currentUser} 
+            onBack={handleCloseUserPage} 
+            onLogout={handleLogout}
+            // NOUVELLES PROPS : passer l'état et la callback
+            userPageState={userPageState}
+            onUserPageStateChange={handleUserPageStateChange}
+          />
         </div>
       )}
 
-      {/* Rest of the component remains the same... */}
-      {/* === CONTROLES ZOOM ET COUCHE AVEC OPACITÉ AMÉLIORÉE AU SURVOL === */}
+      {/* === CONTROLES ZOOM ET COUCHE AVEC OPACITÉ === */}
       <div className="fixed right-6 bottom-24 z-10 flex flex-col items-center space-y-2">
         <button 
           onClick={handleZoomIn}
-          className="w-12 h-12 bg-white/50 rounded-full shadow-lg flex items-center justify-center hover:bg-white/90 transition-all duration-300 border border-gray-200/50 hover:border-gray-300 hover:shadow-xl"
+          className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
           title="Zoom avant"
         >
-          <Plus size={20} className="text-gray-700/70 hover:text-gray-700 transition-all duration-300" />
+          <Plus size={20} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
         </button>
         <button 
           onClick={handleZoomOut}
-          className="w-12 h-12 bg-white/50 rounded-full shadow-lg flex items-center justify-center hover:bg-white/90 transition-all duration-300 border border-gray-200/50 hover:border-gray-300 hover:shadow-xl"
+          className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
           title="Zoom arrière"
         >
-          <Minus size={20} className="text-gray-700/70 hover:text-gray-700 transition-all duration-300" />
+          <Minus size={20} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
         </button>
         <button 
           onClick={handleCenterMap}
-          className="w-12 h-12 bg-white/50 rounded-full shadow-lg flex items-center justify-center hover:bg-white/90 transition-all duration-300 border border-gray-200/50 hover:border-gray-300 hover:shadow-xl"
+          className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
           title="Recentrer la carte"
         >
-          <LocateFixed size={20} className="text-blue-600/70 hover:text-blue-600 transition-all duration-300" />
+          <LocateFixed size={20} className="text-blue-600 hover:text-blue-700 transition-all duration-300" />
         </button>
       </div>
 
@@ -674,14 +785,14 @@ export default function Interface({ user }) {
       <div className="fixed right-6 bottom-8 z-10">
         <button 
           onClick={handleMapTypeChange}
-          className="w-12 h-12 bg-white/50 rounded-full shadow-lg flex items-center justify-center hover:bg-white/90 transition-all duration-300 hover:shadow-xl"
+          className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 hover:shadow-xl border border-gray-200/60 hover:border-gray-300/80"
           title={mapType === "satellite" ? "Passer en vue plan" : "Passer en vue satellite"}
         >
-          <Layers size={22} className="text-gray-700/70 hover:text-gray-700 transition-all duration-300" />
+          <Layers size={22} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
         </button>
       </div>
 
-      {/* === GOOGLE MAPS - MODE SATELLITE AVEC CONTRÔLES ACTIVÉS === */}
+      {/* === GOOGLE MAPS - CONTRÔLES DÉSACTIVÉS === */}
       <div className="absolute inset-0 z-0">
         <LoadScript googleMapsApiKey="AIzaSyD8i3HLU5QEmr4XIkYq3yH8XrzptRrSND8">
           <GoogleMap

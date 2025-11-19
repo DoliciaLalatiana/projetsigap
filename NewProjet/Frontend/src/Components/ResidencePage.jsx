@@ -16,6 +16,8 @@ import {
   ChevronDown,
   ChevronUp,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 // Données mockées pour les résidences
@@ -168,6 +170,72 @@ const mockResidences = [
       },
     ],
   },
+  {
+    id: 4,
+    name: "Résidence Le Parc",
+    photo:
+      "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=300&fit=crop",
+    proprietaire: "Robert Martin",
+    totalResidents: 22,
+    hommes: 12,
+    femmes: 10,
+    adresse: "321 Rue des Roses, Antananarivo",
+    telephone: "+261 34 56 789 01",
+    email: "r.martin@email.com",
+    latitude: -18.905,
+    longitude: 47.553,
+    status: "active",
+    dateCreation: "2023-04-05",
+    residents: [
+      {
+        id: 1,
+        name: "Lucie Bernard",
+        genre: "femme",
+        age: 31,
+        profession: "Architecte",
+      },
+      {
+        id: 2,
+        name: "Antoine Petit",
+        genre: "homme",
+        age: 28,
+        profession: "Designer",
+      },
+    ],
+  },
+  {
+    id: 5,
+    name: "Résidence Les Oliviers",
+    photo:
+      "https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=400&h=300&fit=crop",
+    proprietaire: "Sophie Laurent",
+    totalResidents: 16,
+    hommes: 7,
+    femmes: 9,
+    adresse: "654 Avenue des Palmiers, Antananarivo",
+    telephone: "+261 33 45 678 90",
+    email: "s.laurent@email.com",
+    latitude: -18.907,
+    longitude: 47.548,
+    status: "active",
+    dateCreation: "2023-05-12",
+    residents: [
+      {
+        id: 1,
+        name: "Nicolas Dubois",
+        genre: "homme",
+        age: 35,
+        profession: "Ingénieur",
+      },
+      {
+        id: 2,
+        name: "Émilie Rousseau",
+        genre: "femme",
+        age: 29,
+        profession: "Médecin",
+      },
+    ],
+  },
 ];
 
 export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
@@ -179,6 +247,8 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("name");
   const [expandedResidence, setExpandedResidence] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [residencesPerPage] = useState(4);
 
   const handleViewDetails = (residence) => {
     setSelectedResidence(residence);
@@ -275,6 +345,25 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
       }
     });
 
+  // Calcul de la pagination
+  const indexOfLastResidence = currentPage * residencesPerPage;
+  const indexOfFirstResidence = indexOfLastResidence - residencesPerPage;
+  const currentResidences = filteredResidences.slice(indexOfFirstResidence, indexOfLastResidence);
+  const totalPages = Math.ceil(filteredResidences.length / residencesPerPage);
+
+  // Fonctions de pagination
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  const nextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
   // Calcul des totaux généraux
   const totalResidences = mockResidences.length;
   const totalResidents = mockResidences.reduce(
@@ -291,180 +380,242 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
   );
 
   return (
-    <div className="h-full">
-      <div className="flex items-center justify-between p-8 border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-        <h1 className="font-bold text-3xl text-gray-800 bg-white py-1.5 px-4 rounded-2xl">Résidences</h1>
-      </div>
+    <div className="h-full flex">
+      {/* Section principale des résidences qui se réduit quand le modal s'ouvre */}
+      <div className={`transition-all duration-300 ease-in-out ${
+        showModal ? "w-1/2" : "w-full"
+      }`}>
+        <div className="h-full flex flex-col">
+          {/* Header avec fond transparent */}
+          <div className="flex items-center justify-between p-8 border-gray-200/60 bg-transparent">
+            <h1 className="font-bold text-3xl text-gray-800 bg-white backdrop-blur-sm py-1.5 px-4 rounded-2xl border border-gray-200/60">Résidences</h1>
+          </div>
 
-      {/* Statistiques compactes */}
-      <div className="p-4 border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-        <div className="grid grid-cols-4 gap-4 ml-12 mr-12">
-          
-          {/* Résidences */}
-          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-gray-800">
-                  {totalResidences}
+          {/* Statistiques compactes avec fond transparent */}
+          <div className="border-gray-200/60 bg-transparent">
+            <div className="grid grid-cols-4 gap-4 ml-12 mr-12">
+              
+              {/* Résidences */}
+              <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-2xl font-bold text-gray-800">
+                      {totalResidences}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">Résidences</div>
+                  </div>
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full"></div>
+                  </div>
                 </div>
-                <div className="text-xs text-gray-600 mt-1">Résidences</div>
+                <div className="mt-2 flex items-center text-xs text-green-600">
+                  <span>▲ 12%</span>
+                  <span className="text-gray-500 ml-1">vs last month</span>
+                </div>
               </div>
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <div className="w-6 h-6 bg-blue-500 rounded-full"></div>
+
+              {/* Résidents */}
+              <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-2xl font-bold text-gray-800">
+                      {totalResidents}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">Résidents</div>
+                  </div>
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <div className="w-6 h-6 bg-green-500 rounded-full"></div>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center text-xs text-green-600">
+                  <span>▲ 8%</span>
+                  <span className="text-gray-500 ml-1">vs last month</span>
+                </div>
               </div>
-            </div>
-            <div className="mt-2 flex items-center text-xs text-green-600">
-              <span>▲ 12%</span>
-              <span className="text-gray-500 ml-1">vs last month</span>
+
+              {/* Hommes */}
+              <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-2xl font-bold text-gray-800">
+                      {totalHommes}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">Hommes</div>
+                  </div>
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Users className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center text-xs text-blue-600">
+                  <span>{Math.round((totalHommes / totalResidents) * 100)}%</span>
+                  <span className="text-gray-500 ml-1">of total</span>
+                </div>
+              </div>
+
+              {/* Femmes */}
+              <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-2xl font-bold text-gray-800">
+                      {totalFemmes}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">Femmes</div>
+                  </div>
+                  <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
+                    <Users className="w-5 h-5 text-pink-600" />
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center text-xs text-pink-600">
+                  <span>{Math.round((totalFemmes / totalResidents) * 100)}%</span>
+                  <span className="text-gray-500 ml-1">of total</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Résidents */}
-          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-gray-800">
-                  {totalResidents}
+          {/* Liste des résidences avec scroll */}
+          <div className="flex-1 overflow-y-auto bg-transparent">
+            <div className="p-3 space-y-3 mr-3.3 ml-4">
+              {currentResidences.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h3 className="font-semibold text-gray-600 text-lg mb-2">
+                    Aucune résidence trouvée
+                  </h3>
+                  <p className="text-gray-500 text-sm">
+                    Aucune résidence ne correspond à votre recherche "{searchQuery}"
+                  </p>
                 </div>
-                <div className="text-xs text-gray-600 mt-1">Résidents</div>
-              </div>
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                <div className="w-6 h-6 bg-green-500 rounded-full"></div>
-              </div>
-            </div>
-            <div className="mt-2 flex items-center text-xs text-green-600">
-              <span>▲ 8%</span>
-              <span className="text-gray-500 ml-1">vs last month</span>
-            </div>
-          </div>
+              ) : (
+                currentResidences.map((residence) => (
+                  <div
+                    key={residence.id}
+                    className="bg-white backdrop-blur-sm border border-gray-200/60 rounded-lg hover:shadow-md transition-all duration-200"
+                  >
+                    {/* En-tête compact */}
+                    <div className="p-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-3 flex-1">
+                          <div className="w-12 h-10 rounded-md overflow-hidden flex-shrink-0">
+                            <img
+                              src={residence.photo}
+                              alt={residence.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-gray-800 text-sm truncate">
+                              {residence.adresse}
+                            </h3>
+                            <div className="flex items-center space-x-1 mt-1 text-gray-600">
+                              <MapPin size={12} />
+                              <span className="text-xs truncate">
+                                {residence.adresse}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
 
-          {/* Hommes */}
-          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-gray-800">
-                  {totalHommes}
-                </div>
-                <div className="text-xs text-gray-600 mt-1">Hommes</div>
-              </div>
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <Users className="w-5 h-5 text-blue-600" />
-              </div>
-            </div>
-            <div className="mt-2 flex items-center text-xs text-blue-600">
-              <span>{Math.round((totalHommes / totalResidents) * 100)}%</span>
-              <span className="text-gray-500 ml-1">of total</span>
-            </div>
-          </div>
-
-          {/* Femmes */}
-          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-gray-800">
-                  {totalFemmes}
-                </div>
-                <div className="text-xs text-gray-600 mt-1">Femmes</div>
-              </div>
-              <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
-                <Users className="w-5 h-5 text-pink-600" />
-              </div>
-            </div>
-            <div className="mt-2 flex items-center text-xs text-pink-600">
-              <span>{Math.round((totalFemmes / totalResidents) * 100)}%</span>
-              <span className="text-gray-500 ml-1">of total</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Liste des résidences avec scroll */}
-      <div className="h-[calc(100%-180px)] overflow-y-auto bg-gradient-to-r from-blue-50 to-indigo-50">
-        <div className="p-4 space-y-3 mr-3.3 ml-4">
-          {filteredResidences.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search className="w-8 h-8 text-gray-400" />
-              </div>
-              <h3 className="font-semibold text-gray-600 text-lg mb-2">
-                Aucune résidence trouvée
-              </h3>
-              <p className="text-gray-500 text-sm">
-                Aucune résidence ne correspond à votre recherche "{searchQuery}"
-              </p>
-            </div>
-          ) : (
-            filteredResidences.map((residence) => (
-              <div
-                key={residence.id}
-                className="bg-white border border-gray-200 rounded-lg hover:shadow-md transition-all duration-200"
-              >
-                {/* En-tête compact */}
-                <div className="p-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-3 flex-1">
-                      <div className="w-12 h-10 rounded-md overflow-hidden flex-shrink-0">
-                        <img
-                          src={residence.photo}
-                          alt={residence.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-800 text-sm truncate">
-                          {residence.adresse}
-                        </h3>
-                        <div className="flex items-center space-x-1 mt-1 text-gray-600">
-                          <MapPin size={12} />
-                          <span className="text-xs truncate">
-                            {residence.adresse}
-                          </span>
+                        <div className="flex items-center space-x-1 ml-2">
+                          <button
+                            onClick={() => handleViewDetails(residence)}
+                            className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex"
+                            title="Détails"
+                          >
+                            <Eye className="mt-2" size={12} />
+                            <span className="px-3">Details</span>
+                          </button>
+                          <button
+                            onClick={() => handleViewOnMap(residence)}
+                            className="p-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex"
+                            title="Carte"
+                          >
+                            <Map className="mt-2" size={12} />
+                            <span className="px-2">Carte</span>
+                          </button>
                         </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center space-x-1 ml-2">
-                      <button
-                        onClick={() => handleViewDetails(residence)}
-                        className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex"
-                        title="Détails"
-                      >
-                        <Eye className="mt-2" size={12} />
-                        <span className="px-3">Details</span>
-                      </button>
-                      <button
-                        onClick={() => handleViewOnMap(residence)}
-                        className="p-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex"
-                        title="Carte"
-                      >
-                        <Map className="mt-2" size={12} />
-                        <span className="px-2">Carte</span>
-                      </button>
-                    </div>
                   </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Pagination FIXE EN BAS */}
+          {filteredResidences.length > residencesPerPage && (
+            <div className="border-t border-gray-200/60 bg-white/30 backdrop-blur-sm py-3 px-6 shadow-inner">
+              <div className="flex items-center justify-center">
+                
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={prevPage}
+                    disabled={currentPage === 1}
+                    className={`p-2 rounded-lg border transition-colors ${
+                      currentPage === 1
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200"
+                        : "bg-white text-gray-600 hover:bg-gray-50 border-gray-300 hover:border-gray-400"
+                    }`}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+
+                  {/* Numéros de page */}
+                  <div className="flex space-x-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
+                      <button
+                        key={number}
+                        onClick={() => paginate(number)}
+                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                          currentPage === number
+                            ? "bg-blue-600 text-white border border-blue-600"
+                            : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300 hover:border-gray-400"
+                        }`}
+                      >
+                        {number}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={nextPage}
+                    disabled={currentPage === totalPages}
+                    className={`p-2 rounded-lg border transition-colors ${
+                      currentPage === totalPages
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200"
+                        : "bg-white text-gray-600 hover:bg-gray-50 border-gray-300 hover:border-gray-400"
+                    }`}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
               </div>
-            ))
+            </div>
           )}
         </div>
       </div>
 
-      {/* Modal de détails */}
+      {/* Modal de détails qui s'affiche à côté */}
       {showModal && selectedResidence && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-bold text-gray-800">
+        <div className="w-1/2 bg-transparent rounded-r-3xl overflow-hidden shadow-xl border-l border-gray-200/60">
+          <div className="h-full flex flex-col">
+            {/* En-tête du modal */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200/60 bg-transparent">
+              <h2 className="text-xl font-bold text-gray-800">
                 Détails Résidence
               </h2>
               <button
                 onClick={handleCloseModal}
-                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                className="p-2 hover:bg-white/50 rounded-lg transition-colors"
               >
-                <X size={20} />
+                <X size={20} className="text-gray-600" />
               </button>
             </div>
-            <div className="p-4">
+
+            {/* Contenu du modal avec scroll */}
+            <div className="flex-1 overflow-y-auto p-6">
               <div className="flex space-x-4">
                 <img
                   src={selectedResidence.photo}
@@ -472,7 +623,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                   className="w-24 h-20 rounded-lg object-cover"
                 />
                 <div className="flex-1">
-                  <h3 className="font-bold text-gray-800">
+                  <h3 className="font-bold text-gray-800 text-lg">
                     {selectedResidence.name}
                   </h3>
                   <div className="text-sm text-gray-600 mt-1">
@@ -493,25 +644,25 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
 
               {/* Informations détaillées */}
               <div className="mt-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Propriétaire:</span>
-                  <span className="text-sm font-medium">{selectedResidence.proprietaire}</span>
+                <div className="flex items-center justify-between p-3 bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60">
+                  <span className="text-sm text-gray-800">Propriétaire:</span>
+                  <span className="text-sm font-medium text-gray-800">{selectedResidence.proprietaire}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Téléphone:</span>
-                  <span className="text-sm font-medium">{selectedResidence.telephone}</span>
+                <div className="flex items-center justify-between p-3 bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60">
+                  <span className="text-sm text-gray-800">Téléphone:</span>
+                  <span className="text-sm font-medium text-gray-800">{selectedResidence.telephone}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Email:</span>
-                  <span className="text-sm font-medium">{selectedResidence.email}</span>
+                <div className="flex items-center justify-between p-3 bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60">
+                  <span className="text-sm text-gray-800">Email:</span>
+                  <span className="text-sm font-medium text-gray-800">{selectedResidence.email}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Total résidents:</span>
-                  <span className="text-sm font-medium">{selectedResidence.totalResidents}</span>
+                <div className="flex items-center justify-between p-3 bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60">
+                  <span className="text-sm text-gray-800">Total résidents:</span>
+                  <span className="text-sm font-medium text-gray-800">{selectedResidence.totalResidents}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Date création:</span>
-                  <span className="text-sm font-medium">
+                <div className="flex items-center justify-between p-3 bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60">
+                  <span className="text-sm text-gray-800">Date création:</span>
+                  <span className="text-sm font-medium text-gray-800">
                     {new Date(selectedResidence.dateCreation).toLocaleDateString('fr-FR')}
                   </span>
                 </div>
@@ -522,10 +673,10 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                 <h4 className="font-semibold text-gray-800 mb-3">Liste des résidents ({selectedResidence.residents.length})</h4>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {selectedResidence.residents.map((resident) => (
-                    <div key={resident.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                      <div>
-                        <span className="text-sm font-medium">{resident.name}</span>
-                        <span className={`ml-2 text-xs px-2 py-1 rounded ${
+                    <div key={resident.id} className="flex items-center justify-between p-3 bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-800">{resident.name}</span>
+                        <span className={`text-xs px-2 py-1 rounded ${
                           resident.genre === 'homme' 
                             ? 'bg-blue-100 text-blue-600' 
                             : 'bg-pink-100 text-pink-600'
@@ -533,7 +684,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                           {resident.genre === 'homme' ? '♂' : '♀'}
                         </span>
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-600">
                         {resident.age} ans • {resident.profession}
                       </div>
                     </div>
@@ -542,7 +693,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
               </div>
 
               {/* Boutons d'action */}
-              <div className="flex space-x-3 mt-6 pt-4 border-t border-gray-200">
+              <div className="flex space-x-3 mt-6 pt-4 border-t border-gray-200/60">
                 <button
                   onClick={() => handleEditResidents(selectedResidence)}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
@@ -561,17 +712,17 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
         </div>
       )}
 
-      {/* Modal d'édition */}
+      {/* Modal d'édition (reste en overlay) */}
       {showEditModal && editingResidence && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="bg-white/30 backdrop-blur-sm rounded-xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto border border-gray-200/60">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200/60">
               <h2 className="text-lg font-bold text-gray-800">
                 Modifier - {editingResidence.name}
               </h2>
               <button
                 onClick={handleCloseEditModal}
-                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                className="p-1 hover:bg-white/50 rounded transition-colors"
               >
                 <X size={20} />
               </button>
@@ -581,7 +732,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                 {editedResidents.map((resident) => (
                   <div
                     key={resident.id}
-                    className="flex items-center space-x-2 bg-gray-50 rounded-lg p-3"
+                    className="flex items-center space-x-2 bg-white rounded-lg p-3 border border-gray-200"
                   >
                     <input
                       type="text"

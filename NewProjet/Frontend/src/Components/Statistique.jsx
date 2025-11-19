@@ -161,19 +161,19 @@ const Statistique = ({ onBack }) => {
   return (
     <div className="h-full flex flex-col">
       {/* Header avec contrôles à droite */}
-      <div className="flex-shrink-0 flex items-center justify-between p-8 border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-        <h1 className="font-bold text-3xl text-gray-800 bg-white py-1.5 px-4 rounded-2xl">
+      <div className="flex-shrink-0 flex items-center justify-between p-8 border-gray-200/60 bg-transparent">
+        <h1 className="font-bold text-3xl text-gray-800 bg-white backdrop-blur-sm py-1.5 px-4 rounded-2xl border border-gray-200/60">
           Statistiques
         </h1>
         
         {/* Contrôles en haut à droite */}
         <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2 bg-white border border-gray-300 rounded-lg px-3 py-2">
+          <div className="flex items-center space-x-2 bg-white backdrop-blur-sm border border-gray-300/60 rounded-lg px-3 py-2">
             <Filter className="w-4 h-4 text-gray-500" />
             <select
               value={selectedFokontany}
               onChange={(e) => setSelectedFokontany(e.target.value)}
-              className="bg-transparent outline-none text-sm focus:ring-0 focus:border-transparent"
+              className="bg-transparent outline-none text-sm focus:ring-0 focus:border-transparent text-gray-800"
             >
               <option value="Tsimenantsy">Tsimenantsy</option>
             </select>
@@ -189,11 +189,11 @@ const Statistique = ({ onBack }) => {
       </div>
 
       {/* Statistiques compactes */}
-      <div className="flex-shrink-0 p-4 border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+      <div className="flex-shrink-0 p-4 border-gray-200/60 bg-transparent">
         <div className="grid grid-cols-4 gap-4 ml-12 mr-12">
           
           {/* Résidences */}
-          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+          <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-gray-800">
@@ -212,7 +212,7 @@ const Statistique = ({ onBack }) => {
           </div>
 
           {/* Habitants */}
-          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+          <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-gray-800">
@@ -231,7 +231,7 @@ const Statistique = ({ onBack }) => {
           </div>
 
           {/* Hommes */}
-          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+          <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-gray-800">
@@ -250,7 +250,7 @@ const Statistique = ({ onBack }) => {
           </div>
 
           {/* Femmes */}
-          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+          <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-gray-800">
@@ -272,13 +272,13 @@ const Statistique = ({ onBack }) => {
 
       {/* Contenu scrollable SEULEMENT */}
       <div className="flex-1 min-h-0 overflow-y-auto mb-10">
-        <div className="p-6 space-y-6 bg-gradient-to-r from-blue-50 to-indigo-50 h-full">
+        <div className="p-6 space-y-6 bg-transparent h-full">
           
           {/* Graphiques */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Évolution Démographique */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200">
+            <div className="bg-white backdrop-blur-sm border border-gray-200/60 rounded-lg p-4 hover:shadow-md transition-all duration-200">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-800 text-sm">
                   Évolution Démographique
@@ -307,7 +307,7 @@ const Statistique = ({ onBack }) => {
             </div>
 
             {/* Pyramide des Âges */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200">
+            <div className="bg-white backdrop-blur-sm border border-gray-200/60 rounded-lg p-4 hover:shadow-md transition-all duration-200">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-800 text-sm">
                   Pyramide des Âges
@@ -348,13 +348,13 @@ const Statistique = ({ onBack }) => {
           </div>
 
           {/* Analyse Spatiale */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200">
+          <div className="bg-white backdrop-blur-sm border border-gray-200/60 rounded-lg p-4 hover:shadow-md transition-all duration-200">
             <h3 className="font-semibold text-gray-800 text-sm mb-4">
               Analyse Spatiale par Zone
             </h3>
             <div className="grid grid-cols-2 gap-3">
               {data.densiteData.map((zone, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50/50 backdrop-blur-sm rounded border border-gray-200/60">
                   <div>
                     <p className="font-semibold text-gray-800 text-sm">{zone.zone}</p>
                     <p className="text-gray-500 text-xs">{zone.residences} résidences</p>

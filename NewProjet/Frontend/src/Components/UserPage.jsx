@@ -2,9 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Key, LogOut, User, ArrowLeft, X, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const UserPage = ({ user, onLogout }) => {
+const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange }) => {
   const [profileImage, setProfileImage] = useState(null);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordData, setPasswordData] = useState({
     oldPassword: '',
     newPassword: '',
@@ -16,6 +15,9 @@ const UserPage = ({ user, onLogout }) => {
   const navigate = useNavigate();
   
   const fileInputRef = useRef(null);
+
+  // Utiliser l'état passé en props
+  const { showPasswordModal } = userPageState;
 
   // Charger les données utilisateur depuis l'API
   useEffect(() => {
@@ -106,12 +108,16 @@ const UserPage = ({ user, onLogout }) => {
   };
 
   const handleChangePassword = () => {
-    setShowPasswordModal(true);
+    if (onUserPageStateChange) {
+      onUserPageStateChange({ showPasswordModal: true });
+    }
     setMessage('');
   };
 
   const handleCloseModal = () => {
-    setShowPasswordModal(false);
+    if (onUserPageStateChange) {
+      onUserPageStateChange({ showPasswordModal: false });
+    }
     setPasswordData({
       oldPassword: '',
       newPassword: '',
@@ -187,14 +193,6 @@ const UserPage = ({ user, onLogout }) => {
     fileInputRef.current?.click();
   };
 
-  const handleBack = () => {
-    if (showPasswordModal) {
-      handleCloseModal();
-    } else {
-      navigate(-1);
-    }
-  };
-
   const handleLogout = () => {
     if (onLogout && typeof onLogout === 'function') {
       onLogout();
@@ -206,15 +204,15 @@ const UserPage = ({ user, onLogout }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-blue-50 to-indigo-50 py-4 px-4 relative overflow-hidden">
+    <div className="min-h-screen bg-transparent py-4 px-4 relative overflow-hidden">
       
       {/* Message de notification */}
       {message && (
         <div className="max-w-lg mx-auto mb-4 relative z-10">
-          <div className={`p-4 rounded-xl ${
+          <div className={`p-4 rounded-xl backdrop-blur-sm ${
             message.includes('succès') || message.includes('envoyée') 
-              ? 'bg-green-50 border border-green-200 text-green-800' 
-              : 'bg-red-50 border border-red-200 text-red-800'
+              ? 'bg-green-50/80 border border-green-200/60 text-green-800' 
+              : 'bg-red-50/80 border border-red-200/60 text-red-800'
           }`}>
             <div className="flex items-center justify-between">
               <span>{message}</span>
@@ -238,9 +236,9 @@ const UserPage = ({ user, onLogout }) => {
             ? '-translate-x-full opacity-0 absolute' 
             : 'translate-x-0 opacity-100'
         }`}>
-          <div className="bg-white rounded-3xl shadow-2xl border border-blue-100/50 overflow-hidden">
+          <div className="bg-white backdrop-blur-sm rounded-3xl shadow-2xl border border-blue-100/30 overflow-hidden">
             {/* En-tête avec le titre */}
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 py-6 px-6">
+            <div className="bg-gradient-to-r from-blue-500/80 to-purple-600/80 backdrop-blur-sm py-6 px-6">
               <div className="text-center">
                 <h1 className="text-2xl font-bold text-white">
                   Paramètres du Compte
@@ -253,7 +251,7 @@ const UserPage = ({ user, onLogout }) => {
               {/* Section Photo de profil */}
               <div className="flex flex-col items-center space-y-4">
                 <div className="relative">
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-blue-300 bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center shadow-lg">
+                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-blue-300/60 bg-gradient-to-br from-blue-100/50 to-purple-100/50 backdrop-blur-sm flex items-center justify-center shadow-lg">
                     {profileImage ? (
                       <img 
                         src={profileImage} 
@@ -272,7 +270,7 @@ const UserPage = ({ user, onLogout }) => {
                   
                   <button
                     onClick={triggerFileInput}
-                    className="absolute -bottom-1 -right-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white p-2 rounded-full shadow-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-110 border-2 border-white"
+                    className="absolute -bottom-1 -right-1 bg-gradient-to-r from-blue-500/80 to-purple-600/80 backdrop-blur-sm text-white p-2 rounded-full shadow-lg hover:from-blue-600/80 hover:to-purple-700/80 transition-all duration-300 transform hover:scale-110 border-2 border-white"
                     title="Changer la photo"
                     type="button"
                   >
@@ -292,7 +290,7 @@ const UserPage = ({ user, onLogout }) => {
                   <h2 className="text-xl font-bold text-gray-800">
                     {userData?.nom_complet || "Chargement..."}
                   </h2>
-                  <p className="text-blue-600 font-semibold bg-blue-50 px-3 py-1 rounded-full text-sm capitalize">
+                  <p className="text-blue-600 font-semibold bg-blue-50/50 backdrop-blur-sm px-3 py-1 rounded-full text-sm capitalize">
                     {userData?.role || "Utilisateur"}
                   </p>
                   <p className="text-gray-600 text-sm">
@@ -307,7 +305,7 @@ const UserPage = ({ user, onLogout }) => {
               <div className="pt-4">
                 <button
                   onClick={handleChangePassword}
-                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center space-x-2"
+                  className="w-full bg-gradient-to-r from-blue-500/80 to-purple-600/80 backdrop-blur-sm text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:from-blue-600/80 hover:to-purple-700/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center space-x-2"
                   type="button"
                 >
                   <Key size={20} />
@@ -321,7 +319,7 @@ const UserPage = ({ user, onLogout }) => {
           <div className="mt-2 transition-opacity duration-500">
             <button
               onClick={handleLogout}
-              className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:from-red-600 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center space-x-2"
+              className="w-full bg-gradient-to-r from-red-500/80 to-red-600/80 backdrop-blur-sm text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:from-red-600/80 hover:to-red-700/80 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center space-x-2"
               type="button"
             >
               <LogOut size={20} />
@@ -336,8 +334,8 @@ const UserPage = ({ user, onLogout }) => {
             ? 'translate-x-0 opacity-100' 
             : 'translate-x-full opacity-0 absolute'
         }`}>
-          <div className="bg-white rounded-3xl shadow-2xl border border-blue-100/50 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 py-6 px-6 relative">
+          <div className="bg-white backdrop-blur-sm rounded-3xl shadow-2xl border border-blue-100/30 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-500/80 to-purple-600/80 backdrop-blur-sm py-6 px-6 relative">
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-white text-center">
                   Changer le mot de passe
@@ -348,7 +346,7 @@ const UserPage = ({ user, onLogout }) => {
             <div className="p-6">
               <form onSubmit={handlePasswordSubmit} className="space-y-3">
 
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div className="bg-blue-50/80 backdrop-blur-sm border border-blue-200/60 rounded-xl p-4">
                   <div className="flex items-start space-x-3">
                     <Lock className="text-blue-500 w-5 h-5 flex-shrink-0 mt-0.5" />
                     <div>
@@ -361,16 +359,16 @@ const UserPage = ({ user, onLogout }) => {
                 </div>
 
                 <div className="group">
-                  <label className="text-gray-700 text-sm font-medium mb-2 block">Ancien mot de passe</label>
+                  <label className="text-gray-800 text-sm font-medium mb-2 block">Ancien mot de passe</label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-600 group-focus-within:text-blue-500 transition-colors">
                       <Lock className="h-5 w-5" />
                     </div>
                     <input
                       type="password"
                       value={passwordData.oldPassword}
                       onChange={(e) => handlePasswordChange('oldPassword', e.target.value)}
-                      className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="block w-full pl-10 pr-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-300/60 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="Entrez votre ancien mot de passe"
                       required
                       disabled={loading}
@@ -379,16 +377,16 @@ const UserPage = ({ user, onLogout }) => {
                 </div>
 
                 <div className="group">
-                  <label className="text-gray-700 text-sm font-medium mb-2 block">Nouveau mot de passe</label>
+                  <label className="text-gray-800 text-sm font-medium mb-2 block">Nouveau mot de passe</label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-600 group-focus-within:text-blue-500 transition-colors">
                       <Lock className="h-5 w-5" />
                     </div>
                     <input
                       type="password"
                       value={passwordData.newPassword}
                       onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
-                      className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="block w-full pl-10 pr-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-300/60 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="Entrez votre nouveau mot de passe"
                       required
                       minLength={6}
@@ -398,16 +396,16 @@ const UserPage = ({ user, onLogout }) => {
                 </div>
 
                 <div className="group">
-                  <label className="text-gray-700 text-sm font-medium mb-2 block">Confirmer le nouveau mot de passe</label>
+                  <label className="text-gray-800 text-sm font-medium mb-2 block">Confirmer le nouveau mot de passe</label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-600 group-focus-within:text-blue-500 transition-colors">
                       <Lock className="h-5 w-5" />
                     </div>
                     <input
                       type="password"
                       value={passwordData.confirmPassword}
                       onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
-                      className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="block w-full pl-10 pr-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-300/60 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="Confirmez votre nouveau mot de passe"
                       required
                       minLength={6}
@@ -416,21 +414,19 @@ const UserPage = ({ user, onLogout }) => {
                   </div>
                 </div>
 
-                
-
                 <div className="flex space-x-3 pt-4 mb-3">
                   <button
                     type="button"
                     onClick={handleCloseModal}
                     disabled={loading}
-                    className="flex-1 bg-gray-500 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 bg-gray-500/80 backdrop-blur-sm text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:bg-gray-600/80 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Annuler
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 bg-gradient-to-r from-blue-500/80 to-purple-600/80 backdrop-blur-sm text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:from-blue-600/80 hover:to-purple-700/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? (
                       <div className="flex items-center justify-center space-x-2">
