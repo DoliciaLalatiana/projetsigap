@@ -603,12 +603,12 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
           <div className="h-full flex flex-col">
             {/* En-tête du modal */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200/60 bg-transparent">
-              <h2 className="text-xl font-bold text-gray-800">
+              <h2 className="text-xl bg-white py-3 px-6 rounded-2xl font-bold text-gray-800">
                 Détails Résidence
               </h2>
               <button
                 onClick={handleCloseModal}
-                className="p-2 hover:bg-white/50 rounded-lg transition-colors"
+                className="p-2 hover:bg-white rounded-lg transition-colors"
               >
                 <X size={20} className="text-gray-600" />
               </button>
@@ -644,23 +644,23 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
 
               {/* Informations détaillées */}
               <div className="mt-6 space-y-4">
-                <div className="flex items-center justify-between p-3 bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60">
+                <div className="flex items-center justify-between p-3 bg-white backdrop-blur-sm rounded-lg border border-gray-200/60">
                   <span className="text-sm text-gray-800">Propriétaire:</span>
                   <span className="text-sm font-medium text-gray-800">{selectedResidence.proprietaire}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60">
+                <div className="flex items-center justify-between p-3 bg-white backdrop-blur-sm rounded-lg border border-gray-200/60">
                   <span className="text-sm text-gray-800">Téléphone:</span>
                   <span className="text-sm font-medium text-gray-800">{selectedResidence.telephone}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60">
+                <div className="flex items-center justify-between p-3 bg-white backdrop-blur-sm rounded-lg border border-gray-200/60">
                   <span className="text-sm text-gray-800">Email:</span>
                   <span className="text-sm font-medium text-gray-800">{selectedResidence.email}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60">
+                <div className="flex items-center justify-between p-3 bg-white backdrop-blur-sm rounded-lg border border-gray-200/60">
                   <span className="text-sm text-gray-800">Total résidents:</span>
                   <span className="text-sm font-medium text-gray-800">{selectedResidence.totalResidents}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60">
+                <div className="flex items-center justify-between p-3 bg-white backdrop-blur-sm rounded-lg border border-gray-200/60">
                   <span className="text-sm text-gray-800">Date création:</span>
                   <span className="text-sm font-medium text-gray-800">
                     {new Date(selectedResidence.dateCreation).toLocaleDateString('fr-FR')}
@@ -671,7 +671,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
               {/* Liste des résidents */}
               <div className="mt-6">
                 <h4 className="font-semibold text-gray-800 mb-3">Liste des résidents ({selectedResidence.residents.length})</h4>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
+                <div className="space-y-2 max-h-41 overflow-y-auto">
                   {selectedResidence.residents.map((resident) => (
                     <div key={resident.id} className="flex items-center justify-between p-3 bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60">
                       <div className="flex items-center space-x-2">

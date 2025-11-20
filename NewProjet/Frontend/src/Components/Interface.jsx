@@ -18,11 +18,51 @@ import {
   X,
   Navigation,
 } from "lucide-react";
-import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
+import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
 import Statistique from "./Statistique";
 import ForgotPassword from "./ForgotPassword";
 import UserPage from "./UserPage";
 import ResidencePage from "./ResidencePage";
+
+// Polygon du fonkotany Andaboly - AGRANDI
+const ANDABOLY_POLYGON = [
+  { lat: -23.3440, lng: 43.6630 },
+  { lat: -23.3445, lng: 43.6690 },
+  { lat: -23.3455, lng: 43.6740 },
+  { lat: -23.3475, lng: 43.6775 },
+  { lat: -23.3505, lng: 43.6780 },
+  { lat: -23.3535, lng: 43.6770 },
+  { lat: -23.3555, lng: 43.6740 },
+  { lat: -23.3565, lng: 43.6700 },
+  { lat: -23.3568, lng: 43.6650 },
+  { lat: -23.3555, lng: 43.6610 },
+  { lat: -23.3535, lng: 43.6590 },
+  { lat: -23.3505, lng: 43.6585 },
+  { lat: -23.3475, lng: 43.6590 },
+  { lat: -23.3450, lng: 43.6605 },
+  { lat: -23.3440, lng: 43.6630 },
+];
+
+// Centre du polygon Andaboly (calculé automatiquement)
+const ANDABOLY_CENTER = {
+  lat: ANDABOLY_POLYGON.reduce((sum, point) => sum + point.lat, 0) / ANDABOLY_POLYGON.length,
+  lng: ANDABOLY_POLYGON.reduce((sum, point) => sum + point.lng, 0) / ANDABOLY_POLYGON.length
+};
+
+// Fonction utilitaire pour vérifier si un point est dans le polygon
+const isPointInPolygon = (point, polygon) => {
+  const x = point.lat, y = point.lng;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].lat, yi = polygon[i].lng;
+    const xj = polygon[j].lat, yj = polygon[j].lng;
+    
+    const intersect = ((yi > y) !== (yj > y))
+        && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
 
 export default function Interface({ user }) {
   const navigate = useNavigate();
@@ -45,11 +85,46 @@ export default function Interface({ user }) {
     quartier: "",
     ville: ""
   });
+  const [hasSelectedAddress, setHasSelectedAddress] = useState(false);
+  
+  // NOUVEAUX ÉTATS : pour gérer l'interaction avec le polygon
+  const [isPolygonHovered, setIsPolygonHovered] = useState(false);
+  
+  // NOUVEL ÉTAT : pour gérer le statut du message (normal ou erreur)
+  const [messageStatus, setMessageStatus] = useState("normal"); // "normal" ou "error"
 
-  // NOUVEL ÉTAT : pour gérer l'état interne de UserPage
-  const [userPageState, setUserPageState] = useState({
-    showPasswordModal: false
-  });
+  // NOUVEL ÉTAT : pour gérer l'erreur de validation du formulaire
+  const [formError, setFormError] = useState("");
+
+  // NOUVELLE FONCTION : Pour centrer et zoomer sur la zone limite
+  const handleFocusOnPolygon = () => {
+    if (map) {
+      // Créer une bounds pour contenir tout le polygon
+      const bounds = new window.google.maps.LatLngBounds();
+      ANDABOLY_POLYGON.forEach(point => {
+        bounds.extend(point);
+      });
+      
+      // Ajuster les bounds pour avoir un peu de marge autour du polygon
+      const ne = bounds.getNorthEast();
+      const sw = bounds.getSouthWest();
+      const latDiff = (ne.lat() - sw.lat()) * 0.3; // 30% de marge
+      const lngDiff = (ne.lng() - sw.lng()) * 0.3; // 30% de marge
+      
+      bounds.extend({ lat: ne.lat() + latDiff, lng: ne.lng() + lngDiff });
+      bounds.extend({ lat: sw.lat() - latDiff, lng: sw.lng() - lngDiff });
+      
+      map.fitBounds(bounds);
+      
+      // Limiter le zoom maximum pour s'assurer qu'on voit bien la zone
+      const listener = google.maps.event.addListener(map, 'bounds_changed', function() {
+        if (map.getZoom() > 15) {
+          map.setZoom(15);
+        }
+        google.maps.event.removeListener(listener);
+      });
+    }
+  };
 
   const dropdownRef = useRef(null);
   const searchRef = useRef(null);
@@ -86,6 +161,7 @@ export default function Interface({ user }) {
         setShowAddAddress(false);
         setIsSelectingLocation(false);
         setSelectedLocation(null);
+        setHasSelectedAddress(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -190,6 +266,7 @@ export default function Interface({ user }) {
       setShowAddAddress(false);
       setSelectedLocation(null);
       setSelectedAddress("");
+      setHasSelectedAddress(false);
       setAddressDetails({
         lot: "",
         quartier: "",
@@ -214,6 +291,7 @@ export default function Interface({ user }) {
       setShowAddAddress(false);
       setSelectedLocation(null);
       setSelectedAddress("");
+      setHasSelectedAddress(false);
       setAddressDetails({
         lot: "",
         quartier: "",
@@ -222,72 +300,101 @@ export default function Interface({ user }) {
     }
   };
 
-  // Fonction pour démarrer la sélection d'adresse sur la carte
+  // MODIFICATION : Fonction pour démarrer la sélection d'adresse sur la carte
   const handleAddAddressClick = () => {
     if (isAnyPageOpen) return; // Ne rien faire si une page est ouverte
     
     setIsSelectingLocation(true);
     setSelectedLocation(null);
     setShowAddAddress(false);
+    setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
       quartier: "",
       ville: ""
     });
+    
+    // Réinitialiser le statut du message
+    setMessageStatus("normal");
+    
+    // NOUVEAU : Zoom automatique sur la zone limite quand on clique sur Ajouter
+    setTimeout(() => {
+      handleFocusOnPolygon();
+    }, 100);
   };
 
-  // Fonction pour gérer le clic sur la carte
+  // MODIFICATION COMPLÈTE : Fonction pour gérer le clic sur la carte
   const handleMapClick = (event) => {
+    console.log("Clic sur la carte détecté"); // Debug
     if (isSelectingLocation) {
       const lat = event.latLng.lat();
       const lng = event.latLng.lng();
+      const clickedPoint = { lat, lng };
       
-      setSelectedLocation({ lat, lng });
+      console.log("Coordonnées cliquées:", clickedPoint); // Debug
       
-      // Récupérer l'adresse à partir des coordonnées (géocodage inversé)
-      getAddressFromCoordinates(lat, lng);
+      // Vérifier si le clic est dans le polygon
+      const isInsidePolygon = isPointInPolygon(clickedPoint, ANDABOLY_POLYGON);
+      console.log("Est dans le polygon:", isInsidePolygon); // Debug
       
-      // Fermer le message de sélection et ouvrir le modal
-      setIsSelectingLocation(false);
+      if (isInsidePolygon) {
+        console.log("Clic dans la zone bleue - ouverture modale"); // Debug
+        setSelectedLocation({ lat, lng });
+        
+        // Récupérer l'adresse à partir des coordonnées (géocodage inversé)
+        getAddressFromCoordinates(lat, lng);
+        
+        // Remettre le message en normal
+        setMessageStatus("normal");
+        
+        // Fermer IMMÉDIATEMENT le mode sélection et OUVRIR LA MODALE
+        setIsSelectingLocation(false);
+        
+        // Ouvrir la modale après un court délai
+        setTimeout(() => {
+          setShowAddAddress(true);
+        }, 100);
+      } else {
+        // Afficher l'avertissement en changeant le statut du message
+        console.log("Clic en dehors de la zone bleue - message erreur"); // Debug
+        setMessageStatus("error");
+      }
     }
   };
 
-  // Fonction pour obtenir l'adresse à partir des coordonnées
+  // FONCTION MODIFIÉE : Pour obtenir l'adresse à partir des coordonnées
   const getAddressFromCoordinates = (lat, lng) => {
-    // Simulation du géocodage inversé avec des données plus réalistes
+    // Déterminer le quartier et la ville en fonction des coordonnées
+    let quartier = "Andaboly";
+    let ville = "Antananarivo";
+    
+    // Logique pour déterminer le quartier en fonction des coordonnées
+    if (lat > -23.348 && lng < 43.670) {
+      quartier = "Andaboly Nord";
+    } else if (lat < -23.352 && lng > 43.672) {
+      quartier = "Andaboly Sud";
+    } else if (lng > 43.673) {
+      quartier = "Andaboly Est";
+    } else if (lng < 43.667) {
+      quartier = "Andaboly Ouest";
+    }
+    
     const addressData = [
       { 
-        address: "123 Rue d'Analakely, Antananarivo",
-        lot: "Lot 123",
-        quartier: "Analakely",
-        ville: "Antananarivo"
-      },
-      { 
-        address: "456 Avenue de l'Indépendance, Antananarivo",
-        lot: "Lot 456", 
-        quartier: "Analakely",
-        ville: "Antananarivo"
-      },
-      { 
-        address: "789 Rue Ratsimilaho, Antananarivo",
-        lot: "Lot 789",
-        quartier: "Isoraka",
-        ville: "Antananarivo"
+        address: `${quartier}, ${ville}`,
+        lot: "",
+        quartier: quartier,
+        ville: ville
       }
     ];
     
-    const randomAddressData = addressData[Math.floor(Math.random() * addressData.length)];
-    setSelectedAddress(randomAddressData.address);
+    const addressInfo = addressData[0];
+    setSelectedAddress(addressInfo.address);
     setAddressDetails({
-      lot: randomAddressData.lot,
-      quartier: randomAddressData.quartier,
-      ville: randomAddressData.ville
+      lot: "",
+      quartier: addressInfo.quartier,
+      ville: addressInfo.ville
     });
-    
-    // Afficher le modal d'ajout après la sélection
-    setTimeout(() => {
-      setShowAddAddress(true);
-    }, 300);
   };
 
   // NOUVELLE FONCTION : Pour retourner à la sélection d'adresse (utilisée par X et Changer d'adresse)
@@ -296,11 +403,20 @@ export default function Interface({ user }) {
     setIsSelectingLocation(true);
     setSelectedAddress("");
     setSelectedLocation(null);
+    setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
       quartier: "",
       ville: ""
     });
+    
+    // Réinitialiser le statut du message
+    setMessageStatus("normal");
+    
+    // Recentrer sur la zone limite
+    setTimeout(() => {
+      handleFocusOnPolygon();
+    }, 100);
   };
 
   // Fonction pour fermer complètement (retour au bouton Ajouter)
@@ -309,31 +425,37 @@ export default function Interface({ user }) {
     setIsSelectingLocation(false);
     setSelectedAddress("");
     setSelectedLocation(null);
+    setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
       quartier: "",
       ville: ""
     });
+    
+    // Réinitialiser le statut du message
+    setMessageStatus("normal");
   };
 
-  // Fonction pour confirmer l'ajout de l'adresse
+  // FONCTION MODIFIÉE : Pour confirmer l'ajout de l'adresse
   const handleConfirmAddress = () => {
-    if (selectedAddress) {
+    if (!addressDetails.lot) {
+      // Afficher l'erreur de validation
+      setFormError("Veuillez remplir le numéro de lot");
+      return;
+    }
+
+    if (selectedAddress && addressDetails.lot) {
       // Logique pour ajouter l'adresse à la base de données
       console.log("Ajout de l'adresse:", {
         address: selectedAddress,
         details: addressDetails,
         location: selectedLocation
       });
+      setHasSelectedAddress(true);
       setShowAddAddress(false);
       setIsSelectingLocation(false);
-      setSelectedAddress("");
-      setSelectedLocation(null);
-      setAddressDetails({
-        lot: "",
-        quartier: "",
-        ville: ""
-      });
+      setFormError(""); // Réinitialiser l'erreur
+      // Ne pas reset selectedAddress et selectedLocation pour pouvoir les utiliser avec LocateFixed
     }
   };
 
@@ -342,19 +464,30 @@ export default function Interface({ user }) {
     setIsSelectingLocation(false);
     setSelectedLocation(null);
     setSelectedAddress("");
+    setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
       quartier: "",
       ville: ""
     });
+    
+    // Réinitialiser le statut du message
+    setMessageStatus("normal");
   };
 
-  // Fonction pour mettre à jour les détails de l'adresse
+  // FONCTION MODIFIÉE : Pour mettre à jour seulement le champ Lot
   const handleAddressDetailsChange = (field, value) => {
-    setAddressDetails(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    if (field === 'lot') {
+      setAddressDetails(prev => ({
+        ...prev,
+        [field]: value
+      }));
+      // Effacer l'erreur quand l'utilisateur commence à taper
+      if (formError) {
+        setFormError("");
+      }
+    }
+    // Les champs quartier et ville ne sont pas modifiables
   };
 
   // Fonction pour fermer la page résidence
@@ -391,9 +524,15 @@ export default function Interface({ user }) {
     }
   };
 
+  // MODIFICATION : Fonction pour centrer la carte
   const handleCenterMap = () => {
-    if (map) {
-      map.panTo(center);
+    if (map && selectedLocation) {
+      // Utiliser directement les coordonnées déjà sélectionnées
+      map.setCenter(selectedLocation);
+      map.setZoom(16); // Zoom sur le quartier
+    } else if (map) {
+      // NOUVEAU : Centrer sur la zone limite avec zoom adapté
+      handleFocusOnPolygon();
     }
   };
 
@@ -406,6 +545,12 @@ export default function Interface({ user }) {
   const onMapLoad = (mapInstance) => {
     setMap(mapInstance);
     setMapLoaded(true);
+    
+    // Centrer automatiquement sur Andaboly au chargement
+    setTimeout(() => {
+      mapInstance.setCenter(ANDABOLY_CENTER);
+      mapInstance.setZoom(14);
+    }, 500);
   };
 
   // Options de la carte - définies après le chargement (avec contrôles désactivés)
@@ -429,13 +574,35 @@ export default function Interface({ user }) {
     };
   };
 
+  // Options du polygon Andaboly - RENDU PLUS VISIBLE
+  const polygonOptions = {
+    fillColor: isPolygonHovered ? "#10B981" : "#3B82F6",
+    fillOpacity: isPolygonHovered ? 0.4 : 0.3, // Augmentation de l'opacité
+    strokeColor: isPolygonHovered ? "#10B981" : "#1D4ED8", // Bleu plus foncé
+    strokeOpacity: isPolygonHovered ? 1 : 0.9,
+    strokeWeight: isPolygonHovered ? 4 : 3, // Ligne plus épaisse
+    clickable: false, // CORRECTION : Le polygon n'est PAS cliquable - les clics passent à travers
+  };
+
+  // Gestionnaires d'événements pour le polygon
+  const handlePolygonMouseOver = () => {
+    setIsPolygonHovered(true);
+  };
+
+  const handlePolygonMouseOut = () => {
+    setIsPolygonHovered(false);
+  };
+
+  // NOUVEL ÉTAT : pour gérer l'état interne de UserPage
+  const [userPageState, setUserPageState] = useState({
+    showPasswordModal: false
+  });
+
   // Hauteur de la carte - toujours pleine hauteur
   const containerStyle = {
     width: "100%",
     height: "100vh",
   };
-
-  const center = { lat: -18.9136896, lng: 47.5494648 };
 
   return (
     <div className="relative w-full h-screen bg-gradient-to-r from-blue-50 to-indigo-50 overflow-hidden">
@@ -522,19 +689,42 @@ export default function Interface({ user }) {
         </div>
       </div>
 
-      {/* === OVERLAY DE SÉLECTION D'ADRESSE - MODIFIÉ POUR ÊTRE SUR UNE SEULE LIGNE === */}
+      {/* === OVERLAY DE SÉLECTION D'ADRESSE - MODIFIÉ AVEC MESSAGE DYNAMIQUE === */}
       {isSelectingLocation && (
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-end pb-8 pointer-events-none">
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-4 mx-4 border border-orange-200 relative w-full max-w-2xl">
+          <div className={`rounded-2xl shadow-2xl p-4 mx-4 border relative w-full max-w-2xl ${
+            messageStatus === "error" 
+              ? "bg-red-50 border-red-200" 
+              : "bg-white/95 backdrop-blur-sm border-orange-200"
+          }`}>
             <div className="flex items-center justify-between space-x-4">
               {/* Partie gauche : Icône Navigation et texte */}
               <div className="flex items-center space-x-3 flex-1">
-                <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  messageStatus === "error" ? "bg-red-500" : "bg-green-600"
+                }`}>
                   <Navigation size={20} className="text-white" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-gray-800 font-medium">
-                    Cliquez sur la carte pour sélectionner une adresse
+                  <p className={`font-medium text-base mb-1 ${
+                    messageStatus === "error" ? "text-red-800" : "text-gray-800"
+                  }`}>
+                    {messageStatus === "error" 
+                      ? "Veuillez cliquer uniquement dans la zone limite (en bleu)" 
+                      : "Cliquez sur la carte pour sélectionner une adresse"
+                    }
+                  </p>
+                  <p className={`text-sm ${
+                    messageStatus === "error" ? "text-red-600" : "text-gray-600"
+                  }`}>
+                    <span className={`font-medium ${
+                      messageStatus === "error" ? "text-red-700" : "text-blue-600"
+                    }`}>
+                      Zone limitée :
+                    </span> {messageStatus === "error" 
+                      ? "Cliquez dans la zone bleue pour ajouter une résidence" 
+                      : "Veuillez cliquer uniquement dans la zone bleue"
+                    }
                   </p>
                 </div>
               </div>
@@ -553,7 +743,7 @@ export default function Interface({ user }) {
         </div>
       )}
 
-      {/* === MODAL AJOUT ADRESSE - AU CENTRE AVEC FOND ASSOMBRI === */}
+      {/* === MODAL AJOUT ADRESSE - MODIFIÉ AVEC UN SEUL CHAMP MODIFIABLE === */}
       {showAddAddress && (
         <>
           {/* Overlay sombre */}
@@ -567,7 +757,7 @@ export default function Interface({ user }) {
             >
               {/* En-tête */}
               <div className="bg-gradient-to-r from-green-500 to-green-600 px-6 py-4 flex items-center justify-between">
-                <h3 className="text-white font-semibold text-lg">Ajouter une adresse</h3>
+                <h3 className="text-white font-semibold text-lg">Ajouter une résidence</h3>
                 {/* MODIFICATION : Le bouton X utilise maintenant handleReturnToSelection */}
                 <button
                   onClick={handleReturnToSelection}
@@ -579,12 +769,12 @@ export default function Interface({ user }) {
 
               {/* Contenu */}
               <div className="p-5">
-                {/* Adresse sélectionnée */}
+                {/* Emplacement sélectionné */}
                 <div className="mb-6">
                   <div className="flex items-start space-x-3 mb-3">
                     <MapPin size={20} className="text-green-600 flex-shrink-0 mt-1" />
                     <div className="flex-1">
-                      <p className="font-medium text-gray-800 text-base mb-1">Adresse sélectionnée :</p>
+                      <p className="font-medium text-gray-800 text-base mb-1">Emplacement sélectionné :</p>
                       <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-200">
                         {selectedAddress}
                       </p>
@@ -592,63 +782,45 @@ export default function Interface({ user }) {
                   </div>
                 </div>
 
-                {/* Champs de formulaire */}
+                {/* Champs de formulaire - UN SEUL CHAMP MODIFIABLE */}
                 <div className="space-y-4">
+                  {/* Champ Lot - SEUL CHAMP MODIFIABLE */}
                   <div>
                     <label className="block text-base font-medium text-gray-700 mb-2">
-                      Lot de la maison *
+                      Numéro de lot *
                     </label>
                     <input
                       type="text"
                       value={addressDetails.lot}
                       onChange={(e) => handleAddressDetailsChange('lot', e.target.value)}
-                      placeholder="Ex: Lot 123, Lot ABC"
-                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Ex: Lot 123, Lot ABC, Lot 45B"
+                      className={`w-full px-4 py-3 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent ${
+                        formError ? "border-red-500" : "border-gray-300"
+                      }`}
                       required
                     />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-base font-medium text-gray-700 mb-2">
-                      Quartier *
-                    </label>
-                    <input
-                      type="text"
-                      value={addressDetails.quartier}
-                      onChange={(e) => handleAddressDetailsChange('quartier', e.target.value)}
-                      placeholder="Ex: Analakely, Isoraka"
-                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-base font-medium text-gray-700 mb-2">
-                      Ville *
-                    </label>
-                    <input
-                      type="text"
-                      value={addressDetails.ville}
-                      onChange={(e) => handleAddressDetailsChange('ville', e.target.value)}
-                      placeholder="Ex: Antananarivo, Antsirabe"
-                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      required
-                    />
+                    {/* Message d'erreur */}
+                    {formError && (
+                      <p className="text-red-500 text-sm mt-1 flex items-center">
+                        <Info size={14} className="mr-1" />
+                        {formError}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 {/* Boutons d'action */}
-                <div className="flex space-x-4 mt-2 border-gray-200">
+                <div className="flex space-x-4 mt-6 pt-4 border-t border-gray-200">
                   {/* MODIFICATION : Changer d'adresse utilise handleReturnToSelection */}
                   <button
                     onClick={handleReturnToSelection}
                     className="flex-1 px-1 py-3 text-base bg-gray-100 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
                   >
-                    Changer d'adresse
+                    Changer d'emplacement
                   </button>
                   <button
                     onClick={handleConfirmAddress}
-                    className="flex-1 px-1 py-3 text-base bg-blue-400 text-white rounded-lg hover:bg-blue-500 transition-all duration-200 font-medium"
+                    className="flex-1 px-1 py-3 text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 font-medium"
                   >
                     Confirmer
                   </button>
@@ -775,9 +947,9 @@ export default function Interface({ user }) {
         <button 
           onClick={handleCenterMap}
           className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
-          title="Recentrer la carte"
+          title={hasSelectedAddress ? "Aller à l'adresse sélectionnée" : "Voir la zone limite"}
         >
-          <LocateFixed size={20} className="text-blue-600 hover:text-blue-700 transition-all duration-300" />
+          <LocateFixed size={20} className={`${hasSelectedAddress ? "text-green-600" : "text-blue-600"} hover:text-blue-700 transition-all duration-300`} />
         </button>
       </div>
 
@@ -792,17 +964,30 @@ export default function Interface({ user }) {
         </button>
       </div>
 
-      {/* === GOOGLE MAPS - CONTRÔLES DÉSACTIVÉS === */}
+      {/* === GOOGLE MAPS - AVEC POLYGON ANDABOLY ET TOUS LES ÉLÉMENTS GOOGLE MAPS VISIBLES === */}
       <div className="absolute inset-0 z-0">
         <LoadScript googleMapsApiKey="AIzaSyD8i3HLU5QEmr4XIkYq3yH8XrzptRrSND8">
           <GoogleMap
             mapContainerStyle={containerStyle}
-            center={center}
-            zoom={13}
+            center={ANDABOLY_CENTER} // Centré sur Andaboly par défaut
+            zoom={14} // Zoom optimal pour voir le quartier
             onLoad={onMapLoad}
             options={getMapOptions()}
             onClick={handleMapClick}
           >
+            {/* === POLYGON DU FONKOTANY ANDABOLY - AGRANDI ET PLUS VISIBLE === */}
+            {/* AFFICHER LE POLYGON SEULEMENT EN MODE SÉLECTION */}
+            {isSelectingLocation && (
+              <Polygon
+                paths={ANDABOLY_POLYGON}
+                options={polygonOptions}
+                onMouseOver={handlePolygonMouseOver}
+                onMouseOut={handlePolygonMouseOut}
+                // CORRECTION : Le polygon n'est PAS cliquable - les clics passent à travers
+                clickable={false}
+              />
+            )}
+
             {/* Marqueur pour l'emplacement sélectionné */}
             {selectedLocation && (
               <Marker
