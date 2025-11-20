@@ -44,7 +44,8 @@ class AuthController {
                 return res.status(400).json({ message: 'Username et password requis' });
             }
 
-            const user = await User.findByUsername(username);
+            // Utiliser la nouvelle méthode qui inclut les données du fokontany
+            const user = await User.findByUsernameWithFokontany(username);
 
             if (!user) {
                 return res.status(401).json({ message: 'Identifiants invalides' });
@@ -57,10 +58,27 @@ class AuthController {
             }
 
             const token = jwt.sign(
-                { id: user.id, username: user.username, role: user.role },
+                { 
+                  id: user.id, 
+                  username: user.username, 
+                  role: user.role,
+                  fokontany_id: user.fokontany_id 
+                },
                 process.env.JWT_SECRET || 'sigap_secret',
                 { expiresIn: '24h' }
             );
+
+            // Préparer les données du fokontany pour la réponse
+            let fokontanyData = null;
+            if (user.fokontany_coordinates) {
+                fokontanyData = {
+                    id: user.fokontany_id,
+                    nom: user.fokontany_nom,
+                    coordinates: JSON.parse(user.fokontany_coordinates),
+                    centre_lat: user.fokontany_centre_lat,
+                    centre_lng: user.fokontany_centre_lng
+                };
+            }
 
             res.json({
                 message: 'Connexion réussie',
@@ -71,7 +89,9 @@ class AuthController {
                     nom_complet: user.nom_complet,
                     username: user.username,
                     role: user.role,
-                    photo: user.photo
+                    photo: user.photo,
+                    fokontany_id: user.fokontany_id,
+                    fokontany: fokontanyData
                 }
             });
         } catch (error) {
@@ -83,11 +103,36 @@ class AuthController {
     // Nouvelle méthode pour récupérer les données utilisateur
     static async getCurrentUser(req, res) {
         try {
-            const user = await User.findById(req.user.id);
+            const user = await User.findByIdWithFokontany(req.user.id);
             if (!user) {
                 return res.status(404).json({ message: 'Utilisateur non trouvé' });
             }
-            res.json(user);
+
+            // Préparer les données du fokontany
+            let fokontanyData = null;
+            if (user.fokontany_coordinates) {
+                fokontanyData = {
+                    id: user.fokontany_id,
+                    nom: user.fokontany_nom,
+                    coordinates: JSON.parse(user.fokontany_coordinates),
+                    centre_lat: user.fokontany_centre_lat,
+                    centre_lng: user.fokontany_centre_lng
+                };
+            }
+
+            const userResponse = {
+                id: user.id,
+                immatricule: user.immatricule,
+                nom_complet: user.nom_complet,
+                username: user.username,
+                role: user.role,
+                is_active: user.is_active,
+                photo: user.photo,
+                fokontany_id: user.fokontany_id,
+                fokontany: fokontanyData
+            };
+
+            res.json(userResponse);
         } catch (error) {
             console.error('Erreur récupération utilisateur:', error);
             res.status(500).json({ message: 'Erreur serveur' });

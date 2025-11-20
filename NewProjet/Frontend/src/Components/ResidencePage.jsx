@@ -20,19 +20,25 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-// Données mockées pour les résidences
+// Données mockées COMPLÈTES pour les résidences
 const mockResidences = [
   {
     id: 1,
     name: "Résidence Les Jardins",
-    photo:
+    photos: [
       "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1513584684374-8bab748fbf90?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1574362848149-11496d93a7c7?w=400&h=300&fit=crop"
+    ],
+    lot: "Lot 123A",
+    quartier: "Analakely",
+    ville: "Antananarivo",
     proprietaire: "Jean Dupont",
     totalResidents: 24,
     hommes: 14,
     femmes: 10,
     adresse: "123 Avenue de la Liberté, Antananarivo",
-    telephone: "+261 34 12 345 67",
+    telephone: "0341234567",
     email: "j.dupont@email.com",
     latitude: -18.9136896,
     longitude: 47.5494648,
@@ -41,59 +47,45 @@ const mockResidences = [
     residents: [
       {
         id: 1,
-        name: "Marie Lambert",
+        nomComplet: "Marie Lambert",
+        dateNaissance: "1995-05-15",
+        cin: "123456789012",
         genre: "femme",
-        age: 28,
-        profession: "Enseignante",
+        telephone: "0341111111"
       },
       {
         id: 2,
-        name: "Pierre Durand",
+        nomComplet: "Pierre Durand",
+        dateNaissance: "1991-08-22",
+        cin: "123456789013",
         genre: "homme",
-        age: 32,
-        profession: "Ingénieur",
+        telephone: "0341111112"
       },
       {
         id: 3,
-        name: "Sophie Martin",
+        nomComplet: "Sophie Martin",
+        dateNaissance: "2008-03-10",
         genre: "femme",
-        age: 25,
-        profession: "Étudiante",
-      },
-      {
-        id: 4,
-        name: "Thomas Moreau",
-        genre: "homme",
-        age: 45,
-        profession: "Commercial",
-      },
-      {
-        id: 5,
-        name: "Alice Petit",
-        genre: "femme",
-        age: 29,
-        profession: "Médecin",
-      },
-      {
-        id: 6,
-        name: "Robert Lefebvre",
-        genre: "homme",
-        age: 38,
-        profession: "Architecte",
+        telephone: "0341111113"
       },
     ],
   },
   {
     id: 2,
     name: "Résidence du Lac",
-    photo:
+    photos: [
       "https://images.unsplash.com/photo-1513584684374-8bab748fbf90?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
+    ],
+    lot: "Lot 456B",
+    quartier: "Isoraka",
+    ville: "Antananarivo",
     proprietaire: "Sarah Johnson",
     totalResidents: 18,
     hommes: 8,
     femmes: 10,
     adresse: "456 Rue des Fleurs, Antananarivo",
-    telephone: "+261 33 12 345 67",
+    telephone: "0331234567",
     email: "s.johnson@email.com",
     latitude: -18.91,
     longitude: 47.552,
@@ -102,45 +94,38 @@ const mockResidences = [
     residents: [
       {
         id: 1,
-        name: "David Wilson",
+        nomComplet: "David Wilson",
+        dateNaissance: "1992-12-05",
+        cin: "123456789017",
         genre: "homme",
-        age: 31,
-        profession: "Développeur",
+        telephone: "0341111117"
       },
       {
         id: 2,
-        name: "Emma Brown",
+        nomComplet: "Emma Brown",
+        dateNaissance: "1996-04-20",
+        cin: "123456789018",
         genre: "femme",
-        age: 27,
-        profession: "Designer",
-      },
-      {
-        id: 3,
-        name: "Michael Davis",
-        genre: "homme",
-        age: 42,
-        profession: "Manager",
-      },
-      {
-        id: 4,
-        name: "Olivia Garcia",
-        genre: "femme",
-        age: 24,
-        profession: "Infirmière",
+        telephone: "0341111118"
       },
     ],
   },
   {
     id: 3,
     name: "Résidence Belle Vue",
-    photo:
+    photos: [
       "https://images.unsplash.com/photo-1574362848149-11496d93a7c7?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
+    ],
+    lot: "Lot 789C",
+    quartier: "Andraharo",
+    ville: "Antananarivo",
     proprietaire: "Michel Ravel",
     totalResidents: 32,
     hommes: 18,
     femmes: 14,
     adresse: "789 Boulevard de l'Indépendance, Antananarivo",
-    telephone: "+261 32 12 345 67",
+    telephone: "0321234567",
     email: "m.ravel@email.com",
     latitude: -18.908,
     longitude: 47.551,
@@ -149,38 +134,30 @@ const mockResidences = [
     residents: [
       {
         id: 1,
-        name: "Catherine Leroy",
+        nomComplet: "Catherine Leroy",
+        dateNaissance: "1988-07-15",
+        cin: "123456789020",
         genre: "femme",
-        age: 35,
-        profession: "Avocate",
-      },
-      {
-        id: 2,
-        name: "Philippe Morel",
-        genre: "homme",
-        age: 29,
-        profession: "Consultant",
-      },
-      {
-        id: 3,
-        name: "Isabelle Petit",
-        genre: "femme",
-        age: 26,
-        profession: "Journaliste",
+        telephone: "0341111120"
       },
     ],
   },
   {
     id: 4,
     name: "Résidence Le Parc",
-    photo:
+    photos: [
       "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
+    ],
+    lot: "Lot 321D",
+    quartier: "Ankadifotsy",
+    ville: "Antananarivo",
     proprietaire: "Robert Martin",
     totalResidents: 22,
     hommes: 12,
     femmes: 10,
     adresse: "321 Rue des Roses, Antananarivo",
-    telephone: "+261 34 56 789 01",
+    telephone: "0345678901",
     email: "r.martin@email.com",
     latitude: -18.905,
     longitude: 47.553,
@@ -189,31 +166,30 @@ const mockResidences = [
     residents: [
       {
         id: 1,
-        name: "Lucie Bernard",
+        nomComplet: "Lucie Bernard",
+        dateNaissance: "1993-11-20",
+        cin: "123456789021",
         genre: "femme",
-        age: 31,
-        profession: "Architecte",
-      },
-      {
-        id: 2,
-        name: "Antoine Petit",
-        genre: "homme",
-        age: 28,
-        profession: "Designer",
+        telephone: "0341111121"
       },
     ],
   },
   {
     id: 5,
     name: "Résidence Les Oliviers",
-    photo:
+    photos: [
       "https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
+    ],
+    lot: "Lot 654E",
+    quartier: "Ivandry",
+    ville: "Antananarivo",
     proprietaire: "Sophie Laurent",
     totalResidents: 16,
     hommes: 7,
     femmes: 9,
     adresse: "654 Avenue des Palmiers, Antananarivo",
-    telephone: "+261 33 45 678 90",
+    telephone: "0334567890",
     email: "s.laurent@email.com",
     latitude: -18.907,
     longitude: 47.548,
@@ -222,42 +198,250 @@ const mockResidences = [
     residents: [
       {
         id: 1,
-        name: "Nicolas Dubois",
+        nomComplet: "Nicolas Dubois",
+        dateNaissance: "1988-09-15",
+        cin: "123456789022",
         genre: "homme",
-        age: 35,
-        profession: "Ingénieur",
+        telephone: "0341111122"
       },
+    ],
+  },
+  {
+    id: 6,
+    name: "Résidence Les Roses",
+    photos: [
+      "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
+    ],
+    lot: "Lot 987F",
+    quartier: "Ambohijatovo",
+    ville: "Antananarivo",
+    proprietaire: "Paul Lefevre",
+    totalResidents: 28,
+    hommes: 15,
+    femmes: 13,
+    adresse: "987 Rue des Jacarandas, Antananarivo",
+    telephone: "0347890123",
+    email: "p.lefevre@email.com",
+    latitude: -18.904,
+    longitude: 47.555,
+    status: "active",
+    dateCreation: "2023-06-18",
+    residents: [
       {
-        id: 2,
-        name: "Émilie Rousseau",
+        id: 1,
+        nomComplet: "Julie Moreau",
+        dateNaissance: "1990-03-25",
+        cin: "123456789023",
         genre: "femme",
-        age: 29,
-        profession: "Médecin",
+        telephone: "0341111123"
+      },
+    ],
+  },
+  {
+    id: 7,
+    name: "Résidence Le Chêne",
+    photos: [
+      "https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
+    ],
+    lot: "Lot 147G",
+    quartier: "Anosy",
+    ville: "Antananarivo",
+    proprietaire: "Marc Dubois",
+    totalResidents: 20,
+    hommes: 11,
+    femmes: 9,
+    adresse: "147 Avenue des Baobabs, Antananarivo",
+    telephone: "0336789012",
+    email: "m.dubois@email.com",
+    latitude: -18.902,
+    longitude: 47.557,
+    status: "active",
+    dateCreation: "2023-07-22",
+    residents: [
+      {
+        id: 1,
+        nomComplet: "Thomas Petit",
+        dateNaissance: "1985-12-10",
+        cin: "123456789024",
+        genre: "homme",
+        telephone: "0341111124"
+      },
+    ],
+  },
+  {
+    id: 8,
+    name: "Résidence Les Palmiers",
+    photos: [
+      "https://images.unsplash.com/photo-1558036117-15e82a2c9a9a?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
+    ],
+    lot: "Lot 258H",
+    quartier: "Mahamasina",
+    ville: "Antananarivo",
+    proprietaire: "Laura Martin",
+    totalResidents: 26,
+    hommes: 14,
+    femmes: 12,
+    adresse: "258 Boulevard de la Mer, Antananarivo",
+    telephone: "0323456789",
+    email: "l.martin@email.com",
+    latitude: -18.899,
+    longitude: 47.554,
+    status: "active",
+    dateCreation: "2023-08-30",
+    residents: [
+      {
+        id: 1,
+        nomComplet: "Alexandre Roy",
+        dateNaissance: "1994-06-18",
+        cin: "123456789025",
+        genre: "homme",
+        telephone: "0341111125"
+      },
+    ],
+  },
+  {
+    id: 9,
+    name: "Résidence Le Jardin",
+    photos: [
+      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1513584684374-8bab748fbf90?w=400&h=300&fit=crop"
+    ],
+    lot: "Lot 369I",
+    quartier: "Antanimena",
+    ville: "Antananarivo",
+    proprietaire: "Eric Bernard",
+    totalResidents: 19,
+    hommes: 10,
+    femmes: 9,
+    adresse: "369 Rue des Orchidées, Antananarivo",
+    telephone: "0349012345",
+    email: "e.bernard@email.com",
+    latitude: -18.896,
+    longitude: 47.552,
+    status: "active",
+    dateCreation: "2023-09-15",
+    residents: [
+      {
+        id: 1,
+        nomComplet: "Sandrine Leroy",
+        dateNaissance: "1991-02-14",
+        cin: "123456789026",
+        genre: "femme",
+        telephone: "0341111126"
+      },
+    ],
+  },
+  {
+    id: 10,
+    name: "Résidence La Fontaine",
+    photos: [
+      "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
+    ],
+    lot: "Lot 741J",
+    quartier: "Besarety",
+    ville: "Antananarivo",
+    proprietaire: "Denis Morel",
+    totalResidents: 24,
+    hommes: 13,
+    femmes: 11,
+    adresse: "741 Avenue des Lilas, Antananarivo",
+    telephone: "0331234567",
+    email: "d.morel@email.com",
+    latitude: -18.893,
+    longitude: 47.549,
+    status: "active",
+    dateCreation: "2023-10-20",
+    residents: [
+      {
+        id: 1,
+        nomComplet: "Patrick Simon",
+        dateNaissance: "1987-08-30",
+        cin: "123456789027",
+        genre: "homme",
+        telephone: "0341111127"
       },
     ],
   },
 ];
 
+// Fonction utilitaire pour calculer l'âge
+const calculerAge = (dateNaissance) => {
+  const today = new Date();
+  const birthDate = new Date(dateNaissance);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age;
+};
+
+// Fonction utilitaire pour vérifier si majeur
+const estMajeur = (dateNaissance) => {
+  return calculerAge(dateNaissance) >= 18;
+};
+
 export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
   const [selectedResidence, setSelectedResidence] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingResidence, setEditingResidence] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [editedResidents, setEditedResidents] = useState([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("name");
   const [expandedResidence, setExpandedResidence] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [residencesPerPage] = useState(4);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [newResident, setNewResident] = useState({
+    nomComplet: "",
+    dateNaissance: "",
+    cin: "",
+    genre: "homme",
+    telephone: ""
+  });
 
   const handleViewDetails = (residence) => {
     setSelectedResidence(residence);
+    setCurrentPhotoIndex(0);
+    setIsEditMode(false);
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedResidence(null);
+    setCurrentPhotoIndex(0);
+    setIsEditMode(false);
+    setEditedResidents([]);
+    setNewResident({
+      nomComplet: "",
+      dateNaissance: "",
+      cin: "",
+      genre: "homme",
+      telephone: ""
+    });
+  };
+
+  const handleNextPhoto = () => {
+    if (selectedResidence && selectedResidence.photos) {
+      setCurrentPhotoIndex((prev) => 
+        prev === selectedResidence.photos.length - 1 ? 0 : prev + 1
+      );
+    }
+  };
+
+  const handlePrevPhoto = () => {
+    if (selectedResidence && selectedResidence.photos) {
+      setCurrentPhotoIndex((prev) => 
+        prev === 0 ? selectedResidence.photos.length - 1 : prev - 1
+      );
+    }
   };
 
   const handleViewOnMap = (residence) => {
@@ -273,26 +457,34 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
     window.location.href = "/";
   };
 
-  const handleCloseEditModal = () => {
-    setShowEditModal(false);
-    setEditingResidence(null);
-    setEditedResidents([]);
-  };
-
   const handleSaveEdit = () => {
     console.log("Sauvegarde des modifications:", editedResidents);
-    handleCloseEditModal();
+    setIsEditMode(false);
+    setEditedResidents([]);
+    setNewResident({
+      nomComplet: "",
+      dateNaissance: "",
+      cin: "",
+      genre: "homme",
+      telephone: ""
+    });
   };
 
   const handleAddResident = () => {
-    const newResident = {
-      id: Date.now(),
-      name: "",
-      genre: "homme",
-      age: "",
-      profession: "",
-    };
-    setEditedResidents([...editedResidents, newResident]);
+    if (newResident.nomComplet && newResident.dateNaissance) {
+      const residentToAdd = {
+        id: Date.now(),
+        ...newResident
+      };
+      setEditedResidents([...editedResidents, residentToAdd]);
+      setNewResident({
+        nomComplet: "",
+        dateNaissance: "",
+        cin: "",
+        genre: "homme",
+        telephone: ""
+      });
+    }
   };
 
   const handleRemoveResident = (residentId) => {
@@ -309,16 +501,28 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
     );
   };
 
-  const handleEditResidents = (residence) => {
-    setEditingResidence(residence);
-    setEditedResidents([...residence.residents]);
-    setShowEditModal(true);
+  const handleNewResidentChange = (field, value) => {
+    setNewResident(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  const toggleResidenceExpand = (residenceId) => {
-    setExpandedResidence(
-      expandedResidence === residenceId ? null : residenceId
-    );
+  const handleEditResidents = () => {
+    setEditedResidents([...selectedResidence.residents]);
+    setIsEditMode(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setEditedResidents([]);
+    setNewResident({
+      nomComplet: "",
+      dateNaissance: "",
+      cin: "",
+      genre: "homme",
+      telephone: ""
+    });
   };
 
   // Filtrage et tri des résidences avec la searchQuery passée en props
@@ -352,7 +556,6 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
   const totalPages = Math.ceil(filteredResidences.length / residencesPerPage);
 
   // Fonctions de pagination
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
   const nextPage = () => {
     if (currentPage < totalPages) {
       setCurrentPage(currentPage + 1);
@@ -381,27 +584,23 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
 
   return (
     <div className="h-full flex">
-      {/* Section principale des résidences qui se réduit quand le modal s'ouvre */}
+      {/* Section principale des résidences */}
       <div className={`transition-all duration-300 ease-in-out ${
         showModal ? "w-1/2" : "w-full"
       }`}>
         <div className="h-full flex flex-col">
-          {/* Header avec fond transparent */}
+          {/* Header */}
           <div className="flex items-center justify-between p-8 border-gray-200/60 bg-transparent">
             <h1 className="font-bold text-3xl text-gray-800 bg-white backdrop-blur-sm py-1.5 px-4 rounded-2xl border border-gray-200/60">Résidences</h1>
           </div>
 
-          {/* Statistiques compactes avec fond transparent */}
+          {/* Statistiques */}
           <div className="border-gray-200/60 bg-transparent">
             <div className="grid grid-cols-4 gap-4 ml-12 mr-12">
-              
-              {/* Résidences */}
               <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-2xl font-bold text-gray-800">
-                      {totalResidences}
-                    </div>
+                    <div className="text-2xl font-bold text-gray-800">{totalResidences}</div>
                     <div className="text-xs text-gray-600 mt-1">Résidences</div>
                   </div>
                   <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -414,13 +613,10 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                 </div>
               </div>
 
-              {/* Résidents */}
               <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-2xl font-bold text-gray-800">
-                      {totalResidents}
-                    </div>
+                    <div className="text-2xl font-bold text-gray-800">{totalResidents}</div>
                     <div className="text-xs text-gray-600 mt-1">Résidents</div>
                   </div>
                   <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
@@ -433,13 +629,10 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                 </div>
               </div>
 
-              {/* Hommes */}
               <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-2xl font-bold text-gray-800">
-                      {totalHommes}
-                    </div>
+                    <div className="text-2xl font-bold text-gray-800">{totalHommes}</div>
                     <div className="text-xs text-gray-600 mt-1">Hommes</div>
                   </div>
                   <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -452,13 +645,10 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                 </div>
               </div>
 
-              {/* Femmes */}
               <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-2xl font-bold text-gray-800">
-                      {totalFemmes}
-                    </div>
+                    <div className="text-2xl font-bold text-gray-800">{totalFemmes}</div>
                     <div className="text-xs text-gray-600 mt-1">Femmes</div>
                   </div>
                   <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
@@ -473,9 +663,9 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
             </div>
           </div>
 
-          {/* Liste des résidences avec scroll */}
+          {/* LISTE DES RÉSIDENCES - PARTIE FONCTIONNELLE */}
           <div className="flex-1 overflow-y-auto bg-transparent">
-            <div className="p-3 space-y-3 mr-3.3 ml-4">
+            <div className="p-3 space-y-3 mr-3 ml-4">
               {currentResidences.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -492,26 +682,41 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                 currentResidences.map((residence) => (
                   <div
                     key={residence.id}
-                    className="bg-white backdrop-blur-sm border border-gray-200/60 rounded-lg hover:shadow-md transition-all duration-200"
+                    className={`backdrop-blur-sm border rounded-lg hover:shadow-md transition-all duration-200 ${
+                      selectedResidence && selectedResidence.id === residence.id && showModal
+                        ? "bg-blue-50 border-blue-200 shadow-md" // Résidence sélectionnée
+                        : "bg-white border-gray-200/60" // Résidence normale
+                    }`}
                   >
-                    {/* En-tête compact */}
                     <div className="p-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start space-x-3 flex-1">
                           <div className="w-12 h-10 rounded-md overflow-hidden flex-shrink-0">
                             <img
-                              src={residence.photo}
+                              src={residence.photos[0]}
                               alt={residence.name}
                               className="w-full h-full object-cover"
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-gray-800 text-sm truncate">
-                              {residence.adresse}
+                            <h3 className={`font-semibold text-sm truncate ${
+                              selectedResidence && selectedResidence.id === residence.id && showModal
+                                ? "text-blue-800" // Texte bleu pour la résidence sélectionnée
+                                : "text-gray-800" // Texte normal
+                            }`}>
+                              {residence.name}
                             </h3>
-                            <div className="flex items-center space-x-1 mt-1 text-gray-600">
-                              <MapPin size={12} />
-                              <span className="text-xs truncate">
+                            <div className="flex items-center space-x-1 mt-1">
+                              <MapPin size={12} className={
+                                selectedResidence && selectedResidence.id === residence.id && showModal
+                                  ? "text-blue-600" // Icône bleue pour la résidence sélectionnée
+                                  : "text-gray-600" // Icône normale
+                              } />
+                              <span className={`text-xs truncate ${
+                                selectedResidence && selectedResidence.id === residence.id && showModal
+                                  ? "text-blue-600" // Texte bleu pour la résidence sélectionnée
+                                  : "text-gray-600" // Texte normal
+                              }`}>
                                 {residence.adresse}
                               </span>
                             </div>
@@ -521,19 +726,23 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                         <div className="flex items-center space-x-1 ml-2">
                           <button
                             onClick={() => handleViewDetails(residence)}
-                            className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex"
+                            className={`p-1.5 rounded-lg transition-colors flex items-center space-x-1 ${
+                              selectedResidence && selectedResidence.id === residence.id && showModal
+                                ? "bg-blue-600 text-white hover:bg-blue-700" // Bouton bleu pour la résidence sélectionnée
+                                : "bg-blue-600 text-white hover:bg-blue-700" // Bouton normal
+                            }`}
                             title="Détails"
                           >
-                            <Eye className="mt-2" size={12} />
-                            <span className="px-3">Details</span>
+                            <Eye size={14} />
+                            <span className="text-xs">Details</span>
                           </button>
                           <button
                             onClick={() => handleViewOnMap(residence)}
-                            className="p-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex"
+                            className="p-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1"
                             title="Carte"
                           >
-                            <Map className="mt-2" size={12} />
-                            <span className="px-2">Carte</span>
+                            <Map size={14} />
+                            <span className="text-xs">Carte</span>
                           </button>
                         </div>
                       </div>
@@ -544,12 +753,11 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
             </div>
           </div>
 
-          {/* Pagination FIXE EN BAS */}
+          {/* Pagination simplifiée avec seulement les flèches */}
           {filteredResidences.length > residencesPerPage && (
             <div className="border-t border-gray-200/60 bg-white/30 backdrop-blur-sm py-3 px-6 shadow-inner">
               <div className="flex items-center justify-center">
-                
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-4">
                   <button
                     onClick={prevPage}
                     disabled={currentPage === 1}
@@ -559,25 +767,12 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                         : "bg-white text-gray-600 hover:bg-gray-50 border-gray-300 hover:border-gray-400"
                     }`}
                   >
-                    <ChevronLeft size={16} />
+                    <ChevronLeft size={20} />
                   </button>
 
-                  {/* Numéros de page */}
-                  <div className="flex space-x-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
-                      <button
-                        key={number}
-                        onClick={() => paginate(number)}
-                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
-                          currentPage === number
-                            ? "bg-blue-600 text-white border border-blue-600"
-                            : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300 hover:border-gray-400"
-                        }`}
-                      >
-                        {number}
-                      </button>
-                    ))}
-                  </div>
+                  <span className="text-sm font-medium text-gray-600">
+                    Page {currentPage} sur {totalPages}
+                  </span>
 
                   <button
                     onClick={nextPage}
@@ -588,7 +783,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                         : "bg-white text-gray-600 hover:bg-gray-50 border-gray-300 hover:border-gray-400"
                     }`}
                   >
-                    <ChevronRight size={16} />
+                    <ChevronRight size={20} />
                   </button>
                 </div>
               </div>
@@ -597,215 +792,227 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
         </div>
       </div>
 
-      {/* Modal de détails qui s'affiche à côté */}
+      {/* Modal de détails/édition qui change de contenu */}
       {showModal && selectedResidence && (
         <div className="w-1/2 bg-transparent rounded-r-3xl overflow-hidden shadow-xl border-l border-gray-200/60">
           <div className="h-full flex flex-col">
             {/* En-tête du modal */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200/60 bg-transparent">
               <h2 className="text-xl bg-white py-3 px-6 rounded-2xl font-bold text-gray-800">
-                Détails Résidence
+                {isEditMode ? "Modifier les résidents" : "Détails Résidence"}
               </h2>
-              <button
-                onClick={handleCloseModal}
-                className="p-2 hover:bg-white rounded-lg transition-colors"
-              >
-                <X size={20} className="text-gray-600" />
-              </button>
+              <div className="flex items-center space-x-2">
+                {isEditMode && (
+                  <button
+                    onClick={handleAddResident}
+                    className="flex items-center space-x-2 bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors"
+                  >
+                    <Plus size={14} />
+                    <span>Ajouter</span>
+                  </button>
+                )}
+                <button
+                  onClick={isEditMode ? handleCancelEdit : handleCloseModal}
+                  className="p-2 hover:bg-white rounded-lg transition-colors"
+                >
+                  <X size={20} className="text-gray-600" />
+                </button>
+              </div>
             </div>
 
             {/* Contenu du modal avec scroll */}
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="flex space-x-4">
-                <img
-                  src={selectedResidence.photo}
-                  alt={selectedResidence.name}
-                  className="w-24 h-20 rounded-lg object-cover"
-                />
-                <div className="flex-1">
-                  <h3 className="font-bold text-gray-800 text-lg">
-                    {selectedResidence.name}
-                  </h3>
-                  <div className="text-sm text-gray-600 mt-1">
-                    {selectedResidence.adresse}
-                  </div>
-                  <div className="flex space-x-3 mt-2">
-                    <div className="flex items-center space-x-1 text-blue-600 text-sm">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span>{selectedResidence.hommes}H</span>
-                    </div>
-                    <div className="flex items-center space-x-1 text-pink-600 text-sm">
-                      <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
-                      <span>{selectedResidence.femmes}F</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Informations détaillées */}
-              <div className="mt-6 space-y-4">
-                <div className="flex items-center justify-between p-3 bg-white backdrop-blur-sm rounded-lg border border-gray-200/60">
-                  <span className="text-sm text-gray-800">Propriétaire:</span>
-                  <span className="text-sm font-medium text-gray-800">{selectedResidence.proprietaire}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-white backdrop-blur-sm rounded-lg border border-gray-200/60">
-                  <span className="text-sm text-gray-800">Téléphone:</span>
-                  <span className="text-sm font-medium text-gray-800">{selectedResidence.telephone}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-white backdrop-blur-sm rounded-lg border border-gray-200/60">
-                  <span className="text-sm text-gray-800">Email:</span>
-                  <span className="text-sm font-medium text-gray-800">{selectedResidence.email}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-white backdrop-blur-sm rounded-lg border border-gray-200/60">
-                  <span className="text-sm text-gray-800">Total résidents:</span>
-                  <span className="text-sm font-medium text-gray-800">{selectedResidence.totalResidents}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-white backdrop-blur-sm rounded-lg border border-gray-200/60">
-                  <span className="text-sm text-gray-800">Date création:</span>
-                  <span className="text-sm font-medium text-gray-800">
-                    {new Date(selectedResidence.dateCreation).toLocaleDateString('fr-FR')}
-                  </span>
-                </div>
-              </div>
-
-              {/* Liste des résidents */}
-              <div className="mt-6">
-                <h4 className="font-semibold text-gray-800 mb-3">Liste des résidents ({selectedResidence.residents.length})</h4>
-                <div className="space-y-2 max-h-41 overflow-y-auto">
-                  {selectedResidence.residents.map((resident) => (
-                    <div key={resident.id} className="flex items-center justify-between p-3 bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium text-gray-800">{resident.name}</span>
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          resident.genre === 'homme' 
-                            ? 'bg-blue-100 text-blue-600' 
-                            : 'bg-pink-100 text-pink-600'
-                        }`}>
-                          {resident.genre === 'homme' ? '♂' : '♀'}
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        {resident.age} ans • {resident.profession}
+              {!isEditMode ? (
+                /* MODE DÉTAILS */
+                <>
+                  {/* Photo et informations de localisation */}
+                  <div className="flex space-x-6 mb-6">
+                    {/* Carousel de photos */}
+                    <div className="w-1/2">
+                      <div className="relative rounded-lg overflow-hidden bg-gray-100 h-48">
+                        <img
+                          src={selectedResidence.photos[currentPhotoIndex]}
+                          alt={`${selectedResidence.name} - Photo ${currentPhotoIndex + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        
+                        {selectedResidence.photos.length > 1 && (
+                          <>
+                            <button
+                              onClick={handlePrevPhoto}
+                              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                            >
+                              <ChevronLeft size={20} />
+                            </button>
+                            <button
+                              onClick={handleNextPhoto}
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                            >
+                              <ChevronRight size={20} />
+                            </button>
+                            
+                            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+                              {selectedResidence.photos.map((_, index) => (
+                                <div
+                                  key={index}
+                                  className={`w-2 h-2 rounded-full ${
+                                    index === currentPhotoIndex 
+                                      ? 'bg-white' 
+                                      : 'bg-white/50'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              {/* Boutons d'action */}
-              <div className="flex space-x-3 mt-6 pt-4 border-t border-gray-200/60">
-                <button
-                  onClick={() => handleEditResidents(selectedResidence)}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                >
-                  Modifier les résidents
-                </button>
-                <button
-                  onClick={() => handleViewOnMap(selectedResidence)}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-                >
-                  Voir sur la carte
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                    {/* Informations de localisation */}
+                    <div>
+                      <div className="h-40 flex flex-col justify-center space-y-4">
+                        <div className="font-bold text-gray-800">{selectedResidence.lot}</div>
+                        <div className="font-bold text-gray-800">{selectedResidence.quartier}</div>
+                        <div className="font-bold text-gray-800">{selectedResidence.ville}</div>
+                      </div>
+                    </div>
+                  </div>
 
-      {/* Modal d'édition (reste en overlay) */}
-      {showEditModal && editingResidence && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white/30 backdrop-blur-sm rounded-xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto border border-gray-200/60">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200/60">
-              <h2 className="text-lg font-bold text-gray-800">
-                Modifier - {editingResidence.name}
-              </h2>
-              <button
-                onClick={handleCloseEditModal}
-                className="p-1 hover:bg-white/50 rounded transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-4">
-              <div className="space-y-3">
-                {editedResidents.map((resident) => (
-                  <div
-                    key={resident.id}
-                    className="flex items-center space-x-2 bg-white rounded-lg p-3 border border-gray-200"
-                  >
-                    <input
-                      type="text"
-                      value={resident.name}
-                      onChange={(e) =>
-                        handleResidentChange(
-                          resident.id,
-                          "name",
-                          e.target.value
-                        )
-                      }
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm"
-                      placeholder="Nom"
-                    />
-                    <select
-                      value={resident.genre}
-                      onChange={(e) =>
-                        handleResidentChange(
-                          resident.id,
-                          "genre",
-                          e.target.value
-                        )
-                      }
-                      className="px-2 py-2 border border-gray-300 rounded text-sm"
-                    >
-                      <option value="homme">H</option>
-                      <option value="femme">F</option>
-                    </select>
-                    <input
-                      type="number"
-                      value={resident.age}
-                      onChange={(e) =>
-                        handleResidentChange(
-                          resident.id,
-                          "age",
-                          e.target.value
-                        )
-                      }
-                      className="w-16 px-2 py-2 border border-gray-300 rounded text-sm"
-                      placeholder="Âge"
-                    />
+                  {/* Liste des résidents sans en-têtes */}
+                  <div className="bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60 overflow-hidden">
+                    <div className="max-h-96 overflow-y-auto">
+                      <table className="w-full">
+                        <tbody className="divide-y divide-gray-200/30">
+                          {selectedResidence.residents.map((resident) => (
+                            <tr key={resident.id} className="hover:bg-gray-50/30">
+                              <td className="px-4 py-3 text-sm text-gray-800">{resident.nomComplet}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">
+                                {new Date(resident.dateNaissance).toLocaleDateString('fr-FR')}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600">
+                                {estMajeur(resident.dateNaissance) && resident.cin 
+                                  ? resident.cin 
+                                  : '-'
+                                }
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{resident.telephone}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">
+                                {resident.genre === 'homme' ? 'H' : 'F'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Bouton pour passer en mode édition */}
+                  <div className="flex mt-6 pt-4 border-t border-gray-200/60">
                     <button
-                      onClick={() => handleRemoveResident(resident.id)}
-                      className="p-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                      onClick={handleEditResidents}
+                      className="w-full px-2 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                     >
-                      <Trash2 size={12} />
+                      Modifier les résidents
                     </button>
                   </div>
-                ))}
-              </div>
-              <div className="flex justify-between items-center mt-4">
-                <button
-                  onClick={handleAddResident}
-                  className="flex items-center space-x-2 bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors"
-                >
-                  <Plus size={12} />
-                  <span>Ajouter</span>
-                </button>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={handleCloseEditModal}
-                    className="px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    onClick={handleSaveEdit}
-                    className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
-                  >
-                    Sauvegarder
-                  </button>
-                </div>
-              </div>
+                </>
+              ) : (
+                /* MODE ÉDITION */
+                <>
+                  {/* Tableau d'édition des résidents */}
+                  <div className="mb-6">
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead className="bg-gray-50/50">
+                          <tr>
+                            <th className="border border-gray-200/60 px-3 py-2 text-left text-xs font-medium text-gray-500">Nom</th>
+                            <th className="border border-gray-200/60 px-3 py-2 text-left text-xs font-medium text-gray-500">Naissance</th>
+                            <th className="border border-gray-200/60 px-3 py-2 text-left text-xs font-medium text-gray-500">CIN</th>
+                            <th className="border border-gray-200/60 px-3 py-2 text-left text-xs font-medium text-gray-500">Téléphone</th>
+                            <th className="border border-gray-200/60 px-3 py-2 text-left text-xs font-medium text-gray-500">Genre</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {editedResidents.map((resident) => {
+                            const age = resident.dateNaissance ? calculerAge(resident.dateNaissance) : 0;
+                            const majeur = age >= 18;
+                            
+                            return (
+                              <tr key={resident.id} className="hover:bg-gray-50/30">
+                                <td className="border border-gray-200/60 px-3 py-2">
+                                  <input
+                                    type="text"
+                                    value={resident.nomComplet}
+                                    onChange={(e) => handleResidentChange(resident.id, "nomComplet", e.target.value)}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white/50"
+                                    placeholder="Nom complet"
+                                  />
+                                </td>
+                                <td className="border border-gray-200/60 px-3 py-2">
+                                  <input
+                                    type="date"
+                                    value={resident.dateNaissance}
+                                    onChange={(e) => handleResidentChange(resident.id, "dateNaissance", e.target.value)}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white/50"
+                                  />
+                                </td>
+                                <td className="border border-gray-200/60 px-3 py-2">
+                                  {majeur ? (
+                                    <input
+                                      type="text"
+                                      value={resident.cin || ""}
+                                      onChange={(e) => handleResidentChange(resident.id, "cin", e.target.value)}
+                                      className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white/50"
+                                      placeholder="CIN"
+                                    />
+                                  ) : (
+                                    <span className="text-gray-400 text-sm">-</span>
+                                  )}
+                                </td>
+                                <td className="border border-gray-200/60 px-3 py-2">
+                                  <input
+                                    type="tel"
+                                    value={resident.telephone}
+                                    onChange={(e) => handleResidentChange(resident.id, "telephone", e.target.value)}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white/50"
+                                    placeholder="0341234567"
+                                  />
+                                </td>
+                                <td className="border border-gray-200/60 px-3 py-2">
+                                  <select
+                                    value={resident.genre}
+                                    onChange={(e) => handleResidentChange(resident.id, "genre", e.target.value)}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white/50"
+                                  >
+                                    <option value="homme">H</option>
+                                    <option value="femme">F</option>
+                                  </select>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Boutons de sauvegarde/annulation */}
+                  <div className="flex justify-end space-x-2 mt-6 pt-4 border-t border-gray-200/60">
+                    <button
+                      onClick={handleCancelEdit}
+                      className="px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={handleSaveEdit}
+                      className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                    >
+                      Sauvegarder
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
