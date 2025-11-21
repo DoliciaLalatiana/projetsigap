@@ -316,6 +316,44 @@ class FokontanyController {
       res.status(500).json({ message: 'Erreur serveur' });
     }
   }
+
+  static async getMyFokontany(req, res) {
+    try {
+      const user = req.user;
+      if (!user || !user.fokontany_id) {
+        return res.status(404).json({ message: 'Aucun fokontany associé à cet utilisateur' });
+      }
+
+      const query = `
+        SELECT id, code, nom, commune, district, region,
+               geometry_type, coordinates, centre_lat, centre_lng,
+               type, source
+        FROM fokontany
+        WHERE id = ?
+        LIMIT 1
+      `;
+
+      connection.query(query, [user.fokontany_id], (err, results) => {
+        if (err) {
+          console.error('Erreur récupération fokontany utilisateur:', err);
+          return res.status(500).json({ message: 'Erreur serveur' });
+        }
+
+        if (!results || results.length === 0) {
+          return res.status(404).json({ message: 'Fokontany introuvable' });
+        }
+
+        const f = results[0];
+        try {
+          f.coordinates = JSON.parse(f.coordinates);
+        } catch (e) {}
+        res.json(f);
+      });
+    } catch (error) {
+      console.error('Erreur getMyFokontany:', error);
+      res.status(500).json({ message: 'Erreur serveur' });
+    }
+  }
 }
 
 module.exports = FokontanyController;

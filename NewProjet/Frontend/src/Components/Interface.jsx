@@ -49,22 +49,27 @@ const ANDABOLY_CENTER = {
   lng: ANDABOLY_POLYGON.reduce((sum, point) => sum + point.lng, 0) / ANDABOLY_POLYGON.length
 };
 
-// Fonction utilitaire pour vérifier si un point est dans le polygon
+// Fonction utilitaire pour vérifier si un point est dans le polygon (robuste)
 const isPointInPolygon = (point, polygon) => {
-  const x = point.lat, y = point.lng;
+  // Correct orientation: x = longitude, y = latitude
+  if (!point || !polygon || !Array.isArray(polygon) || polygon.length === 0) return false;
+  const x = Number(point.lng), y = Number(point.lat);
+  if (Number.isNaN(x) || Number.isNaN(y)) return false;
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const xi = polygon[i].lat, yi = polygon[i].lng;
-    const xj = polygon[j].lat, yj = polygon[j].lng;
-    
-    const intersect = ((yi > y) !== (yj > y))
-        && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    const xi = Number(polygon[i].lng), yi = Number(polygon[i].lat);
+    const xj = Number(polygon[j].lng), yj = Number(polygon[j].lat);
+    if ([xi, yi, xj, yj].some(v => Number.isNaN(v))) continue;
+    const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
     if (intersect) inside = !inside;
   }
   return inside;
 };
 
-export default function Interface({ user }) {
+// base API pour Vite
+const API_BASE = import.meta.env.VITE_API_BASE || '';
+
+export default function Interface({ user })  {
   const navigate = useNavigate();
   const [openDropdown, setOpenDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -96,39 +101,105 @@ export default function Interface({ user }) {
   // NOUVEL ÉTAT : pour gérer l'erreur de validation du formulaire
   const [formError, setFormError] = useState("");
 
+  // état pour la page utilisateur (modal changement mot de passe)
+  const [userPageState, setUserPageState] = useState({ showPasswordModal: false });
+
+  // handlers pour le polygon (évite ReferenceError)
+  const handlePolygonMouseOver = (e) => {
+    try {
+      setIsPolygonHovered(true);
+      // éventuellement afficher infobulle / changer style
+      console.log('[MAP] handlePolygonMouseOver', e);
+    } catch (err) {
+      console.warn('[MAP] handlePolygonMouseOver error', err);
+    }
+  };
+
+  const handlePolygonMouseOut = (e) => {
+    try {
+      setIsPolygonHovered(false);
+      console.log('[MAP] handlePolygonMouseOut', e);
+    } catch (err) {
+      console.warn('[MAP] handlePolygonMouseOut error', err);
+    }
+  };
+  
   // NOUVELLE FONCTION : Pour centrer et zoomer sur la zone limite
   const handleFocusOnPolygon = () => {
-    if (map) {
-      // Créer une bounds pour contenir tout le polygon
+    if (!map) return;
+    const polygon = (fokontanyPolygon && fokontanyPolygon.length) ? fokontanyPolygon : ANDABOLY_POLYGON;
+    try {
       const bounds = new window.google.maps.LatLngBounds();
-      ANDABOLY_POLYGON.forEach(point => {
-        bounds.extend(point);
-      });
-      
-      // Ajuster les bounds pour avoir un peu de marge autour du polygon
+      polygon.forEach(p => bounds.extend(p));
+      // marge 20%
       const ne = bounds.getNorthEast();
       const sw = bounds.getSouthWest();
-      const latDiff = (ne.lat() - sw.lat()) * 0.3; // 30% de marge
-      const lngDiff = (ne.lng() - sw.lng()) * 0.3; // 30% de marge
-      
+      const latDiff = (ne.lat() - sw.lat()) * 0.2;
+      const lngDiff = (ne.lng() - sw.lng()) * 0.2;
       bounds.extend({ lat: ne.lat() + latDiff, lng: ne.lng() + lngDiff });
       bounds.extend({ lat: sw.lat() - latDiff, lng: sw.lng() - lngDiff });
-      
       map.fitBounds(bounds);
-      
-      // Limiter le zoom maximum pour s'assurer qu'on voit bien la zone
-      const listener = google.maps.event.addListener(map, 'bounds_changed', function() {
-        if (map.getZoom() > 15) {
-          map.setZoom(15);
-        }
-        google.maps.event.removeListener(listener);
-      });
+      // add listener only if google.maps.event is available
+      if (window.google && window.google.maps && window.google.maps.event) {
+        const listener = window.google.maps.event.addListener(map, 'bounds_changed', function() {
+          try { if (map.getZoom() > 16) map.setZoom(16); } catch(e) {}
+          try { window.google.maps.event.removeListener(listener); } catch(e) {}
+        });
+      }
+    } catch (e) {
+      console.warn('handleFocusOnPolygon error', e);
     }
   };
 
   const dropdownRef = useRef(null);
   const searchRef = useRef(null);
   const addAddressRef = useRef(null);
+
+  // --- NOUVEAU : fokontany récupéré depuis le backend (optionnel) ---
+  const [fokontanyPolygon, setFokontanyPolygon] = useState(null);
+  const [fokontanyCenter, setFokontanyCenter] = useState(null);
+
+  useEffect(() => {
+    const loadMyFokontany = async () => {
+      try {
+        console.log('[FOK] loadMyFokontany: starting request to /api/fokontany/me');
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.log('[FOK] loadMyFokontany: no token found in localStorage');
+          return;
+        }
+        const resp = await fetch(`${API_BASE}/api/fokontany/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        console.log('[FOK] loadMyFokontany: response status', resp.status);
+        if (!resp.ok) {
+          console.warn('[FOK] loadMyFokontany: non-ok response', await resp.text());
+          return;
+        }
+        const f = await resp.json();
+        console.log('[FOK] loadMyFokontany: body received', f);
+        // f.coordinates may be JSON string or already parsed structure
+        let coordsRaw = f.coordinates ?? f.geometry ?? null;
+        const poly = normalizeCoordinates(coordsRaw);
+        console.log('[FOK] loadMyFokontany: parsed polygon length', poly ? poly.length : 0);
+        setFokontanyPolygon(poly);
+        if (f.centre_lat && f.centre_lng) {
+          setFokontanyCenter({ lat: parseFloat(f.centre_lat), lng: parseFloat(f.centre_lng) });
+          console.log('[FOK] loadMyFokontany: using centre_lat/centre_lng', f.centre_lat, f.centre_lng);
+        } else if (poly && poly.length) {
+          const lat = poly.reduce((s,p) => s + p.lat, 0) / poly.length;
+          const lng = poly.reduce((s,p) => s + p.lng, 0) / poly.length;
+          setFokontanyCenter({ lat, lng });
+          console.log('[FOK] loadMyFokontany: computed center', { lat, lng });
+        } else {
+          console.log('[FOK] loadMyFokontany: no coordinates or center available for fokontany');
+        }
+      } catch (err) {
+        console.warn('[FOK] loadMyFokontany failed', err);
+      }
+    };
+    loadMyFokontany();
+  }, []);
 
   // Charger l'état depuis le localStorage au montage du composant
   useEffect(() => {
@@ -325,38 +396,21 @@ export default function Interface({ user }) {
 
   // MODIFICATION COMPLÈTE : Fonction pour gérer le clic sur la carte
   const handleMapClick = (event) => {
-    console.log("Clic sur la carte détecté"); // Debug
     if (isSelectingLocation) {
       const lat = event.latLng.lat();
       const lng = event.latLng.lng();
+      console.log('[FOK] handleMapClick: clicked coords', { lat, lng });
       const clickedPoint = { lat, lng };
-      
-      console.log("Coordonnées cliquées:", clickedPoint); // Debug
-      
-      // Vérifier si le clic est dans le polygon
-      const isInsidePolygon = isPointInPolygon(clickedPoint, ANDABOLY_POLYGON);
-      console.log("Est dans le polygon:", isInsidePolygon); // Debug
-      
+      const activePoly = (fokontanyPolygon && fokontanyPolygon.length) ? fokontanyPolygon : ANDABOLY_POLYGON;
+      const isInsidePolygon = isPointInPolygon(clickedPoint, activePoly);
+      console.log('[FOK] handleMapClick: isInsidePolygon?', isInsidePolygon);
       if (isInsidePolygon) {
-        console.log("Clic dans la zone bleue - ouverture modale"); // Debug
         setSelectedLocation({ lat, lng });
-        
-        // Récupérer l'adresse à partir des coordonnées (géocodage inversé)
         getAddressFromCoordinates(lat, lng);
-        
-        // Remettre le message en normal
         setMessageStatus("normal");
-        
-        // Fermer IMMÉDIATEMENT le mode sélection et OUVRIR LA MODALE
         setIsSelectingLocation(false);
-        
-        // Ouvrir la modale après un court délai
-        setTimeout(() => {
-          setShowAddAddress(true);
-        }, 100);
+        setTimeout(() => setShowAddAddress(true), 100);
       } else {
-        // Afficher l'avertissement en changeant le statut du message
-        console.log("Clic en dehors de la zone bleue - message erreur"); // Debug
         setMessageStatus("error");
       }
     }
@@ -541,68 +595,237 @@ export default function Interface({ user }) {
     setMapType(mapType === "satellite" ? "roadmap" : "satellite");
   };
 
-  // Fonction appelée quand la carte est chargée
+  // NOUVEAU : charger fokontany depuis l'utilisateur (login) ou via API si absent
+  useEffect(() => {
+    const initFokontanyFromUser = async () => {
+      try {
+        const stored = localStorage.getItem('user');
+        const localUser = stored ? JSON.parse(stored) : null;
+        const u = user || localUser;
+        console.log('[FOK] initFokontanyFromUser: user from props/local', !!user, !!localUser);
+        if (!u) {
+          console.log('[FOK] initFokontanyFromUser: no user available, skipping');
+          return;
+        }
+
+        // si le user contient déjà l'objet fokontany (login), l'utiliser
+        if (u.fokontany && (u.fokontany.coordinates || u.fokontany.centre_lat)) {
+          console.log('[FOK] initFokontanyFromUser: user has fokontany object', u.fokontany?.nom || u.fokontany?.code);
+          try {
+            const f = u.fokontany;
+            const coords = f.coordinates ? (typeof f.coordinates === 'string' ? JSON.parse(f.coordinates) : f.coordinates) : null;
+            console.log('[FOK] initFokontanyFromUser: user.fokontany coords raw', coords && (Array.isArray(coords) ? coords.length : typeof coords));
+            if (coords && Array.isArray(coords)) {
+              const ring = Array.isArray(coords[0] && coords[0][0]) ? coords[0][0] : (coords[0] || []);
+              const poly = ring.filter(p => Array.isArray(p) && p.length >= 2).map(p => ({ lat: +p[1], lng: +p[0] }));
+              console.log('[FOK] initFokontanyFromUser: parsed poly length', poly.length);
+              if (poly && poly.length) {
+                setFokontanyPolygon(poly);
+                const sum = poly.reduce((acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }), { lat: 0, lng: 0 });
+                setFokontanyCenter({ lat: sum.lat / poly.length, lng: sum.lng / poly.length });
+                console.log('[FOK] initFokontanyFromUser: set polygon & center from user.fokontany');
+                if (map && window.google && window.google.maps) {
+                  const bounds = new window.google.maps.LatLngBounds();
+                  poly.forEach(p => bounds.extend(p));
+                  map.fitBounds(bounds);
+                }
+                return;
+              }
+            }
+            if (f.centre_lat && f.centre_lng) {
+              setFokontanyCenter({ lat: +f.centre_lat, lng: +f.centre_lng });
+              console.log('[FOK] initFokontanyFromUser: set center from user.fokontany centre_lat/centre_lng');
+              if (map) map.panTo({ lat: +f.centre_lat, lng: +f.centre_lng });
+              return;
+            }
+          } catch (e) { /* ignore parse errors and fallback to API */ console.warn('[FOK] initFokontanyFromUser user fokontany parse error', e); }
+        }
+
+        // fallback : demander /api/fokontany/me si token existant
+        const token = localStorage.getItem('token');
+        console.log('[FOK] initFokontanyFromUser: fetching /api/fokontany/me fallback, token?', !!token);
+        if (!token) return;
+        const resp = await fetch(`${API_BASE}/api/fokontany/me`, {
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        console.log('[FOK] initFokontanyFromUser: response status', resp.status);
+        if (!resp.ok) {
+          console.warn('[FOK] initFokontanyFromUser: non-ok response', await resp.text());
+          return;
+        }
+        const fok = await resp.json();
+        console.log('[FOK] initFokontanyFromUser: body', fok);
+        if (fok && (fok.coordinates || fok.centre_lat)) {
+          try {
+            const coords = fok.coordinates ? (typeof fok.coordinates === 'string' ? JSON.parse(fok.coordinates) : fok.coordinates) : null;
+            console.log('[FOK] initFokontanyFromUser: coords parsed type', typeof coords, Array.isArray(coords) ? coords.length : 'n/a');
+            if (coords && Array.isArray(coords)) {
+              const ring = Array.isArray(coords[0] && coords[0][0]) ? coords[0][0] : (coords[0] || []);
+              const poly = ring.filter(p => Array.isArray(p) && p.length >= 2).map(p => ({ lat: +p[1], lng: +p[0] }));
+              console.log('[FOK] initFokontanyFromUser: parsed fallback poly length', poly.length);
+              if (poly && poly.length) {
+                setFokontanyPolygon(poly);
+                const sum = poly.reduce((acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }), { lat: 0, lng: 0 });
+                setFokontanyCenter({ lat: sum.lat / poly.length, lng: sum.lng / poly.length });
+                console.log('[FOK] initFokontanyFromUser: set polygon & center from fallback API');
+                if (map && window.google && window.google.maps) {
+                  const bounds = new window.google.maps.LatLngBounds();
+                  poly.forEach(p => bounds.extend(p));
+                  map.fitBounds(bounds);
+                }
+                return;
+              }
+            }
+            if (fok.centre_lat && fok.centre_lng) {
+              setFokontanyCenter({ lat: +fok.centre_lat, lng: +fok.centre_lng });
+              console.log('[FOK] initFokontanyFromUser: set center from fallback centre_lat/centre_lng');
+              if (map) map.panTo({ lat: +fok.centre_lat, lng: +fok.centre_lng });
+            }
+          } catch (e) { console.warn('[FOK] initFokontanyFromUser parse error', e); }
+        } else {
+          console.log('[FOK] initFokontanyFromUser: no fokontany data returned by API');
+        }
+      } catch (err) {
+        console.warn('initFokontanyFromUser error', err);
+      }
+    };
+
+    initFokontanyFromUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, map]);
+
+  // appelé quand l'instance GoogleMap est prête
   const onMapLoad = (mapInstance) => {
-    setMap(mapInstance);
-    setMapLoaded(true);
-    
-    // Centrer automatiquement sur Andaboly au chargement
-    setTimeout(() => {
-      mapInstance.setCenter(ANDABOLY_CENTER);
-      mapInstance.setZoom(14);
-    }, 500);
+    try {
+      setMap(mapInstance);
+      setMapLoaded(true);
+      console.log('[MAP] onMapLoad: map ready', !!mapInstance, 'fokontanyCenter=', fokontanyCenter);
+      // recentrer si on a déjà le centre du fokontany
+      if (fokontanyCenter && mapInstance && window.google && window.google.maps) {
+        try {
+          mapInstance.panTo(fokontanyCenter);
+          mapInstance.setZoom(15);
+        } catch (e) {
+          console.warn('[MAP] onMapLoad panTo error', e);
+        }
+      }
+    } catch (err) {
+      console.warn('[MAP] onMapLoad error', err);
+    }
   };
 
-  // Options de la carte - définies après le chargement (avec contrôles désactivés)
+  // options de la carte Google Maps
   const getMapOptions = () => {
-    if (!mapLoaded) {
-      return {
-        mapTypeId: mapType,
-        disableDefaultUI: true,
-      };
-    }
-
     return {
-      mapTypeId: mapType,
-      streetViewControl: false, // Désactivé
-      zoomControl: false, // Désactivé
-      mapTypeControl: false, // Désactivé
-      fullscreenControl: false, // Désactivé
-      scaleControl: false, // Désactivé
-      rotateControl: false, // Désactivé
-      disableDefaultUI: true, // Tous les contrôles par défaut désactivés
+      // Utiliser mapTypeId pour demander "hybrid" quand mapType === 'satellite'
+      // "hybrid" = imagery satellite + labels (noms de route, POI...)
+      mapTypeId: mapType === "satellite" ? "hybrid" : "roadmap",
+      // minimal/no custom styles to preserve labels and POI text
+      styles: [],
+      gestureHandling: "greedy",
+      disableDoubleClickZoom: true,
+      draggable: true,
+      scrollwheel: true,
+      pinchZoom: true,
+      center: fokontanyCenter || ANDABOLY_CENTER,
+      zoom: fokontanyCenter ? 14 : 14,
+      fullscreenControl: false,
+      mapTypeControl: false,
+      streetViewControl: false,
+      zoomControl: false,
     };
   };
 
-  // Options du polygon Andaboly - RENDU PLUS VISIBLE
+  // options du polygon
   const polygonOptions = {
-    fillColor: isPolygonHovered ? "#10B981" : "#3B82F6",
-    fillOpacity: isPolygonHovered ? 0.4 : 0.3, // Augmentation de l'opacité
-    strokeColor: isPolygonHovered ? "#10B981" : "#1D4ED8", // Bleu plus foncé
-    strokeOpacity: isPolygonHovered ? 1 : 0.9,
-    strokeWeight: isPolygonHovered ? 4 : 3, // Ligne plus épaisse
-    clickable: false, // CORRECTION : Le polygon n'est PAS cliquable - les clics passent à travers
+    strokeColor: "#1E90FF",
+    strokeOpacity: 0.8,
+    strokeWeight: 2,
+    fillColor: "#1E90FF",
+    fillOpacity: 0.35,
+    clickable: false,
+    zIndex: 1
   };
 
-  // Gestionnaires d'événements pour le polygon
-  const handlePolygonMouseOver = () => {
-    setIsPolygonHovered(true);
-  };
-
-  const handlePolygonMouseOut = () => {
-    setIsPolygonHovered(false);
-  };
-
-  // NOUVEL ÉTAT : pour gérer l'état interne de UserPage
-  const [userPageState, setUserPageState] = useState({
-    showPasswordModal: false
+  // états des événements de la carte
+  const [mapEvents, setMapEvents] = useState({
+    click: null,
+    dblclick: null,
+    mousemove: null,
+    zoom_changed: null,
+    dragend: null
   });
+
+  // gestion des événements de la carte
+  useEffect(() => {
+    if (!map) return;
+    const handleClick = (e) => {
+      console.log('[MAP] Click event:', e);
+    };
+    const handleDblClick = (e) => {
+      console.log('[MAP] Double Click event:', e);
+    };
+    const handleMouseMove = (e) => {
+      console.log('[MAP] Mouse Move event:', e);
+    };
+    const handleZoomChanged = () => {
+      console.log('[MAP] Zoom changed:', map.getZoom());
+    };
+    const handleDragEnd = () => {
+      const center = map.getCenter();
+      console.log('[MAP] Drag ended. New center:', center.lat(), center.lng());
+    };
+
+    // attacher les événements
+    map.addListener("click", handleClick);
+    map.addListener("dblclick", handleDblClick);
+    map.addListener("mousemove", handleMouseMove);
+    map.addListener("zoom_changed", handleZoomChanged);
+    map.addListener("dragend", handleDragEnd);
+
+    // nettoyer les événements à la désactivation de la carte
+    return () => {
+      if (map) {
+        map.removeListener("click", handleClick);
+        map.removeListener("dblclick", handleDblClick);
+        map.removeListener("mousemove", handleMouseMove);
+        map.removeListener("zoom_changed", handleZoomChanged);
+        map.removeListener("dragend", handleDragEnd);
+      }
+    };
+  }, [map]);
 
   // Hauteur de la carte - toujours pleine hauteur
   const containerStyle = {
     width: "100%",
     height: "100vh",
   };
+
+  const activePolygon = (fokontanyPolygon && fokontanyPolygon.length > 0) ? fokontanyPolygon : ANDABOLY_POLYGON;
+
+  // safe marker icon: only create Size if google.maps.Size exists, otherwise use plain object
+  let markerIcon;
+  if (typeof window !== 'undefined' && window.google && window.google.maps) {
+    // Deprecation guidance for visibility in console
+    if (window.google.maps.Marker) {
+      console.warn('[GMaps] google.maps.Marker exists — consider migrating to google.maps.marker.AdvancedMarkerElement (see https://developers.google.com/maps/documentation/javascript/advanced-markers/migration)');
+    }
+    const svg = `
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 2C11.58 2 8 5.58 8 10C8 17 16 30 16 30C16 30 24 17 24 10C24 5.58 20.42 2 16 2Z" fill="#10B981"/>
+        <circle cx="16" cy="10" r="3" fill="white"/>
+      </svg>
+    `;
+    const url = 'data:image/svg+xml;base64,' + btoa(svg);
+    // prefer real Size if available
+    if (typeof window.google.maps.Size === 'function') {
+      markerIcon = { url, scaledSize: new window.google.maps.Size(32, 32) };
+    } else {
+      markerIcon = { url, scaledSize: { width: 32, height: 32 } };
+    }
+  } else {
+    markerIcon = undefined;
+  }
 
   return (
     <div className="relative w-full h-screen bg-gradient-to-r from-blue-50 to-indigo-50 overflow-hidden">
@@ -865,8 +1088,8 @@ export default function Interface({ user }) {
               } transition-all duration-300`} />
             </div>
             <span className={`${
-              showResidence ? "text-gray-800" : "text-gray-800"
-            } font-medium whitespace-nowrap transition-all duration-300`}>
+              showResidence ? "text-gray-800" : "text-gray-800"}`
+            }>
               Résidence
             </span>
           </button>
@@ -966,41 +1189,33 @@ export default function Interface({ user }) {
 
       {/* === GOOGLE MAPS - AVEC POLYGON ANDABOLY ET TOUS LES ÉLÉMENTS GOOGLE MAPS VISIBLES === */}
       <div className="absolute inset-0 z-0">
-        <LoadScript googleMapsApiKey="AIzaSyD8i3HLU5QEmr4XIkYq3yH8XrzptRrSND8">
+        <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_KEY || "AIza..."} >
           <GoogleMap
             mapContainerStyle={containerStyle}
-            center={ANDABOLY_CENTER} // Centré sur Andaboly par défaut
-            zoom={14} // Zoom optimal pour voir le quartier
+            center={fokontanyCenter || ANDABOLY_CENTER}
+            zoom={fokontanyCenter ? 14 : 14}
+            // assurer que le mapTypeId reflète l'état (hybrid pour satellite)
+            mapTypeId={mapType === "satellite" ? "hybrid" : "roadmap"}
             onLoad={onMapLoad}
             options={getMapOptions()}
             onClick={handleMapClick}
           >
             {/* === POLYGON DU FONKOTANY ANDABOLY - AGRANDI ET PLUS VISIBLE === */}
-            {/* AFFICHER LE POLYGON SEULEMENT EN MODE SÉLECTION */}
-            {isSelectingLocation && (
+            {/* Afficher le polygon actif (fokontany assigné ou fallback) */}
+            {activePolygon && activePolygon.length > 0 && (
               <Polygon
-                paths={ANDABOLY_POLYGON}
+                paths={activePolygon}
                 options={polygonOptions}
                 onMouseOver={handlePolygonMouseOver}
                 onMouseOut={handlePolygonMouseOut}
-                // CORRECTION : Le polygon n'est PAS cliquable - les clics passent à travers
                 clickable={false}
               />
             )}
 
-            {/* Marqueur pour l'emplacement sélectionné */}
             {selectedLocation && (
               <Marker
                 position={selectedLocation}
-                icon={{
-                  url: 'data:image/svg+xml;base64,' + btoa(`
-                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M16 2C11.58 2 8 5.58 8 10C8 17 16 30 16 30C16 30 24 17 24 10C24 5.58 20.42 2 16 2Z" fill="#10B981"/>
-                      <circle cx="16" cy="10" r="3" fill="white"/>
-                    </svg>
-                  `),
-                  scaledSize: new window.google.maps.Size(32, 32),
-                }}
+                icon={markerIcon}
               />
             )}
           </GoogleMap>
@@ -1017,3 +1232,65 @@ export default function Interface({ user }) {
     </div>
   );
 }
+
+/* NOUVEAU : normalisation robuste des coordonnées GeoJSON/arrays/strings
+   Retourne null ou un array [{lat,lng}, ...] */
+const normalizeCoordinates = (input) => {
+  try {
+    if (!input) return null;
+
+    let data = input;
+    if (typeof input === "string") {
+      try { data = JSON.parse(input); } catch (e) { /* keep raw string */ }
+    }
+
+    // FeatureCollection -> take first feature with geometry
+    if (data && data.type === "FeatureCollection" && Array.isArray(data.features)) {
+      const f = data.features.find(ft => ft && ft.geometry && ft.geometry.coordinates);
+      if (f) data = f.geometry.coordinates;
+    }
+
+    // Feature -> geometry.coordinates
+    if (data && data.type === "Feature" && data.geometry && data.geometry.coordinates) {
+      data = data.geometry.coordinates;
+    }
+
+    // object with geometry property
+    if (data && data.geometry && data.geometry.coordinates) {
+      data = data.geometry.coordinates;
+    }
+
+    // find a ring of [lng,lat] pairs inside nested arrays
+    const findRing = (d) => {
+      if (!Array.isArray(d) || d.length === 0) return null;
+      // MultiPolygon: [ [ [ [lng,lat], ... ] ] ] -> d[0][0][0]
+      if (Array.isArray(d[0]) && Array.isArray(d[0][0]) && Array.isArray(d[0][0][0])) return d[0][0];
+      // Polygon or MultiRing: [ [ [lng,lat], ... ] ] or [ [lng,lat], ... ] -> prefer first ring
+      if (Array.isArray(d[0]) && Array.isArray(d[0][0]) && typeof d[0][0][0] === "number") return d[0];
+      // Direct ring: [ [lng,lat], ... ]
+      if (Array.isArray(d[0]) && typeof d[0][0] === "number" && typeof d[0][1] === "number") return d;
+      // recurse
+      for (const el of d) {
+        const candidate = findRing(el);
+        if (candidate) return candidate;
+      }
+      return null;
+    };
+
+    const ring = findRing(data);
+    if (!ring) return null;
+
+    const out = ring.map(p => {
+      if (!Array.isArray(p) || p.length < 2) return null;
+      const lng = Number(p[0]);
+      const lat = Number(p[1]);
+      if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+      return { lat, lng };
+    }).filter(Boolean);
+
+    return out.length ? out : null;
+  } catch (err) {
+    console.warn('[FOK] normalizeCoordinates error', err);
+    return null;
+  }
+};

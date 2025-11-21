@@ -16,6 +16,9 @@ import {
   RefreshCw
 } from 'lucide-react';
 
+// base API pour Vite
+const API_BASE = import.meta.env.VITE_API_BASE || '';
+
 const AdminPanel = ({ onLogout, currentUser }) => {
   const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState([]);
@@ -41,7 +44,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/users', {
+      const response = await fetch(`${API_BASE}/api/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -64,12 +67,12 @@ const AdminPanel = ({ onLogout, currentUser }) => {
       const token = localStorage.getItem('token');
       
       // Récupérer les demandes de réinitialisation
-      const resetResponse = await fetch('http://localhost:5000/api/auth/reset-requests', {
+      const resetResponse = await fetch(`${API_BASE}/api/auth/reset-requests`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       // Récupérer les demandes de changement de mot de passe
-      const changeResponse = await fetch('http://localhost:5000/api/auth/password-change-requests', {
+      const changeResponse = await fetch(`${API_BASE}/api/auth/password-change-requests`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -99,7 +102,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/auth/approve-reset', {
+      const response = await fetch(`${API_BASE}/api/auth/approve-reset`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -139,7 +142,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/auth/approve-password-change', {
+      const response = await fetch(`${API_BASE}/api/auth/approve-password-change`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -178,7 +181,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+      const response = await fetch(`${API_BASE}/api/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -216,7 +219,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+      const response = await fetch(`${API_BASE}/api/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -245,48 +248,40 @@ const AdminPanel = ({ onLogout, currentUser }) => {
   // FONCTION POUR CRÉER UN NOUVEL UTILISATEUR
   const handleCreateUser = async (e) => {
     e.preventDefault();
-    
     if (!newUser.immatricule.trim() || !newUser.nom_complet.trim()) {
-      alert('Veuillez remplir tous les champs');
+      alert('Immatricule et nom complet requis');
       return;
     }
-
     setLoading(true);
-
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/users', {
+      const payload = {
+        immatricule: newUser.immatricule.trim(),
+        nom_complet: newUser.nom_complet.trim(),
+        role: newUser.role,
+        fokontany_code: newUser.fokontany_code ? newUser.fokontany_code.trim() : null
+      };
+      const res = await fetch(`${API_BASE}/api/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          Authorization: token ? 'Bearer ' + token : ''
         },
-        body: JSON.stringify({
-          immatricule: newUser.immatricule.trim(),
-          nom_complet: newUser.nom_complet.trim(),
-          role: newUser.role
-        })
+        body: JSON.stringify(payload)
       });
-
-      if (response.status === 401) {
-        alert('Session expirée. Veuillez vous reconnecter.');
-        onLogout();
-        return;
-      }
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert(`✅ Utilisateur créé avec succès!\n\nUsername: ${data.user.username}\nMot de passe: ${data.user.password}\n\nNotez bien ces informations !`);
-        setShowUserForm(false);
-        setNewUser({ immatricule: '', nom_complet: '', role: 'agent' });
-        fetchUsers();
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = data.message || data.error || 'Erreur création utilisateur';
+        alert(msg);
       } else {
-        alert(data.message || 'Erreur lors de la création');
+        setShowUserForm(false);
+        setNewUser({ immatricule: '', nom_complet: '', role: 'agent', fokontany_code: '' });
+        fetchUsers();
+        alert('Utilisateur créé. Mot de passe retourné : ' + (data.user?.password || '—'));
       }
-    } catch (error) {
-      console.error('Erreur création utilisateur:', error);
-      alert('Erreur de connexion au serveur');
+    } catch (err) {
+      console.error('create user error', err);
+      alert('Erreur serveur lors de la création');
     } finally {
       setLoading(false);
     }
@@ -717,6 +712,20 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                   <option value="secretaire">Secrétaire</option>
                   <option value="admin">Administrateur</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Code Fokontany (optionnel)
+                </label>
+                <input
+                  type="text"
+                  value={newUser.fokontany_code || ''}
+                  onChange={(e) => setNewUser({...newUser, fokontany_code: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Ex: TSIMENATSE_001"
+                />
+                <p className="text-xs text-slate-400 mt-1">Si l'utilisateur est un agent/secrétaire, renseignez le code du fokontany auquel il appartient.</p>
               </div>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-blue-700 text-sm">

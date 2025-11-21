@@ -44,8 +44,7 @@ class AuthController {
                 return res.status(400).json({ message: 'Username et password requis' });
             }
 
-            // Utiliser la nouvelle méthode qui inclut les données du fokontany
-            const user = await User.findByUsernameWithFokontany(username);
+            const user = await User.findByUsername(username);
 
             if (!user) {
                 return res.status(401).json({ message: 'Identifiants invalides' });
@@ -58,26 +57,31 @@ class AuthController {
             }
 
             const token = jwt.sign(
-                { 
-                  id: user.id, 
-                  username: user.username, 
-                  role: user.role,
-                  fokontany_id: user.fokontany_id 
-                },
+                { id: user.id, username: user.username, role: user.role },
                 process.env.JWT_SECRET || 'sigap_secret',
                 { expiresIn: '24h' }
             );
 
-            // Préparer les données du fokontany pour la réponse
-            let fokontanyData = null;
-            if (user.fokontany_coordinates) {
-                fokontanyData = {
-                    id: user.fokontany_id,
-                    nom: user.fokontany_nom,
-                    coordinates: JSON.parse(user.fokontany_coordinates),
-                    centre_lat: user.fokontany_centre_lat,
-                    centre_lng: user.fokontany_centre_lng
-                };
+            // Récupérer le fokontany associé si présent
+            let fokontany = null;
+            if (user.fokontany_id) {
+                const q = 'SELECT id, code, nom, commune, district, region, geometry_type, coordinates, centre_lat, centre_lng, type, source FROM fokontany WHERE id = ? LIMIT 1';
+                const results = await new Promise((resolve, reject) => {
+                    connection.query(q, [user.fokontany_id], (err, rows) => {
+                        if (err) reject(err);
+                        else resolve(rows);
+                    });
+                });
+
+                if (results && results.length > 0) {
+                    const f = results[0];
+                    try {
+                      f.coordinates = JSON.parse(f.coordinates);
+                    } catch (e) {
+                      // keep original if not JSON
+                    }
+                    fokontany = f;
+                }
             }
 
             res.json({
@@ -90,8 +94,7 @@ class AuthController {
                     username: user.username,
                     role: user.role,
                     photo: user.photo,
-                    fokontany_id: user.fokontany_id,
-                    fokontany: fokontanyData
+                    fokontany: fokontany // peut être null
                 }
             });
         } catch (error) {

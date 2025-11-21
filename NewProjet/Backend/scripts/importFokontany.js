@@ -1,158 +1,128 @@
-const { connection } = require('../config/database');
 const fs = require('fs');
 const path = require('path');
+const { connection } = require('../config/database');
 
-class FokontanyImporter {
-  static async importFromGeoJSON() {
+async function importFromGeoJSON() {
+  const filePath = path.join(__dirname, '..', 'toliara-I-fokontany-exclusif.json');
+  if (!fs.existsSync(filePath)) throw new Error('Fichier JSON introuvable: ' + filePath);
+
+  const raw = fs.readFileSync(filePath, 'utf8');
+  const cleaned = raw.replace(/\/\/.*\n/g, ''); // enlever commentaires JS éventuels
+  const geo = JSON.parse(cleaned);
+
+  if (!geo.features || !Array.isArray(geo.features)) {
+    throw new Error('Format GeoJSON invalide');
+  }
+
+  let inserted = 0;
+  const skipped = [];
+
+  for (const feat of geo.features) {
+    const props = feat.properties || {};
+    const geom = feat.geometry || {};
+    const code = props.shapeName || props.name || props.shapeID || props.code || null;
+    const nom = props.name || props.shapeName || 'Inconnu';
+    const geometry_type = geom.type || null;
+    let coords = geom.coordinates || null;
+
+    let coordsString = null;
+    let centre_lat = null;
+    let centre_lng = null;
+
     try {
-      const geoDataPath = path.join(__dirname, '../toliara-I-fokontany-exclusif.json');
-      
-      if (!fs.existsSync(geoDataPath)) {
-        throw new Error('Fichier toliara-I-fokontany-exclusif.json non trouvé');
-      }
-      
-      const geoData = JSON.parse(fs.readFileSync(geoDataPath, 'utf8'));
-      
-      console.log(`Import de ${geoData.features.length} fokontany...`);
-      
-      let importedCount = 0;
-      let errorCount = 0;
-
-      for (const feature of geoData.features) {
-        try {
-          const { properties, geometry } = feature;
-          
-          // Calcul du centre du polygon
-          const centre = this.calculatePolygonCenter(geometry.coordinates);
-          
-          const fokontanyData = {
-            code: properties.shapeID || properties.id,
-            nom: properties.name,
-            commune: 'Toliara I',
-            district: 'Toliara I',
-            region: 'Atsimo-Andrefana',
-            geometry_type: geometry.type,
-            coordinates: JSON.stringify(geometry.coordinates),
-            centre_lat: centre.lat,
-            centre_lng: centre.lng,
-            type: 'fokontany',
-            source: 'toliara-I-fokontany-exclusif.json'
-          };
-
-          await this.insertFokontany(fokontanyData);
-          importedCount++;
-          
-        } catch (error) {
-          console.error(`Erreur import fokontany ${properties.name}:`, error.message);
-          errorCount++;
+      if (coords && Array.isArray(coords)) {
+        // Normaliser pour obtenir un anneau de points [ [lng,lat], ... ]
+        let ring = null;
+        if (Array.isArray(coords[0]) && Array.isArray(coords[0][0])) {
+          // Polygon like: [ [ [lng,lat], ... ], ... ]
+          ring = coords[0][0] || coords[0];
+        } else if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
+          // already a ring: [[lng,lat], ...]
+          ring = coords;
+        } else {
+          // essayer d'aplatir et regrouper par paires numériques
+          const nums = [];
+          (function walk(a) {
+            if (!Array.isArray(a)) return;
+            for (const v of a) {
+              if (Array.isArray(v)) walk(v);
+              else if (typeof v === 'number') nums.push(v);
+            }
+          })(coords);
+          const flat = [];
+          for (let i = 0; i + 1 < nums.length; i += 2) flat.push([nums[i], nums[i + 1]]);
+          if (flat.length) ring = flat;
         }
-      }
-      
-      console.log(`✅ Import terminé: ${importedCount} succès, ${errorCount} erreurs`);
-      return { imported: importedCount, errors: errorCount };
-      
-    } catch (error) {
-      console.error('Erreur import géodonnées:', error);
-      throw error;
-    }
-  }
 
-  static calculatePolygonCenter(coordinates) {
+        if (ring && Array.isArray(ring) && ring.length > 0) {
+          const normalized = [];
+          let sumLat = 0, sumLng = 0, count = 0;
+          for (const p of ring) {
+            if (Array.isArray(p) && p.length >= 2) {
+              const lng = parseFloat(p[0]);
+              const lat = parseFloat(p[1]);
+              if (!isNaN(lat) && !isNaN(lng)) {
+                normalized.push([lng, lat]);
+                sumLat += lat; sumLng += lng; count++;
+              }
+            }
+          }
+          if (normalized.length > 0) {
+            // stocker comme polygon standard [ [ [lng,lat], ... ] ]
+            coords = [[normalized]];
+            coordsString = JSON.stringify(coords);
+            centre_lat = count ? (sumLat / count) : null;
+            centre_lng = count ? (sumLng / count) : null;
+          } else {
+            coords = null;
+          }
+        } else {
+          coords = null;
+        }
+      } else {
+        coords = null;
+      }
+    } catch (err) {
+      console.warn('normalisation coords failed for', code, err);
+      coords = null;
+    }
+
+    if (!code) {
+      skipped.push({ reason: 'no_code', name: nom });
+      continue;
+    }
+
+    const insertQuery = `
+      INSERT INTO fokontany (code, nom, commune, district, region, geometry_type, coordinates, centre_lat, centre_lng, type, source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE nom = VALUES(nom), commune = VALUES(commune), geometry_type = VALUES(geometry_type), coordinates = VALUES(coordinates), centre_lat = VALUES(centre_lat), centre_lng = VALUES(centre_lng), updated_at = CURRENT_TIMESTAMP
+    `;
+    const values = [
+      code,
+      nom,
+      props.commune || null,
+      props.district || null,
+      geo.metadata?.region || props.region || 'Toliara I',
+      geometry_type,
+      coordsString,
+      centre_lat,
+      centre_lng,
+      'fokontany',
+      'imported'
+    ];
+
     try {
-      // Pour un Polygon, coordinates[0] contient les points extérieurs
-      const points = coordinates[0];
-      let sumLat = 0;
-      let sumLng = 0;
-      
-      for (const point of points) {
-        sumLng += point[0];
-        sumLat += point[1];
-      }
-      
-      return {
-        lat: sumLat / points.length,
-        lng: sumLng / points.length
-      };
-    } catch (error) {
-      // Retourner un centre par défaut de Toliara en cas d'erreur
-      return { lat: -23.35, lng: 43.67 };
+      await new Promise((resolve, reject) => {
+        connection.query(insertQuery, values, (err) => err ? reject(err) : resolve());
+      });
+      inserted++;
+    } catch (err) {
+      console.error('Erreur insert fokontany', code, err.message || err);
+      skipped.push({ reason: 'db_error', code, error: err.message || String(err) });
     }
   }
 
-  static insertFokontany(fokontanyData) {
-    return new Promise((resolve, reject) => {
-      const query = `
-        INSERT INTO fokontany (code, nom, commune, district, region, geometry_type, coordinates, centre_lat, centre_lng, type, source)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-          nom = VALUES(nom),
-          coordinates = VALUES(coordinates),
-          centre_lat = VALUES(centre_lat),
-          centre_lng = VALUES(centre_lng),
-          updated_at = CURRENT_TIMESTAMP
-      `;
-      
-      connection.query(query, [
-        fokontanyData.code,
-        fokontanyData.nom,
-        fokontanyData.commune,
-        fokontanyData.district,
-        fokontanyData.region,
-        fokontanyData.geometry_type,
-        fokontanyData.coordinates,
-        fokontanyData.centre_lat,
-        fokontanyData.centre_lng,
-        fokontanyData.type,
-        fokontanyData.source
-      ], (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
-      });
-    });
-  }
-
-  static async getFokontanyByName(nom) {
-    return new Promise((resolve, reject) => {
-      const query = 'SELECT * FROM fokontany WHERE nom = ?';
-      connection.query(query, [nom], (err, results) => {
-        if (err) reject(err);
-        else resolve(results[0]);
-      });
-    });
-  }
-
-  static async getAllFokontanyNames() {
-    return new Promise((resolve, reject) => {
-      const query = 'SELECT id, nom FROM fokontany ORDER BY nom';
-      connection.query(query, (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
-      });
-    });
-  }
-
-  static async getFokontanyById(id) {
-    return new Promise((resolve, reject) => {
-      const query = 'SELECT * FROM fokontany WHERE id = ?';
-      connection.query(query, [id], (err, results) => {
-        if (err) reject(err);
-        else resolve(results[0]);
-      });
-    });
-  }
+  return { inserted, skipped };
 }
 
-// Exécuter si appelé directement
-if (require.main === module) {
-  FokontanyImporter.importFromGeoJSON()
-    .then(result => {
-      console.log('Import terminé:', result);
-      process.exit(0);
-    })
-    .catch(error => {
-      console.error('Erreur import:', error);
-      process.exit(1);
-    });
-}
-
-module.exports = FokontanyImporter;
+module.exports = { importFromGeoJSON };
