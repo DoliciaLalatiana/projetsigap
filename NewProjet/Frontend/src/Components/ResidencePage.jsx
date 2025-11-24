@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Home,
   Users,
@@ -20,378 +20,16 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-// Données mockées COMPLÈTES pour les résidences
-const mockResidences = [
-  {
-    id: 1,
-    name: "Résidence Les Jardins",
-    photos: [
-      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1513584684374-8bab748fbf90?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1574362848149-11496d93a7c7?w=400&h=300&fit=crop"
-    ],
-    lot: "Lot 123A",
-    quartier: "Analakely",
-    ville: "Antananarivo",
-    proprietaire: "Jean Dupont",
-    totalResidents: 24,
-    hommes: 14,
-    femmes: 10,
-    adresse: "123 Avenue de la Liberté, Antananarivo",
-    telephone: "0341234567",
-    email: "j.dupont@email.com",
-    latitude: -18.9136896,
-    longitude: 47.5494648,
-    status: "active",
-    dateCreation: "2023-01-15",
-    residents: [
-      {
-        id: 1,
-        nomComplet: "Marie Lambert",
-        dateNaissance: "1995-05-15",
-        cin: "123456789012",
-        genre: "femme",
-        telephone: "0341111111"
-      },
-      {
-        id: 2,
-        nomComplet: "Pierre Durand",
-        dateNaissance: "1991-08-22",
-        cin: "123456789013",
-        genre: "homme",
-        telephone: "0341111112"
-      },
-      {
-        id: 3,
-        nomComplet: "Sophie Martin",
-        dateNaissance: "2008-03-10",
-        genre: "femme",
-        telephone: "0341111113"
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: "Résidence du Lac",
-    photos: [
-      "https://images.unsplash.com/photo-1513584684374-8bab748fbf90?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
-    ],
-    lot: "Lot 456B",
-    quartier: "Isoraka",
-    ville: "Antananarivo",
-    proprietaire: "Sarah Johnson",
-    totalResidents: 18,
-    hommes: 8,
-    femmes: 10,
-    adresse: "456 Rue des Fleurs, Antananarivo",
-    telephone: "0331234567",
-    email: "s.johnson@email.com",
-    latitude: -18.91,
-    longitude: 47.552,
-    status: "active",
-    dateCreation: "2023-03-20",
-    residents: [
-      {
-        id: 1,
-        nomComplet: "David Wilson",
-        dateNaissance: "1992-12-05",
-        cin: "123456789017",
-        genre: "homme",
-        telephone: "0341111117"
-      },
-      {
-        id: 2,
-        nomComplet: "Emma Brown",
-        dateNaissance: "1996-04-20",
-        cin: "123456789018",
-        genre: "femme",
-        telephone: "0341111118"
-      },
-    ],
-  },
-  {
-    id: 3,
-    name: "Résidence Belle Vue",
-    photos: [
-      "https://images.unsplash.com/photo-1574362848149-11496d93a7c7?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
-    ],
-    lot: "Lot 789C",
-    quartier: "Andraharo",
-    ville: "Antananarivo",
-    proprietaire: "Michel Ravel",
-    totalResidents: 32,
-    hommes: 18,
-    femmes: 14,
-    adresse: "789 Boulevard de l'Indépendance, Antananarivo",
-    telephone: "0321234567",
-    email: "m.ravel@email.com",
-    latitude: -18.908,
-    longitude: 47.551,
-    status: "active",
-    dateCreation: "2023-02-10",
-    residents: [
-      {
-        id: 1,
-        nomComplet: "Catherine Leroy",
-        dateNaissance: "1988-07-15",
-        cin: "123456789020",
-        genre: "femme",
-        telephone: "0341111120"
-      },
-    ],
-  },
-  {
-    id: 4,
-    name: "Résidence Le Parc",
-    photos: [
-      "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
-    ],
-    lot: "Lot 321D",
-    quartier: "Ankadifotsy",
-    ville: "Antananarivo",
-    proprietaire: "Robert Martin",
-    totalResidents: 22,
-    hommes: 12,
-    femmes: 10,
-    adresse: "321 Rue des Roses, Antananarivo",
-    telephone: "0345678901",
-    email: "r.martin@email.com",
-    latitude: -18.905,
-    longitude: 47.553,
-    status: "active",
-    dateCreation: "2023-04-05",
-    residents: [
-      {
-        id: 1,
-        nomComplet: "Lucie Bernard",
-        dateNaissance: "1993-11-20",
-        cin: "123456789021",
-        genre: "femme",
-        telephone: "0341111121"
-      },
-    ],
-  },
-  {
-    id: 5,
-    name: "Résidence Les Oliviers",
-    photos: [
-      "https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
-    ],
-    lot: "Lot 654E",
-    quartier: "Ivandry",
-    ville: "Antananarivo",
-    proprietaire: "Sophie Laurent",
-    totalResidents: 16,
-    hommes: 7,
-    femmes: 9,
-    adresse: "654 Avenue des Palmiers, Antananarivo",
-    telephone: "0334567890",
-    email: "s.laurent@email.com",
-    latitude: -18.907,
-    longitude: 47.548,
-    status: "active",
-    dateCreation: "2023-05-12",
-    residents: [
-      {
-        id: 1,
-        nomComplet: "Nicolas Dubois",
-        dateNaissance: "1988-09-15",
-        cin: "123456789022",
-        genre: "homme",
-        telephone: "0341111122"
-      },
-    ],
-  },
-  {
-    id: 6,
-    name: "Résidence Les Roses",
-    photos: [
-      "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
-    ],
-    lot: "Lot 987F",
-    quartier: "Ambohijatovo",
-    ville: "Antananarivo",
-    proprietaire: "Paul Lefevre",
-    totalResidents: 28,
-    hommes: 15,
-    femmes: 13,
-    adresse: "987 Rue des Jacarandas, Antananarivo",
-    telephone: "0347890123",
-    email: "p.lefevre@email.com",
-    latitude: -18.904,
-    longitude: 47.555,
-    status: "active",
-    dateCreation: "2023-06-18",
-    residents: [
-      {
-        id: 1,
-        nomComplet: "Julie Moreau",
-        dateNaissance: "1990-03-25",
-        cin: "123456789023",
-        genre: "femme",
-        telephone: "0341111123"
-      },
-    ],
-  },
-  {
-    id: 7,
-    name: "Résidence Le Chêne",
-    photos: [
-      "https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
-    ],
-    lot: "Lot 147G",
-    quartier: "Anosy",
-    ville: "Antananarivo",
-    proprietaire: "Marc Dubois",
-    totalResidents: 20,
-    hommes: 11,
-    femmes: 9,
-    adresse: "147 Avenue des Baobabs, Antananarivo",
-    telephone: "0336789012",
-    email: "m.dubois@email.com",
-    latitude: -18.902,
-    longitude: 47.557,
-    status: "active",
-    dateCreation: "2023-07-22",
-    residents: [
-      {
-        id: 1,
-        nomComplet: "Thomas Petit",
-        dateNaissance: "1985-12-10",
-        cin: "123456789024",
-        genre: "homme",
-        telephone: "0341111124"
-      },
-    ],
-  },
-  {
-    id: 8,
-    name: "Résidence Les Palmiers",
-    photos: [
-      "https://images.unsplash.com/photo-1558036117-15e82a2c9a9a?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
-    ],
-    lot: "Lot 258H",
-    quartier: "Mahamasina",
-    ville: "Antananarivo",
-    proprietaire: "Laura Martin",
-    totalResidents: 26,
-    hommes: 14,
-    femmes: 12,
-    adresse: "258 Boulevard de la Mer, Antananarivo",
-    telephone: "0323456789",
-    email: "l.martin@email.com",
-    latitude: -18.899,
-    longitude: 47.554,
-    status: "active",
-    dateCreation: "2023-08-30",
-    residents: [
-      {
-        id: 1,
-        nomComplet: "Alexandre Roy",
-        dateNaissance: "1994-06-18",
-        cin: "123456789025",
-        genre: "homme",
-        telephone: "0341111125"
-      },
-    ],
-  },
-  {
-    id: 9,
-    name: "Résidence Le Jardin",
-    photos: [
-      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1513584684374-8bab748fbf90?w=400&h=300&fit=crop"
-    ],
-    lot: "Lot 369I",
-    quartier: "Antanimena",
-    ville: "Antananarivo",
-    proprietaire: "Eric Bernard",
-    totalResidents: 19,
-    hommes: 10,
-    femmes: 9,
-    adresse: "369 Rue des Orchidées, Antananarivo",
-    telephone: "0349012345",
-    email: "e.bernard@email.com",
-    latitude: -18.896,
-    longitude: 47.552,
-    status: "active",
-    dateCreation: "2023-09-15",
-    residents: [
-      {
-        id: 1,
-        nomComplet: "Sandrine Leroy",
-        dateNaissance: "1991-02-14",
-        cin: "123456789026",
-        genre: "femme",
-        telephone: "0341111126"
-      },
-    ],
-  },
-  {
-    id: 10,
-    name: "Résidence La Fontaine",
-    photos: [
-      "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop"
-    ],
-    lot: "Lot 741J",
-    quartier: "Besarety",
-    ville: "Antananarivo",
-    proprietaire: "Denis Morel",
-    totalResidents: 24,
-    hommes: 13,
-    femmes: 11,
-    adresse: "741 Avenue des Lilas, Antananarivo",
-    telephone: "0331234567",
-    email: "d.morel@email.com",
-    latitude: -18.893,
-    longitude: 47.549,
-    status: "active",
-    dateCreation: "2023-10-20",
-    residents: [
-      {
-        id: 1,
-        nomComplet: "Patrick Simon",
-        dateNaissance: "1987-08-30",
-        cin: "123456789027",
-        genre: "homme",
-        telephone: "0341111127"
-      },
-    ],
-  },
-];
-
-// Fonction utilitaire pour calculer l'âge
-const calculerAge = (dateNaissance) => {
-  const today = new Date();
-  const birthDate = new Date(dateNaissance);
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  
-  return age;
-};
-
-// Fonction utilitaire pour vérifier si majeur
-const estMajeur = (dateNaissance) => {
-  return calculerAge(dateNaissance) >= 18;
-};
+const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
+  // residences list - initialiser avec un tableau vide au lieu des mocks
+  const [resList, setResList] = useState([]);
   const [selectedResidence, setSelectedResidence] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedResidents, setEditedResidents] = useState([]);
+  const [origResidentsBeforeEdit, setOrigResidentsBeforeEdit] = useState([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("name");
   const [expandedResidence, setExpandedResidence] = useState(null);
@@ -403,11 +41,305 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
     dateNaissance: "",
     cin: "",
     genre: "homme",
-    telephone: ""
+    telephone: "",
+    relation_type: "",
+    is_proprietaire: false,
+    parent_id: null
   });
 
-  const handleViewDetails = (residence) => {
-    setSelectedResidence(residence);
+  // LOAD residences from backend on mount - version corrigée
+  useEffect(() => {
+    let mounted = true;
+    const fetchResidences = async () => {
+      try {
+        const resp = await fetch(`${API_BASE}/api/residences`);
+        if (!resp.ok) {
+          console.warn('Erreur lors du chargement des résidences');
+          setResList([]); // Assurer que la liste est vide en cas d'erreur
+          return;
+        }
+        const rows = await resp.json();
+        
+        // Normaliser les données - s'assurer que photos est toujours un tableau
+        const normalized = (rows || []).map(r => ({
+          id: r.id,
+          name: r.name || r.lot || `Lot ${r.id}`,
+          photos: Array.isArray(r.photos) 
+            ? r.photos
+                .filter(photo => photo && photo.trim() !== '')
+                .map(photo => {
+                  // Si c'est un objet avec une propriété url
+                  if (typeof photo === 'object' && photo.url) {
+                    return photo.url.startsWith('http') 
+                      ? photo.url 
+                      : `${API_BASE}${photo.url.startsWith('/') ? '' : '/'}${photo.url}`;
+                  }
+                  // Si c'est une chaîne simple
+                  if (typeof photo === 'string') {
+                    return photo.startsWith('http') 
+                      ? photo 
+                      : `${API_BASE}${photo.startsWith('/') ? '' : '/'}${photo}`;
+                  }
+                  return photo;
+                })
+            : [],
+          lot: r.lot || '',
+          quartier: r.quartier || '',
+          ville: r.ville || '',
+          proprietaire: r.proprietaire || '',
+          totalResidents: r.total_residents || 0,
+          hommes: r.hommes || 0,
+          femmes: r.femmes || 0,
+          adresse: r.adresse || `${r.quartier || ''} ${r.ville || ''}`.trim(),
+          telephone: r.telephone || '',
+          email: r.email || '',
+          latitude: r.lat || r.latitude || null,
+          longitude: r.lng || r.longitude || null,
+          status: r.status || 'active',
+          dateCreation: r.created_at || r.dateCreation || null,
+          residents: [] // loaded on demand
+        }));
+        
+        if (mounted) {
+          setResList(normalized);
+        }
+      } catch (e) {
+        console.warn('fetchResidences error', e);
+        // En cas d'erreur, on garde une liste vide au lieu des mocks
+        if (mounted) {
+          setResList([]);
+        }
+      }
+    };
+    fetchResidences();
+    return () => { mounted = false; };
+  }, []);
+
+  // helper headers with possible token
+  const getHeaders = () => {
+    const token = localStorage.getItem('token');
+    return token ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } : { 'Content-Type': 'application/json' };
+  };
+  
+  // ref for hidden file input (image chooser)
+  const photoInputRef = useRef(null);
+
+  // Residence info edit state (lot/quartier/ville)
+  const [isEditingResidenceInfo, setIsEditingResidenceInfo] = useState(false);
+  const [resInfoDraft, setResInfoDraft] = useState({ lot: '', quartier: '', ville: '' });
+
+  const startEditResidenceInfo = () => {
+    if (!selectedResidence) return;
+    setResInfoDraft({
+      lot: selectedResidence.lot || '',
+      quartier: selectedResidence.quartier || '',
+      ville: selectedResidence.ville || ''
+    });
+    setIsEditingResidenceInfo(true);
+  };
+
+  const cancelEditResidenceInfo = () => {
+    setIsEditingResidenceInfo(false);
+    setResInfoDraft({ lot: '', quartier: '', ville: '' });
+  };
+
+  const saveResidenceInfo = async () => {
+    if (!selectedResidence) return;
+    try {
+      const resp = await fetch(`${API_BASE}/api/residences/${selectedResidence.id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          lot: resInfoDraft.lot,
+          quartier: resInfoDraft.quartier,
+          ville: resInfoDraft.ville
+        })
+      });
+      if (!resp.ok) throw new Error('Erreur update residence');
+      const updated = await resp.json();
+      // update UI: selectedResidence and resList
+      setSelectedResidence(prev => ({ ...prev, ...updated }));
+      setResList(prev => prev.map(r => r.id === updated.id ? { ...r, ...updated } : r));
+      setIsEditingResidenceInfo(false);
+    } catch (err) {
+      console.warn('saveResidenceInfo error', err);
+      alert('Erreur lors de la mise à jour de la résidence');
+    }
+  };
+
+  const handleImageClick = () => {
+    if (!selectedResidence) return;
+    const photos = selectedResidence.photos || [];
+    if (!photos.length) {
+      // open file chooser to add images when none exist
+      if (photoInputRef.current) photoInputRef.current.click();
+      return;
+    }
+    // when photos exist do nothing (carousel controls already visible)
+  };
+
+  // Fonction pour charger les photos d'une résidence
+  const loadResidencePhotos = async (residenceId) => {
+    try {
+      const resp = await fetch(`${API_BASE}/api/residences/${residenceId}/photos`);
+      if (resp.ok) {
+        const photos = await resp.json();
+        return photos.map(photo => {
+          if (typeof photo === 'object' && photo.url) {
+            return photo.url.startsWith('http') 
+              ? photo.url 
+              : `${API_BASE}${photo.url.startsWith('/') ? '' : '/'}${photo.url}`;
+          }
+          return photo;
+        });
+      }
+    } catch (err) {
+      console.warn('Erreur chargement photos:', err);
+    }
+    return [];
+  };
+
+  const handlePhotoSelect = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !selectedResidence) return;
+
+    try {
+      const formData = new FormData();
+      files.forEach(file => {
+        formData.append('photos', file);
+      });
+
+      const resp = await fetch(`${API_BASE}/api/residences/${selectedResidence.id}/photos`, {
+        method: 'POST',
+        headers: localStorage.getItem('token') ? { 
+          Authorization: `Bearer ${localStorage.getItem('token')}` 
+        } : {},
+        body: formData
+      });
+
+      if (!resp.ok) {
+        const errorText = await resp.text();
+        console.warn('upload photos response not ok', resp.status, errorText);
+        throw new Error('Erreur upload photos');
+      }
+
+      const result = await resp.json();
+      
+      // CORRECTION : Mettre à jour les photos avec les URLs complètes
+      if (result.photos && result.photos.length > 0) {
+        const newPhotoUrls = result.photos.map(photo => {
+          // Si c'est déjà une URL complète, l'utiliser directement
+          if (photo.url.startsWith('http')) {
+            return photo.url;
+          }
+          // Sinon, construire l'URL complète
+          return `${API_BASE}${photo.url.startsWith('/') ? '' : '/'}${photo.url}`;
+        });
+
+        setSelectedResidence(prev => {
+          const updated = { 
+            ...prev, 
+            photos: [...(prev.photos || []), ...newPhotoUrls] 
+          };
+          setResList(list => list.map(r => r.id === updated.id ? { ...r, photos: updated.photos } : r));
+          return updated;
+        });
+      }
+    } catch (err) {
+      console.warn('handlePhotoSelect upload error', err);
+      alert('Erreur lors de l\'upload des photos');
+    } finally {
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    }
+  };
+
+  const handleDeletePhoto = async (photoIndex) => {
+    if (!selectedResidence || !selectedResidence.photos) return;
+
+    const photos = selectedResidence.photos;
+    const photoUrl = photos[photoIndex];
+    
+    try {
+      // Récupérer la liste des photos depuis le backend pour trouver l'ID
+      const photosResp = await fetch(`${API_BASE}/api/residences/${selectedResidence.id}/photos`);
+      if (photosResp.ok) {
+        const photosList = await photosResp.json();
+        
+        // Trouver la photo correspondante par son URL
+        const photoToDelete = photosList.find(p => {
+          const fullUrl = typeof p === 'object' && p.url 
+            ? (p.url.startsWith('http') 
+                ? p.url 
+                : `${API_BASE}${p.url.startsWith('/') ? '' : '/'}${p.url}`)
+            : p;
+          return fullUrl === photoUrl;
+        });
+        
+        if (photoToDelete) {
+          const deleteResp = await fetch(
+            `${API_BASE}/api/residences/${selectedResidence.id}/photos/${photoToDelete.id}`, 
+            {
+              method: 'DELETE',
+              headers: getHeaders()
+            }
+          );
+          
+          if (!deleteResp.ok) throw new Error('Erreur suppression photo');
+        }
+      }
+
+      // Mettre à jour l'interface
+      const updatedPhotos = photos.filter((_, index) => index !== photoIndex);
+      setSelectedResidence(prev => ({
+        ...prev,
+        photos: updatedPhotos
+      }));
+      
+      setResList(prev => prev.map(r => 
+        r.id === selectedResidence.id ? { ...r, photos: updatedPhotos } : r
+      ));
+      
+      // Ajuster l'index de la photo courante si nécessaire
+      if (currentPhotoIndex >= updatedPhotos.length) {
+        setCurrentPhotoIndex(Math.max(0, updatedPhotos.length - 1));
+      }
+      
+    } catch (err) {
+      console.warn('Erreur suppression photo:', err);
+      alert('Erreur lors de la suppression de la photo');
+    }
+  };
+
+  const handleViewDetails = async (residence) => {
+    try {
+      // Charger les photos
+      const photos = await loadResidencePhotos(residence.id);
+      
+      // Charger les résidents
+      const base = resList.find(r => r.id === residence.id) || residence;
+      const resp = await fetch(`${API_BASE}/api/persons?residence_id=${residence.id}`, { headers: getHeaders() });
+      const persons = resp.ok ? await resp.json() : (base.residents || []);
+      // ensure persons array shape matches UI (nomComplet, dateNaissance, cin, genre, telephone, id)
+      const normalizedPersons = (persons || []).map(p => ({
+        id: p.id,
+        nomComplet: p.nom_complet || p.nomComplet || '',
+        dateNaissance: p.date_naissance || p.dateNaissance || '',
+        cin: p.cin || p.cin || '',
+        genre: p.genre || p.genre || 'homme',
+        telephone: p.telephone || p.telephone || '',
+        relation_type: p.relation_type || '',
+        is_proprietaire: p.is_proprietaire || false
+      }));
+      
+      setSelectedResidence({ 
+        ...base, 
+        photos: photos, // Utiliser les photos chargées
+        residents: normalizedPersons 
+      });
+    } catch (e) {
+      console.warn('load persons error', e);
+      setSelectedResidence(residence);
+    }
     setCurrentPhotoIndex(0);
     setIsEditMode(false);
     setShowModal(true);
@@ -424,12 +356,15 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
       dateNaissance: "",
       cin: "",
       genre: "homme",
-      telephone: ""
+      telephone: "",
+      relation_type: "",
+      is_proprietaire: false,
+      parent_id: null
     });
   };
 
   const handleNextPhoto = () => {
-    if (selectedResidence && selectedResidence.photos) {
+    if (selectedResidence && selectedResidence.photos && selectedResidence.photos.length > 0) {
       setCurrentPhotoIndex((prev) => 
         prev === selectedResidence.photos.length - 1 ? 0 : prev + 1
       );
@@ -437,7 +372,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
   };
 
   const handlePrevPhoto = () => {
-    if (selectedResidence && selectedResidence.photos) {
+    if (selectedResidence && selectedResidence.photos && selectedResidence.photos.length > 0) {
       setCurrentPhotoIndex((prev) => 
         prev === 0 ? selectedResidence.photos.length - 1 : prev - 1
       );
@@ -457,59 +392,141 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
     window.location.href = "/";
   };
 
-  const handleSaveEdit = () => {
-    console.log("Sauvegarde des modifications:", editedResidents);
-    setIsEditMode(false);
-    setEditedResidents([]);
-    setNewResident({
-      nomComplet: "",
-      dateNaissance: "",
-      cin: "",
-      genre: "homme",
-      telephone: ""
-    });
+  // Save edited residents: sync to backend (updates, deletes)
+  const handleSaveEdit = async () => {
+    if (!selectedResidence) return;
+    try {
+      const original = origResidentsBeforeEdit || [];
+      const edited = editedResidents || [];
+
+      // deleted = in original but not in edited
+      const deleted = original.filter(o => !edited.some(e => e.id === o.id));
+
+      // to update: numeric ids that still exist and differ
+      const toUpdate = edited.filter(e => typeof e.id === 'number' && original.some(o => o.id === e.id));
+
+      // perform deletes
+      for (const d of deleted) {
+        if (typeof d.id === 'number') {
+          await fetch(`${API_BASE}/api/persons/${d.id}`, { method: 'DELETE', headers: getHeaders() });
+        }
+      }
+
+      // update existing
+      for (const u of toUpdate) {
+        const payload = {
+          nom_complet: u.nomComplet,
+          date_naissance: u.dateNaissance || null,
+          cin: u.cin || null,
+          genre: u.genre || 'homme',
+          telephone: u.telephone || null
+        };
+        await fetch(`${API_BASE}/api/persons/${u.id}`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(payload) });
+      }
+
+      // reload persons list for this residence
+      const resp = await fetch(`${API_BASE}/api/persons?residence_id=${selectedResidence.id}`, { headers: getHeaders() });
+      const persons = resp.ok ? await resp.json() : [];
+      const normalizedPersons = (persons || []).map(p => ({
+        id: p.id,
+        nomComplet: p.nom_complet || p.nomComplet || '',
+        dateNaissance: p.date_naissance || p.dateNaissance || '',
+        cin: p.cin || p.cin || '',
+        genre: p.genre || p.genre || 'homme',
+        telephone: p.telephone || p.telephone || '',
+        relation_type: p.relation_type || '',
+        is_proprietaire: p.is_proprietaire || false
+      }));
+      setSelectedResidence(prev => ({ ...prev, residents: normalizedPersons }));
+      setIsEditMode(false);
+      setEditedResidents([]);
+      setOrigResidentsBeforeEdit([]);
+    } catch (e) {
+      console.warn('handleSaveEdit error', e);
+      alert('Erreur lors de la sauvegarde des résidents');
+    }
   };
 
-  const handleAddResident = () => {
-    if (newResident.nomComplet && newResident.dateNaissance) {
-      const residentToAdd = {
-        id: Date.now(),
-        ...newResident
+  // Add resident -> POST immediately to backend and append returned person to editedResidents
+  const handleAddResident = async () => {
+    if (!selectedResidence) return;
+    if (!newResident.nomComplet || !newResident.dateNaissance) {
+      alert('Nom et date de naissance requis');
+      return;
+    }
+    try {
+      const payload = {
+        residence_id: selectedResidence.id,
+        nom_complet: newResident.nomComplet,
+        date_naissance: newResident.dateNaissance,
+        cin: newResident.cin || null,
+        genre: newResident.genre || 'homme',
+        telephone: newResident.telephone || null,
+        relation_type: newResident.relation_type || null,
+        is_proprietaire: newResident.is_proprietaire || false,
+        parent_id: newResident.parent_id || null
       };
-      setEditedResidents([...editedResidents, residentToAdd]);
-      setNewResident({
-        nomComplet: "",
-        dateNaissance: "",
-        cin: "",
-        genre: "homme",
-        telephone: ""
+      const resp = await fetch(`${API_BASE}/api/persons`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(payload)
       });
+      if (!resp.ok) {
+        const body = await resp.text().catch(()=>'');
+        console.warn('create person failed', resp.status, body);
+        throw new Error('Erreur création personne');
+      }
+      const created = await resp.json();
+      const person = {
+        id: created.id,
+        nomComplet: created.nom_complet || newResident.nomComplet,
+        dateNaissance: created.date_naissance || newResident.dateNaissance,
+        cin: created.cin || newResident.cin || '',
+        genre: created.genre || newResident.genre || 'homme',
+        telephone: created.telephone || newResident.telephone || '',
+        relation_type: created.relation_type || newResident.relation_type || '',
+        is_proprietaire: created.is_proprietaire || newResident.is_proprietaire || false
+      };
+      setEditedResidents(prev => [...prev, person]);
+      // also update selectedResidence.residents for immediate view
+      setSelectedResidence(prev => ({ ...(prev || {}), residents: [...(prev?.residents || []), person] }));
+      setNewResident({ 
+        nomComplet: "", 
+        dateNaissance: "", 
+        cin: "", 
+        genre: "homme", 
+        telephone: "",
+        relation_type: "",
+        is_proprietaire: false,
+        parent_id: null
+      });
+    } catch (err) {
+      console.warn('handleAddResident error', err);
+      alert('Erreur ajout personne');
     }
   };
 
   const handleRemoveResident = (residentId) => {
-    setEditedResidents(
-      editedResidents.filter((resident) => resident.id !== residentId)
-    );
+    setEditedResidents(prev => prev.filter((resident) => resident.id !== residentId));
   };
 
   const handleResidentChange = (residentId, field, value) => {
-    setEditedResidents(
-      editedResidents.map((resident) =>
-        resident.id === residentId ? { ...resident, [field]: value } : resident
-      )
-    );
+    setEditedResidents(prev => prev.map((resident) =>
+      resident.id === residentId ? { ...resident, [field]: value } : resident
+    ));
   };
 
   const handleNewResidentChange = (field, value) => {
-    setNewResident(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+     setNewResident(prev => ({
+       ...prev,
+       [field]: value
+     }));
+   };
 
   const handleEditResidents = () => {
     setEditedResidents([...selectedResidence.residents]);
+    // keep original copy to detect deletions
+    setOrigResidentsBeforeEdit([...selectedResidence.residents]);
     setIsEditMode(true);
   };
 
@@ -521,12 +538,15 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
       dateNaissance: "",
       cin: "",
       genre: "homme",
-      telephone: ""
+      telephone: "",
+      relation_type: "",
+      is_proprietaire: false,
+      parent_id: null
     });
   };
 
   // Filtrage et tri des résidences avec la searchQuery passée en props
-  const filteredResidences = mockResidences
+  const filteredResidences = resList
     .filter((residence) => {
       const matchesSearch =
         residence.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -568,19 +588,29 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
   };
 
   // Calcul des totaux généraux
-  const totalResidences = mockResidences.length;
-  const totalResidents = mockResidences.reduce(
-    (total, residence) => total + residence.totalResidents,
-    0
-  );
-  const totalHommes = mockResidences.reduce(
-    (total, residence) => total + residence.hommes,
-    0
-  );
-  const totalFemmes = mockResidences.reduce(
-    (total, residence) => total + residence.femmes,
-    0
-  );
+  const totalResidences = resList.length;
+  const totalResidents = resList.reduce((total, residence) => total + (residence.totalResidents || 0), 0);
+  const totalHommes = resList.reduce((total, residence) => total + (residence.hommes || 0), 0);
+  const totalFemmes = resList.reduce((total, residence) => total + (residence.femmes || 0), 0);
+
+  // Fonction utilitaire pour calculer l'âge
+  const calculerAge = (dateNaissance) => {
+    const today = new Date();
+    const birthDate = new Date(dateNaissance);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age;
+  };
+
+  // Fonction utilitaire pour vérifier si majeur
+  const estMajeur = (dateNaissance) => {
+    return calculerAge(dateNaissance) >= 18;
+  };
 
   return (
     <div className="h-full flex">
@@ -691,12 +721,22 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                     <div className="p-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start space-x-3 flex-1">
-                          <div className="w-12 h-10 rounded-md overflow-hidden flex-shrink-0">
-                            <img
-                              src={residence.photos[0]}
-                              alt={residence.name}
-                              className="w-full h-full object-cover"
-                            />
+                          <div className="w-12 h-10 rounded-md overflow-hidden flex-shrink-0 bg-gray-200">
+                            {residence.photos && residence.photos.length > 0 ? (
+                              <img
+                                src={residence.photos[0]}
+                                alt={residence.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  console.warn('Image failed to load in list:', residence.photos[0]);
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                <Home size={16} className="text-gray-400" />
+                              </div>
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <h3 className={`font-semibold text-sm truncate ${
@@ -799,7 +839,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
             {/* En-tête du modal */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200/60 bg-transparent">
               <h2 className="text-xl bg-white py-3 px-6 rounded-2xl font-bold text-gray-800">
-                {isEditMode ? "Modifier les résidents" : "Détails Résidence"}
+                {isEditMode ? "Les résidents" : "Détails Résidence"}
               </h2>
               <div className="flex items-center space-x-2">
                 {isEditMode && (
@@ -830,77 +870,182 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                     {/* Carousel de photos */}
                     <div className="w-1/2">
                       <div className="relative rounded-lg overflow-hidden bg-gray-100 h-48">
-                        <img
-                          src={selectedResidence.photos[currentPhotoIndex]}
-                          alt={`${selectedResidence.name} - Photo ${currentPhotoIndex + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        
-                        {selectedResidence.photos.length > 1 && (
+                        {selectedResidence.photos && selectedResidence.photos.length > 0 ? (
                           <>
+                            <img
+                              src={selectedResidence.photos[currentPhotoIndex]}
+                              alt={`${selectedResidence.name} - Photo ${currentPhotoIndex + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                console.warn('Image failed to load in carousel:', selectedResidence.photos[currentPhotoIndex]);
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                            
+                            {/* Bouton supprimer la photo actuelle - SEULEMENT s'il y a des photos */}
                             <button
-                              onClick={handlePrevPhoto}
-                              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                              onClick={() => handleDeletePhoto(currentPhotoIndex)}
+                              className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+                              title="Supprimer cette photo"
                             >
-                              <ChevronLeft size={20} />
-                            </button>
-                            <button
-                              onClick={handleNextPhoto}
-                              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
-                            >
-                              <ChevronRight size={20} />
+                              <X size={16} />
                             </button>
                             
-                            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
-                              {selectedResidence.photos.map((_, index) => (
-                                <div
-                                  key={index}
-                                  className={`w-2 h-2 rounded-full ${
-                                    index === currentPhotoIndex 
-                                      ? 'bg-white' 
-                                      : 'bg-white/50'
-                                  }`}
-                                />
-                              ))}
-                            </div>
+                            {/* Contrôles du carousel - SEULEMENT s'il y a plus d'une photo */}
+                            {selectedResidence.photos.length > 1 && (
+                              <>
+                                <button
+                                  onClick={handlePrevPhoto}
+                                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                                >
+                                  <ChevronLeft size={20} />
+                                </button>
+                                <button
+                                  onClick={handleNextPhoto}
+                                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                                >
+                                  <ChevronRight size={20} />
+                                </button>
+                                
+                                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+                                  {selectedResidence.photos.map((_, index) => (
+                                    <div
+                                      key={index}
+                                      className={`w-2 h-2 rounded-full ${
+                                        index === currentPhotoIndex 
+                                          ? 'bg-white' 
+                                          : 'bg-white/50'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                              </>
+                            )}
                           </>
+                        ) : (
+                          <div 
+                            className="w-full h-full flex items-center justify-center cursor-pointer bg-gray-200"
+                            onClick={() => photoInputRef.current?.click()}
+                          >
+                            <div className="text-center">
+                              <Plus size={32} className="text-gray-400 mx-auto mb-2" />
+                              <div className="text-sm text-gray-500">Aucune image</div>
+                              <div className="text-xs text-gray-400">Cliquez pour ajouter des photos</div>
+                            </div>
+                          </div>
                         )}
                       </div>
+                      
+                      {/* Input fichier caché */}
+                      <input
+                        ref={photoInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handlePhotoSelect}
+                      />
                     </div>
 
                     {/* Informations de localisation */}
-                    <div>
-                      <div className="h-40 flex flex-col justify-center space-y-4">
-                        <div className="font-bold text-gray-800">{selectedResidence.lot}</div>
-                        <div className="font-bold text-gray-800">{selectedResidence.quartier}</div>
-                        <div className="font-bold text-gray-800">{selectedResidence.ville}</div>
+                    <div className="flex-1">
+                      <div className="h-40 flex flex-col justify-center space-y-4 relative">
+                        {!isEditingResidenceInfo ? (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <div className="font-bold text-gray-800">{selectedResidence.lot || '-'}</div>
+                              <button 
+                                onClick={startEditResidenceInfo} 
+                                className="text-white transition-colors ml-6 mb-10"
+                                title="Modifier"
+                              >
+                                <Edit size={18} />
+                              </button>
+                            </div>
+                            <div className="font-bold text-gray-800">{selectedResidence.quartier || '-'}</div>
+                            <div className="font-bold text-gray-800">{selectedResidence.ville || ''}</div>
+                          </>
+                        ) : (
+                          <div className="space-y-2">
+                            <input 
+                              type="text" 
+                              value={resInfoDraft.lot} 
+                              onChange={(e) => setResInfoDraft(prev => ({ ...prev, lot: e.target.value }))} 
+                              placeholder="Lot" 
+                              className="px-2 py-1 border rounded text-sm w-full" 
+                            />
+                            <input 
+                              type="text" 
+                              value={resInfoDraft.quartier} 
+                              onChange={(e) => setResInfoDraft(prev => ({ ...prev, quartier: e.target.value }))} 
+                              placeholder="Quartier" 
+                              className="px-2 py-1 border rounded text-sm w-full" 
+                            />
+                            <input 
+                              type="text" 
+                              value={resInfoDraft.ville} 
+                              onChange={(e) => setResInfoDraft(prev => ({ ...prev, ville: e.target.value }))} 
+                              placeholder="Ville" 
+                              className="px-2 py-1 border rounded text-sm w-full" 
+                            />
+                            <div className="flex space-x-2 mt-2">
+                              <button onClick={saveResidenceInfo} className="px-3 py-2 bg-blue-600 text-white rounded text-sm">Enregistrer</button>
+                              <button onClick={cancelEditResidenceInfo} className="px-3 py-2 bg-gray-100 rounded text-sm">Annuler</button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Liste des résidents sans en-têtes */}
+                  {/* Liste des résidents */}
                   <div className="bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60 overflow-hidden">
                     <div className="max-h-96 overflow-y-auto">
                       <table className="w-full">
+                        <thead className="bg-gray-50/50">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nom</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Naissance</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">CIN</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Téléphone</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Genre</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Type</th>
+                          </tr>
+                        </thead>
                         <tbody className="divide-y divide-gray-200/30">
-                          {selectedResidence.residents.map((resident) => (
-                            <tr key={resident.id} className="hover:bg-gray-50/30">
-                              <td className="px-4 py-3 text-sm text-gray-800">{resident.nomComplet}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
-                                {new Date(resident.dateNaissance).toLocaleDateString('fr-FR')}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
-                                {estMajeur(resident.dateNaissance) && resident.cin 
-                                  ? resident.cin 
-                                  : '-'
-                                }
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{resident.telephone}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
-                                {resident.genre === 'homme' ? 'H' : 'F'}
+                          {selectedResidence.residents && selectedResidence.residents.length > 0 ? (
+                            selectedResidence.residents.map((resident) => (
+                              <tr key={resident.id} className="hover:bg-gray-50/30">
+                                <td className="px-4 py-3 text-sm text-gray-800">{resident.nomComplet}</td>
+                                <td className="px-4 py-3 text-sm text-gray-600">
+                                  {resident.dateNaissance ? new Date(resident.dateNaissance).toLocaleDateString('fr-FR') : '-'}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-600">
+                                  {resident.dateNaissance && estMajeur(resident.dateNaissance) && resident.cin 
+                                    ? resident.cin 
+                                    : '-'
+                                  }
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-600">{resident.telephone || '-'}</td>
+                                <td className="px-4 py-3 text-sm text-gray-600">
+                                  {resident.genre === 'homme' ? 'H' : 'F'}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-600">
+                                  {resident.is_proprietaire ? 'Propriétaire' : 
+                                   resident.relation_type === 'enfant' ? 'Enfant' :
+                                   resident.relation_type === 'parent' ? 'Parent' :
+                                   resident.relation_type === 'conjoint' ? 'Conjoint' :
+                                   'Locataire'}
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan="6" className="px-4 py-3 text-sm text-gray-500 text-center">
+                                Aucun résident enregistré
                               </td>
                             </tr>
-                          ))}
+                          )}
                         </tbody>
                       </table>
                     </div>
@@ -912,7 +1057,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                       onClick={handleEditResidents}
                       className="w-full px-2 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                     >
-                      Modifier les résidents
+                      Ajouter des résidents
                     </button>
                   </div>
                 </>
@@ -930,19 +1075,21 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                             <th className="border border-gray-200/60 px-3 py-2 text-left text-xs font-medium text-gray-500">CIN</th>
                             <th className="border border-gray-200/60 px-3 py-2 text-left text-xs font-medium text-gray-500">Téléphone</th>
                             <th className="border border-gray-200/60 px-3 py-2 text-left text-xs font-medium text-gray-500">Genre</th>
+                            <th className="border border-gray-200/60 px-3 py-2 text-left text-xs font-medium text-gray-500">Propriétaire</th>
+                            <th className="border border-gray-200/60 px-3 py-2 text-left text-xs font-medium text-gray-500">Relation</th>
                           </tr>
                         </thead>
                         <tbody>
                           {editedResidents.map((resident) => {
                             const age = resident.dateNaissance ? calculerAge(resident.dateNaissance) : 0;
                             const majeur = age >= 18;
-                            
+
                             return (
                               <tr key={resident.id} className="hover:bg-gray-50/30">
                                 <td className="border border-gray-200/60 px-3 py-2">
                                   <input
                                     type="text"
-                                    value={resident.nomComplet}
+                                    value={resident.nomComplet || ""}
                                     onChange={(e) => handleResidentChange(resident.id, "nomComplet", e.target.value)}
                                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white/50"
                                     placeholder="Nom complet"
@@ -951,7 +1098,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                                 <td className="border border-gray-200/60 px-3 py-2">
                                   <input
                                     type="date"
-                                    value={resident.dateNaissance}
+                                    value={resident.dateNaissance || ""}
                                     onChange={(e) => handleResidentChange(resident.id, "dateNaissance", e.target.value)}
                                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white/50"
                                   />
@@ -972,7 +1119,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                                 <td className="border border-gray-200/60 px-3 py-2">
                                   <input
                                     type="tel"
-                                    value={resident.telephone}
+                                    value={resident.telephone || ""}
                                     onChange={(e) => handleResidentChange(resident.id, "telephone", e.target.value)}
                                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white/50"
                                     placeholder="0341234567"
@@ -980,13 +1127,46 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                                 </td>
                                 <td className="border border-gray-200/60 px-3 py-2">
                                   <select
-                                    value={resident.genre}
+                                    value={resident.genre || "homme"}
                                     onChange={(e) => handleResidentChange(resident.id, "genre", e.target.value)}
                                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white/50"
                                   >
                                     <option value="homme">H</option>
                                     <option value="femme">F</option>
                                   </select>
+                                </td>
+                                <td className="border border-gray-200/60 px-3 py-2">
+                                  <select
+                                    value={resident.is_proprietaire ? "true" : "false"}
+                                    onChange={(e) => handleResidentChange(resident.id, "is_proprietaire", e.target.value === "true")}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white/50"
+                                  >
+                                    <option value="false">Locataire</option>
+                                    <option value="true">Propriétaire</option>
+                                  </select>
+                                </td>
+                                <td className="border border-gray-200/60 px-3 py-2">
+                                  <select
+                                    value={resident.relation_type || ""}
+                                    onChange={(e) => handleResidentChange(resident.id, "relation_type", e.target.value)}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white/50"
+                                  >
+                                    <option value="">Aucune</option>
+                                    <option value="parent">Parent</option>
+                                    <option value="enfant">Enfant</option>
+                                    <option value="conjoint">Conjoint</option>
+                                    <option value="ami">Ami</option>
+                                    <option value="autre">Autre</option>
+                                  </select>
+                                </td>
+                                <td className="px-2 py-2">
+                                  <button
+                                    onClick={() => handleRemoveResident(resident.id)}
+                                    className="p-1 rounded-md text-red-600 hover:bg-red-50"
+                                    title="Supprimer"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
                                 </td>
                               </tr>
                             );
@@ -996,17 +1176,87 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange }) {
                     </div>
                   </div>
 
+                  {/* Petit formulaire pour ajouter une nouvelle personne (mode édition) */}
+                  <div className="mt-4 mb-4 p-3 bg-white/30 rounded border border-gray-200/60">
+                    <h4 className="font-medium text-gray-800 mb-3">Ajouter un nouveau résident</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        value={newResident.nomComplet}
+                        onChange={(e) => handleNewResidentChange('nomComplet', e.target.value)}
+                        placeholder="Nom complet"
+                        className="px-2 py-2 border border-gray-300 rounded text-sm"
+                      />
+                      <input
+                        type="date"
+                        value={newResident.dateNaissance}
+                        onChange={(e) => handleNewResidentChange('dateNaissance', e.target.value)}
+                        className="px-2 py-2 border border-gray-300 rounded text-sm"
+                      />
+                      <input
+                        type="text"
+                        value={newResident.cin}
+                        onChange={(e) => handleNewResidentChange('cin', e.target.value)}
+                        placeholder="CIN"
+                        className="px-2 py-2 border border-gray-300 rounded text-sm"
+                      />
+                      <input
+                        type="tel"
+                        value={newResident.telephone}
+                        onChange={(e) => handleNewResidentChange('telephone', e.target.value)}
+                        placeholder="Téléphone"
+                        className="px-2 py-2 border border-gray-300 rounded text-sm"
+                      />
+                      <select
+                        value={newResident.genre}
+                        onChange={(e) => handleNewResidentChange('genre', e.target.value)}
+                        className="px-2 py-2 border border-gray-300 rounded text-sm"
+                      >
+                        <option value="homme">Homme</option>
+                        <option value="femme">Femme</option>
+                      </select>
+                      <select
+                        value={newResident.is_proprietaire ? "true" : "false"}
+                        onChange={(e) => handleNewResidentChange('is_proprietaire', e.target.value === "true")}
+                        className="px-2 py-2 border border-gray-300 rounded text-sm"
+                      >
+                        <option value="false">Locataire</option>
+                        <option value="true">Propriétaire</option>
+                      </select>
+                      <select
+                        value={newResident.relation_type}
+                        onChange={(e) => handleNewResidentChange('relation_type', e.target.value)}
+                        className="col-span-2 px-2 py-2 border border-gray-300 rounded text-sm"
+                      >
+                        <option value="">Type de relation</option>
+                        <option value="parent">Parent</option>
+                        <option value="enfant">Enfant</option>
+                        <option value="conjoint">Conjoint</option>
+                        <option value="ami">Ami</option>
+                        <option value="autre">Autre</option>
+                      </select>
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        onClick={handleAddResident}
+                        className="px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                      >
+                        Ajouter la personne
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Boutons de sauvegarde/annulation */}
-                  <div className="flex justify-end space-x-2 mt-6 pt-4 border-t border-gray-200/60">
+                  <div className="flex space-x-4 mt-6 pt-4 border-t border-gray-200/60">
                     <button
                       onClick={handleCancelEdit}
-                      className="px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
+                      className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
                     >
                       Annuler
                     </button>
                     <button
                       onClick={handleSaveEdit}
-                      className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                      className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                     >
                       Sauvegarder
                     </button>

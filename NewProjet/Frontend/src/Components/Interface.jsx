@@ -17,12 +17,14 @@ import {
   ArrowLeft,
   X,
   Navigation,
+  ClipboardList,
 } from "lucide-react";
-import { GoogleMap, LoadScript, Marker, Polygon } from "@react-google-maps/api";
+import { GoogleMap, LoadScript, Marker, Polygon, InfoWindow } from "@react-google-maps/api";
 import Statistique from "./Statistique";
 import ForgotPassword from "./ForgotPassword";
 import UserPage from "./UserPage";
 import ResidencePage from "./ResidencePage";
+import PendingResidences from "./PendingResidences";
 
 // Polygon du fonkotany Andaboly - AGRANDI
 const ANDABOLY_POLYGON = [
@@ -69,7 +71,7 @@ const isPointInPolygon = (point, polygon) => {
 // base API pour Vite
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 
-export default function Interface({ user })  {
+export default function Interface({ user }) {
   const navigate = useNavigate();
   const [openDropdown, setOpenDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -78,6 +80,7 @@ export default function Interface({ user })  {
   const [currentUser, setCurrentUser] = useState(user);
   const [showResidence, setShowResidence] = useState(false);
   const [showUserPage, setShowUserPage] = useState(false);
+  const [showPendingResidences, setShowPendingResidences] = useState(false);
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState("");
   const [selectedLocation, setSelectedLocation] = useState(null);
@@ -91,10 +94,10 @@ export default function Interface({ user })  {
     ville: ""
   });
   const [hasSelectedAddress, setHasSelectedAddress] = useState(false);
-  
+
   // NOUVEAUX ÉTATS : pour gérer l'interaction avec le polygon
   const [isPolygonHovered, setIsPolygonHovered] = useState(false);
-  
+
   // NOUVEL ÉTAT : pour gérer le statut du message (normal ou erreur)
   const [messageStatus, setMessageStatus] = useState("normal"); // "normal" ou "error"
 
@@ -104,11 +107,15 @@ export default function Interface({ user })  {
   // état pour la page utilisateur (modal changement mot de passe)
   const [userPageState, setUserPageState] = useState({ showPasswordModal: false });
 
+  // ÉTATS POUR LES NOTIFICATIONS
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
+
   // handlers pour le polygon (évite ReferenceError)
   const handlePolygonMouseOver = (e) => {
     try {
       setIsPolygonHovered(true);
-      // éventuellement afficher infobulle / changer style
       console.log('[MAP] handlePolygonMouseOver', e);
     } catch (err) {
       console.warn('[MAP] handlePolygonMouseOver error', err);
@@ -123,7 +130,7 @@ export default function Interface({ user })  {
       console.warn('[MAP] handlePolygonMouseOut error', err);
     }
   };
-  
+
   // NOUVELLE FONCTION : Pour centrer et zoomer sur la zone limite
   const handleFocusOnPolygon = () => {
     if (!map) return;
@@ -141,9 +148,9 @@ export default function Interface({ user })  {
       map.fitBounds(bounds);
       // add listener only if google.maps.event is available
       if (window.google && window.google.maps && window.google.maps.event) {
-        const listener = window.google.maps.event.addListener(map, 'bounds_changed', function() {
-          try { if (map.getZoom() > 16) map.setZoom(16); } catch(e) {}
-          try { window.google.maps.event.removeListener(listener); } catch(e) {}
+        const listener = window.google.maps.event.addListener(map, 'bounds_changed', function () {
+          try { if (map.getZoom() > 16) map.setZoom(16); } catch (e) { }
+          try { window.google.maps.event.removeListener(listener); } catch (e) { }
         });
       }
     } catch (e) {
@@ -158,6 +165,87 @@ export default function Interface({ user })  {
   // --- NOUVEAU : fokontany récupéré depuis le backend (optionnel) ---
   const [fokontanyPolygon, setFokontanyPolygon] = useState(null);
   const [fokontanyCenter, setFokontanyCenter] = useState(null);
+  const [fokontanyName, setFokontanyName] = useState(null);
+  const [residences, setResidences] = useState([]);
+  const [hoveredResidenceId, setHoveredResidenceId] = useState(null);
+
+  // Charger les notifications
+  const fetchNotifications = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/api/notifications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data);
+      }
+    } catch (error) {
+      console.error('Erreur chargement notifications:', error);
+    }
+  };
+
+  // Compter les notifications non lues
+  const fetchUnreadCount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/api/notifications/unread-count`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUnreadCount(data.unreadCount);
+      }
+    } catch (error) {
+      console.error('Erreur comptage notifications:', error);
+    }
+  };
+
+  // Marquer comme lu
+  const markAsRead = async (notificationId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${API_BASE}/api/notifications/${notificationId}/read`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchUnreadCount();
+      fetchNotifications();
+    } catch (error) {
+      console.error('Erreur marquer comme lu:', error);
+    }
+  };
+
+  const fetchResidences = async () => {
+    try {
+      let url = `${API_BASE}/api/residences`;
+      if (fokontanyName) url += `?fokontany=${encodeURIComponent(fokontanyName)}`;
+      const resp = await fetch(url);
+      if (!resp.ok) return;
+      const list = await resp.json();
+      setResidences(Array.isArray(list) ? list : []);
+    } catch (e) { console.warn('[RES] fetchResidences error', e); }
+  };
+
+  // Charger au montage
+  useEffect(() => {
+    fetchNotifications();
+    fetchUnreadCount();
+    fetchResidences();
+
+    // Rafraîchir toutes les 30 secondes
+    const interval = setInterval(() => {
+      fetchUnreadCount();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // call fetchResidences on mount and when fokontanyName changes
+  useEffect(() => {
+    fetchResidences();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fokontanyName]);
 
   useEffect(() => {
     const loadMyFokontany = async () => {
@@ -178,7 +266,6 @@ export default function Interface({ user })  {
         }
         const f = await resp.json();
         console.log('[FOK] loadMyFokontany: body received', f);
-        // f.coordinates may be JSON string or already parsed structure
         let coordsRaw = f.coordinates ?? f.geometry ?? null;
         const poly = normalizeCoordinates(coordsRaw);
         console.log('[FOK] loadMyFokontany: parsed polygon length', poly ? poly.length : 0);
@@ -187,8 +274,8 @@ export default function Interface({ user })  {
           setFokontanyCenter({ lat: parseFloat(f.centre_lat), lng: parseFloat(f.centre_lng) });
           console.log('[FOK] loadMyFokontany: using centre_lat/centre_lng', f.centre_lat, f.centre_lng);
         } else if (poly && poly.length) {
-          const lat = poly.reduce((s,p) => s + p.lat, 0) / poly.length;
-          const lng = poly.reduce((s,p) => s + p.lng, 0) / poly.length;
+          const lat = poly.reduce((s, p) => s + p.lat, 0) / poly.length;
+          const lng = poly.reduce((s, p) => s + p.lng, 0) / poly.length;
           setFokontanyCenter({ lat, lng });
           console.log('[FOK] loadMyFokontany: computed center', { lat, lng });
         } else {
@@ -217,10 +304,11 @@ export default function Interface({ user })  {
     const state = {
       showResidence,
       showStatistique,
-      showUserPage
+      showUserPage,
+      showPendingResidences
     };
     localStorage.setItem('interfaceState', JSON.stringify(state));
-  }, [showResidence, showStatistique, showUserPage]);
+  }, [showResidence, showStatistique, showUserPage, showPendingResidences]);
 
   // Fermer le menu add address si on clique à l'extérieur
   useEffect(() => {
@@ -240,23 +328,18 @@ export default function Interface({ user })  {
   }, [showAddAddress]);
 
   // Vérifier si une page est ouverte
-  const isAnyPageOpen = showResidence || showStatistique || showUserPage;
+  const isAnyPageOpen = showResidence || showStatistique || showUserPage || showPendingResidences;
 
   // Fonction pour gérer la recherche selon la page active
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    
+
     if (showResidence) {
-      // Recherche dans les résidences - sera gérée par le composant ResidencePage
       console.log("Recherche dans les résidences:", searchQuery);
-    } else if (showStatistique || showUserPage) {
-      // Recherche désactivée pour les statistiques et userpage
+    } else if (showStatistique || showUserPage || showPendingResidences) {
       return;
     } else {
-      // Recherche sur la carte (interface principale)
       console.log("Recherche sur la carte:", searchQuery);
-      // Ici vous pouvez ajouter la logique pour rechercher sur la carte
-      // Par exemple : géocodage de l'adresse et centrage de la carte
     }
   };
 
@@ -264,7 +347,7 @@ export default function Interface({ user })  {
   const getSearchPlaceholder = () => {
     if (showResidence) {
       return "Rechercher une résidence, une adresse ou un propriétaire...";
-    } else if (showStatistique || showUserPage) {
+    } else if (showStatistique || showUserPage || showPendingResidences) {
       return "Recherche désactivée";
     } else {
       return "Rechercher un lieu, une adresse ou une personne...";
@@ -272,10 +355,9 @@ export default function Interface({ user })  {
   };
 
   // Vérifier si la recherche est désactivée
-  const isSearchDisabled = showStatistique || showUserPage;
+  const isSearchDisabled = showStatistique || showUserPage || showPendingResidences;
 
   const handleLogout = () => {
-    // Nettoyer le localStorage lors de la déconnexion
     localStorage.removeItem('interfaceState');
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -284,40 +366,33 @@ export default function Interface({ user })  {
 
   // FONCTION MODIFIÉE : Gérer le clic sur SIGAP/Retour
   const handleLogoClick = () => {
-    // Si UserPage est ouverte ET on est dans le mode "changer mot de passe"
     if (showUserPage && userPageState.showPasswordModal) {
-      // Fermer seulement le modal de changement de mot de passe
       setUserPageState(prev => ({ ...prev, showPasswordModal: false }));
-    } 
-    // Si UserPage est ouverte mais PAS dans le mode "changer mot de passe"
+    }
     else if (showUserPage) {
-      // Fermer complètement la UserPage
       setShowUserPage(false);
       setUserPageState({ showPasswordModal: false });
     }
-    // Si d'autres pages sont ouvertes
     else if (isAnyPageOpen) {
-      // Fermer toutes les pages
       setShowResidence(false);
       setShowStatistique(false);
       setShowUserPage(false);
+      setShowPendingResidences(false);
       setUserPageState({ showPasswordModal: false });
     }
-    // Si aucune page n'est ouverte, ne rien faire
   };
 
   // Fonction pour afficher/masquer la page utilisateur
   const handleUserIconClick = () => {
     const newShowUserPage = !showUserPage;
     setShowUserPage(newShowUserPage);
-    // Réinitialiser l'état de UserPage quand on l'ouvre
     if (newShowUserPage) {
       setUserPageState({ showPasswordModal: false });
     }
-    // Fermer les autres pages si UserPage s'ouvre
     if (newShowUserPage) {
       setShowResidence(false);
       setShowStatistique(false);
+      setShowPendingResidences(false);
     }
   };
 
@@ -325,13 +400,12 @@ export default function Interface({ user })  {
   const handleResidenceClick = () => {
     const newShowResidence = !showResidence;
     setShowResidence(newShowResidence);
-    // Fermer les autres pages si résidence s'ouvre
     if (newShowResidence) {
       setShowStatistique(false);
       setShowUserPage(false);
+      setShowPendingResidences(false);
       setUserPageState({ showPasswordModal: false });
     }
-    // Fermer la sélection d'adresse si elle est active
     if (isSelectingLocation || showAddAddress) {
       setIsSelectingLocation(false);
       setShowAddAddress(false);
@@ -346,17 +420,42 @@ export default function Interface({ user })  {
     }
   };
 
-   // Fonction pour afficher/masquer la page statistique
-   const handleStatistiqueClick = () => {
+  // Fonction pour afficher/masquer la page statistique
+  const handleStatistiqueClick = () => {
     const newShowStatistique = !showStatistique;
     setShowStatistique(newShowStatistique);
-    // Fermer les autres pages si statistique s'ouvre
     if (newShowStatistique) {
       setShowResidence(false);
       setShowUserPage(false);
+      setShowPendingResidences(false);
       setUserPageState({ showPasswordModal: false });
     }
-    // Fermer la sélection d'adresse si elle est active
+    if (isSelectingLocation || showAddAddress) {
+      setIsSelectingLocation(false);
+      setShowAddAddress(false);
+      setSelectedLocation(null);
+      setSelectedAddress("");
+      setHasSelectedAddress(false);
+      setAddressDetails({
+        lot: "",
+        quartier: "",
+        ville: ""
+      });
+    }
+  };
+
+  // NOUVELLE FONCTION : Pour afficher/masquer les demandes en attente
+  const handlePendingResidencesClick = () => {
+    const newShowPending = !showPendingResidences;
+    setShowPendingResidences(newShowPending);
+    
+    if (newShowPending) {
+      setShowResidence(false);
+      setShowStatistique(false);
+      setShowUserPage(false);
+      setUserPageState({ showPasswordModal: false });
+    }
+    
     if (isSelectingLocation || showAddAddress) {
       setIsSelectingLocation(false);
       setShowAddAddress(false);
@@ -373,8 +472,8 @@ export default function Interface({ user })  {
 
   // MODIFICATION : Fonction pour démarrer la sélection d'adresse sur la carte
   const handleAddAddressClick = () => {
-    if (isAnyPageOpen) return; // Ne rien faire si une page est ouverte
-    
+    if (isAnyPageOpen) return;
+
     setIsSelectingLocation(true);
     setSelectedLocation(null);
     setShowAddAddress(false);
@@ -384,11 +483,9 @@ export default function Interface({ user })  {
       quartier: "",
       ville: ""
     });
-    
-    // Réinitialiser le statut du message
+
     setMessageStatus("normal");
-    
-    // NOUVEAU : Zoom automatique sur la zone limite quand on clique sur Ajouter
+
     setTimeout(() => {
       handleFocusOnPolygon();
     }, 100);
@@ -418,11 +515,9 @@ export default function Interface({ user })  {
 
   // FONCTION MODIFIÉE : Pour obtenir l'adresse à partir des coordonnées
   const getAddressFromCoordinates = (lat, lng) => {
-    // Déterminer le quartier et la ville en fonction des coordonnées
     let quartier = "Andaboly";
-    let ville = "Antananarivo";
-    
-    // Logique pour déterminer le quartier en fonction des coordonnées
+    let ville = "";
+
     if (lat > -23.348 && lng < 43.670) {
       quartier = "Andaboly Nord";
     } else if (lat < -23.352 && lng > 43.672) {
@@ -432,18 +527,14 @@ export default function Interface({ user })  {
     } else if (lng < 43.667) {
       quartier = "Andaboly Ouest";
     }
-    
-    const addressData = [
-      { 
-        address: `${quartier}, ${ville}`,
-        lot: "",
-        quartier: quartier,
-        ville: ville
-      }
-    ];
-    
-    const addressInfo = addressData[0];
-    setSelectedAddress(addressInfo.address);
+
+    const addressInfo = {
+      lot: "",
+      quartier,
+      ville
+    };
+
+    setSelectedAddress(addressInfo.quartier);
     setAddressDetails({
       lot: "",
       quartier: addressInfo.quartier,
@@ -451,7 +542,7 @@ export default function Interface({ user })  {
     });
   };
 
-  // NOUVELLE FONCTION : Pour retourner à la sélection d'adresse (utilisée par X et Changer d'adresse)
+  // NOUVELLE FONCTION : Pour retourner à la sélection d'adresse
   const handleReturnToSelection = () => {
     setShowAddAddress(false);
     setIsSelectingLocation(true);
@@ -463,17 +554,15 @@ export default function Interface({ user })  {
       quartier: "",
       ville: ""
     });
-    
-    // Réinitialiser le statut du message
+
     setMessageStatus("normal");
-    
-    // Recentrer sur la zone limite
+
     setTimeout(() => {
       handleFocusOnPolygon();
     }, 100);
   };
 
-  // Fonction pour fermer complètement (retour au bouton Ajouter)
+  // Fonction pour fermer complètement
   const handleCloseComplete = () => {
     setShowAddAddress(false);
     setIsSelectingLocation(false);
@@ -485,31 +574,71 @@ export default function Interface({ user })  {
       quartier: "",
       ville: ""
     });
-    
-    // Réinitialiser le statut du message
+
     setMessageStatus("normal");
   };
 
-  // FONCTION MODIFIÉE : Pour confirmer l'ajout de l'adresse
-  const handleConfirmAddress = () => {
+  // FONCTION UNIQUE handleConfirmAddress : Pour confirmer l'ajout de l'adresse
+  const handleConfirmAddress = async () => {
     if (!addressDetails.lot) {
-      // Afficher l'erreur de validation
       setFormError("Veuillez remplir le numéro de lot");
       return;
     }
-
-    if (selectedAddress && addressDetails.lot) {
-      // Logique pour ajouter l'adresse à la base de données
-      console.log("Ajout de l'adresse:", {
-        address: selectedAddress,
-        details: addressDetails,
-        location: selectedLocation
+    if (!selectedLocation) {
+      setFormError("Emplacement invalide");
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const payload = {
+        lot: addressDetails.lot,
+        quartier: addressDetails.quartier,
+        ville: addressDetails.ville,
+        fokontany: null,
+        lat: selectedLocation.lat,
+        lng: selectedLocation.lng,
+        created_by: currentUser?.id || null
+      };
+      const resp = await fetch(`${API_BASE}/api/residences`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(payload)
       });
-      setHasSelectedAddress(true);
-      setShowAddAddress(false);
-      setIsSelectingLocation(false);
-      setFormError(""); // Réinitialiser l'erreur
-      // Ne pas reset selectedAddress et selectedLocation pour pouvoir les utiliser avec LocateFixed
+
+      if (!resp.ok) {
+        const body = await resp.text();
+        console.warn('[RES] create failed', resp.status, body);
+        setFormError("Erreur lors de l'enregistrement");
+        return;
+      }
+
+      const result = await resp.json();
+
+      if (result.requires_approval) {
+        // Si approbation requise
+        setHasSelectedAddress(true);
+        setShowAddAddress(false);
+        setIsSelectingLocation(false);
+        setFormError("");
+
+        // Afficher message de succès avec attente d'approbation
+        alert('Résidence soumise pour approbation. Vous recevrez une notification quand elle sera approuvée.');
+      } else {
+        // Création directe
+        setResidences(prev => [result, ...(prev || [])]);
+        setHasSelectedAddress(true);
+        setShowAddAddress(false);
+        setIsSelectingLocation(false);
+        setFormError("");
+      }
+
+      console.log('[RES] created', result);
+    } catch (err) {
+      console.warn('[RES] handleConfirmAddress error', err);
+      setFormError('Erreur réseau');
     }
   };
 
@@ -524,8 +653,7 @@ export default function Interface({ user })  {
       quartier: "",
       ville: ""
     });
-    
-    // Réinitialiser le statut du message
+
     setMessageStatus("normal");
   };
 
@@ -536,12 +664,10 @@ export default function Interface({ user })  {
         ...prev,
         [field]: value
       }));
-      // Effacer l'erreur quand l'utilisateur commence à taper
       if (formError) {
         setFormError("");
       }
     }
-    // Les champs quartier et ville ne sont pas modifiables
   };
 
   // Fonction pour fermer la page résidence
@@ -558,6 +684,11 @@ export default function Interface({ user })  {
   const handleCloseUserPage = () => {
     setShowUserPage(false);
     setUserPageState({ showPasswordModal: false });
+  };
+
+  // Fonction pour fermer la page des demandes
+  const handleClosePendingResidences = () => {
+    setShowPendingResidences(false);
   };
 
   // NOUVELLE FONCTION : Callback pour mettre à jour l'état de UserPage
@@ -581,11 +712,9 @@ export default function Interface({ user })  {
   // MODIFICATION : Fonction pour centrer la carte
   const handleCenterMap = () => {
     if (map && selectedLocation) {
-      // Utiliser directement les coordonnées déjà sélectionnées
       map.setCenter(selectedLocation);
-      map.setZoom(16); // Zoom sur le quartier
+      map.setZoom(16);
     } else if (map) {
-      // NOUVEAU : Centrer sur la zone limite avec zoom adapté
       handleFocusOnPolygon();
     }
   };
@@ -608,7 +737,6 @@ export default function Interface({ user })  {
           return;
         }
 
-        // si le user contient déjà l'objet fokontany (login), l'utiliser
         if (u.fokontany && (u.fokontany.coordinates || u.fokontany.centre_lat)) {
           console.log('[FOK] initFokontanyFromUser: user has fokontany object', u.fokontany?.nom || u.fokontany?.code);
           try {
@@ -638,10 +766,9 @@ export default function Interface({ user })  {
               if (map) map.panTo({ lat: +f.centre_lat, lng: +f.centre_lng });
               return;
             }
-          } catch (e) { /* ignore parse errors and fallback to API */ console.warn('[FOK] initFokontanyFromUser user fokontany parse error', e); }
+          } catch (e) { console.warn('[FOK] initFokontanyFromUser user fokontany parse error', e); }
         }
 
-        // fallback : demander /api/fokontany/me si token existant
         const token = localStorage.getItem('token');
         console.log('[FOK] initFokontanyFromUser: fetching /api/fokontany/me fallback, token?', !!token);
         if (!token) return;
@@ -700,7 +827,6 @@ export default function Interface({ user })  {
       setMap(mapInstance);
       setMapLoaded(true);
       console.log('[MAP] onMapLoad: map ready', !!mapInstance, 'fokontanyCenter=', fokontanyCenter);
-      // recentrer si on a déjà le centre du fokontany
       if (fokontanyCenter && mapInstance && window.google && window.google.maps) {
         try {
           mapInstance.panTo(fokontanyCenter);
@@ -717,10 +843,7 @@ export default function Interface({ user })  {
   // options de la carte Google Maps
   const getMapOptions = () => {
     return {
-      // Utiliser mapTypeId pour demander "hybrid" quand mapType === 'satellite'
-      // "hybrid" = imagery satellite + labels (noms de route, POI...)
       mapTypeId: mapType === "satellite" ? "hybrid" : "roadmap",
-      // minimal/no custom styles to preserve labels and POI text
       styles: [],
       gestureHandling: "greedy",
       disableDoubleClickZoom: true,
@@ -747,15 +870,6 @@ export default function Interface({ user })  {
     zIndex: 1
   };
 
-  // états des événements de la carte
-  const [mapEvents, setMapEvents] = useState({
-    click: null,
-    dblclick: null,
-    mousemove: null,
-    zoom_changed: null,
-    dragend: null
-  });
-
   // gestion des événements de la carte
   useEffect(() => {
     if (!map) return;
@@ -776,14 +890,12 @@ export default function Interface({ user })  {
       console.log('[MAP] Drag ended. New center:', center.lat(), center.lng());
     };
 
-    // attacher les événements
     map.addListener("click", handleClick);
     map.addListener("dblclick", handleDblClick);
     map.addListener("mousemove", handleMouseMove);
     map.addListener("zoom_changed", handleZoomChanged);
     map.addListener("dragend", handleDragEnd);
 
-    // nettoyer les événements à la désactivation de la carte
     return () => {
       if (map) {
         map.removeListener("click", handleClick);
@@ -803,13 +915,9 @@ export default function Interface({ user })  {
 
   const activePolygon = (fokontanyPolygon && fokontanyPolygon.length > 0) ? fokontanyPolygon : ANDABOLY_POLYGON;
 
-  // safe marker icon: only create Size if google.maps.Size exists, otherwise use plain object
+  // safe marker icon
   let markerIcon;
   if (typeof window !== 'undefined' && window.google && window.google.maps) {
-    // Deprecation guidance for visibility in console
-    if (window.google.maps.Marker) {
-      console.warn('[GMaps] google.maps.Marker exists — consider migrating to google.maps.marker.AdvancedMarkerElement (see https://developers.google.com/maps/documentation/javascript/advanced-markers/migration)');
-    }
     const svg = `
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M16 2C11.58 2 8 5.58 8 10C8 17 16 30 16 30C16 30 24 17 24 10C24 5.58 20.42 2 16 2Z" fill="#10B981"/>
@@ -817,7 +925,6 @@ export default function Interface({ user })  {
       </svg>
     `;
     const url = 'data:image/svg+xml;base64,' + btoa(svg);
-    // prefer real Size if available
     if (typeof window.google.maps.Size === 'function') {
       markerIcon = { url, scaledSize: new window.google.maps.Size(32, 32) };
     } else {
@@ -830,23 +937,14 @@ export default function Interface({ user })  {
   return (
     <div className="relative w-full h-screen bg-gradient-to-r from-blue-50 to-indigo-50 overflow-hidden">
       {/* === NAVBAR SÉPARÉE EN DEUX PARTIES === */}
-      
+
       {/* Partie gauche - Barre de recherche avec opacité */}
-      <div className={`absolute top-5 z-30 transition-all px-7 py-2  rounded-3xl bg-white/30 hover:bg-white/50 duration-300 ease-out ${
-        isAnyPageOpen ? "left-64" : "left-1/2 transform -translate-x-1/2"
-      }`}>
-        <div className={`rounded-full flex items-center px-6 py-1 w-96 border transition-all duration-300 ${
-          isSearchDisabled
-            ? "bg-gray-100/80 border-gray-300 cursor-not-allowed backdrop-blur-sm"
-            : "bg-white/50 backdrop-blur-sm border-gray-200/60 hover:bg-white hover:border-gray-300/80"
-        }`}>
-          <Search className={`mr-3 flex-shrink-0 ${
-            isSearchDisabled ? "text-gray-400" : "text-gray-600"
-          }`} size={20} />
-          <form
-            onSubmit={handleSearchSubmit}
-            className="flex-1 flex items-center"
-          >
+      <div className={`absolute top-5 z-30 transition-all px-7 py-2 rounded-3xl bg-white/30 hover:bg-white/50 duration-300 ease-out ${isAnyPageOpen ? "left-64" : "left-1/2 transform -translate-x-1/2"}`}>
+        <div className={`rounded-full flex items-center px-6 py-1 w-96 border transition-all duration-300 ${isSearchDisabled
+          ? "bg-gray-100/80 border-gray-300 cursor-not-allowed backdrop-blur-sm"
+          : "bg-white/50 backdrop-blur-sm border-gray-200/60 hover:bg-white hover:border-gray-300/80"}`}>
+          <Search className={`mr-3 flex-shrink-0 ${isSearchDisabled ? "text-gray-400" : "text-gray-600"}`} size={20} />
+          <form onSubmit={handleSearchSubmit} className="flex-1 flex items-center">
             <input
               ref={searchRef}
               type="text"
@@ -854,11 +952,9 @@ export default function Interface({ user })  {
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={getSearchPlaceholder()}
               disabled={isSearchDisabled}
-              className={`w-full p-1 bg-transparent outline-none text-sm ${
-                isSearchDisabled
-                  ? "text-gray-400 placeholder-gray-400 cursor-not-allowed"
-                  : "text-gray-700 placeholder-gray-600"
-              }`}
+              className={`w-full p-1 bg-transparent outline-none text-sm ${isSearchDisabled
+                ? "text-gray-400 placeholder-gray-400 cursor-not-allowed"
+                : "text-gray-700 placeholder-gray-600"}`}
             />
           </form>
         </div>
@@ -866,20 +962,18 @@ export default function Interface({ user })  {
 
       {/* Partie droite - Bouton et icônes avec background fixe */}
       <div className="absolute top-6 right-4 z-20">
-        <div className="bg-white/30 hover:bg-white/50  rounded-2xl shadow-lg border border-gray-200/60 hover:border-gray-300/80 transition-all duration-300">
+        <div className="bg-white/30 hover:bg-white/50 rounded-2xl shadow-lg border border-gray-200/60 hover:border-gray-300/80 transition-all duration-300">
           <div className="flex items-center justify-end px-4 py-1 space-x-4">
-            
-            {/* Bouton Ajouter - CHANGE EN "Cliquez sur la carte" quand la sélection est active */}
+
+            {/* Bouton Ajouter */}
             <button
               onClick={handleAddAddressClick}
               disabled={isAnyPageOpen}
-              className={`flex items-center px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap ${
-                isAnyPageOpen
-                  ? "bg-gray-400/80 text-gray-200 cursor-not-allowed backdrop-blur-sm"
-                  : isSelectingLocation
+              className={`flex items-center px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap ${isAnyPageOpen
+                ? "bg-gray-400/80 text-gray-200 cursor-not-allowed backdrop-blur-sm"
+                : isSelectingLocation
                   ? "bg-green-600 text-white hover:bg-green-700 backdrop-blur-sm"
-                  : "bg-green-600 text-white hover:bg-green-700 backdrop-blur-sm"
-              }`}
+                  : "bg-green-600 text-white hover:bg-green-700 backdrop-blur-sm"}`}
               title={isAnyPageOpen ? "Fermez les autres pages pour ajouter une adresse" : "Ajouter une nouvelle adresse"}
             >
               {isSelectingLocation ? (
@@ -894,10 +988,19 @@ export default function Interface({ user })  {
 
             {/* Notification */}
             <button
-              className="w-8 h-8 rounded-full flex items-center justify-center bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80"
+              onClick={() => {
+                setShowNotifications(!showNotifications);
+                fetchNotifications();
+              }}
+              className="relative w-8 h-8 rounded-full flex items-center justify-center bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80"
               title="Notifications"
             >
               <Bell size={20} className="text-gray-600 hover:text-gray-800 transition-all duration-300" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
 
             {/* Utilisateur */}
@@ -912,47 +1015,71 @@ export default function Interface({ user })  {
         </div>
       </div>
 
-      {/* === OVERLAY DE SÉLECTION D'ADRESSE - MODIFIÉ AVEC MESSAGE DYNAMIQUE === */}
+      {/* Panneau de notifications */}
+      {showNotifications && (
+        <div className="absolute top-12 right-4 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
+          <div className="p-4 border-b border-gray-200">
+            <h3 className="font-semibold text-gray-800">Notifications</h3>
+          </div>
+          <div className="p-2">
+            {notifications.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">Aucune notification</p>
+            ) : (
+              notifications.map(notification => (
+                <div
+                  key={notification.id}
+                  className={`p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${!notification.is_read ? 'bg-blue-50' : ''}`}
+                  onClick={() => markAsRead(notification.id)}
+                >
+                  <div className="flex justify-between items-start">
+                    <h4 className="font-medium text-sm text-gray-800">{notification.title}</h4>
+                    <span className="text-xs text-gray-500">
+                      {new Date(notification.created_at).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-xs text-gray-500">
+                      {notification.sender_name || 'Système'}
+                    </span>
+                    {!notification.is_read && (
+                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* === OVERLAY DE SÉLECTION D'ADRESSE === */}
       {isSelectingLocation && (
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-end pb-8 pointer-events-none">
-          <div className={`rounded-2xl shadow-2xl p-4 mx-4 border relative w-full max-w-2xl ${
-            messageStatus === "error" 
-              ? "bg-red-50 border-red-200" 
-              : "bg-white/95 backdrop-blur-sm border-orange-200"
-          }`}>
+          <div className={`rounded-2xl shadow-2xl p-4 mx-4 border relative w-full max-w-2xl ${messageStatus === "error"
+            ? "bg-red-50 border-red-200"
+            : "bg-white/95 backdrop-blur-sm border-orange-200"}`}>
             <div className="flex items-center justify-between space-x-4">
-              {/* Partie gauche : Icône Navigation et texte */}
               <div className="flex items-center space-x-3 flex-1">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  messageStatus === "error" ? "bg-red-500" : "bg-green-600"
-                }`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${messageStatus === "error" ? "bg-red-500" : "bg-green-600"}`}>
                   <Navigation size={20} className="text-white" />
                 </div>
                 <div className="flex-1">
-                  <p className={`font-medium text-base mb-1 ${
-                    messageStatus === "error" ? "text-red-800" : "text-gray-800"
-                  }`}>
-                    {messageStatus === "error" 
-                      ? "Veuillez cliquer uniquement dans la zone limite (en bleu)" 
-                      : "Cliquez sur la carte pour sélectionner une adresse"
-                    }
+                  <p className={`font-medium text-base mb-1 ${messageStatus === "error" ? "text-red-800" : "text-gray-800"}`}>
+                    {messageStatus === "error"
+                      ? "Veuillez cliquer uniquement dans la zone limite (en bleu)"
+                      : "Cliquez sur la carte pour sélectionner une adresse"}
                   </p>
-                  <p className={`text-sm ${
-                    messageStatus === "error" ? "text-red-600" : "text-gray-600"
-                  }`}>
-                    <span className={`font-medium ${
-                      messageStatus === "error" ? "text-red-700" : "text-blue-600"
-                    }`}>
+                  <p className={`text-sm ${messageStatus === "error" ? "text-red-600" : "text-gray-600"}`}>
+                    <span className={`font-medium ${messageStatus === "error" ? "text-red-700" : "text-blue-600"}`}>
                       Zone limitée :
-                    </span> {messageStatus === "error" 
-                      ? "Cliquez dans la zone bleue pour ajouter une résidence" 
-                      : "Veuillez cliquer uniquement dans la zone bleue"
-                    }
+                    </span> {messageStatus === "error"
+                      ? "Cliquez dans la zone bleue pour ajouter une résidence"
+                      : "Veuillez cliquer uniquement dans la zone bleue"}
                   </p>
                 </div>
               </div>
 
-              {/* Partie droite : Bouton Annuler */}
               <button
                 onClick={handleCancelSelection}
                 className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-all duration-200 pointer-events-auto flex items-center space-x-2 flex-shrink-0"
@@ -966,22 +1093,18 @@ export default function Interface({ user })  {
         </div>
       )}
 
-      {/* === MODAL AJOUT ADRESSE - MODIFIÉ AVEC UN SEUL CHAMP MODIFIABLE === */}
+      {/* === MODAL AJOUT ADRESSE === */}
       {showAddAddress && (
         <>
-          {/* Overlay sombre */}
           <div className="fixed inset-0 bg-black/50 z-40"></div>
-          
-          {/* Modal */}
+
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div 
+            <div
               ref={addAddressRef}
               className="bg-white rounded-2xl overflow-hidden shadow-2xl border border-gray-200 w-full max-w-md"
             >
-              {/* En-tête */}
               <div className="bg-gradient-to-r from-green-500 to-green-600 px-6 py-4 flex items-center justify-between">
                 <h3 className="text-white font-semibold text-lg">Ajouter une résidence</h3>
-                {/* MODIFICATION : Le bouton X utilise maintenant handleReturnToSelection */}
                 <button
                   onClick={handleReturnToSelection}
                   className="text-white/80 hover:text-white transition-all duration-200"
@@ -990,9 +1113,7 @@ export default function Interface({ user })  {
                 </button>
               </div>
 
-              {/* Contenu */}
               <div className="p-5">
-                {/* Emplacement sélectionné */}
                 <div className="mb-6">
                   <div className="flex items-start space-x-3 mb-3">
                     <MapPin size={20} className="text-green-600 flex-shrink-0 mt-1" />
@@ -1005,9 +1126,7 @@ export default function Interface({ user })  {
                   </div>
                 </div>
 
-                {/* Champs de formulaire - UN SEUL CHAMP MODIFIABLE */}
                 <div className="space-y-4">
-                  {/* Champ Lot - SEUL CHAMP MODIFIABLE */}
                   <div>
                     <label className="block text-base font-medium text-gray-700 mb-2">
                       Numéro de lot *
@@ -1017,12 +1136,9 @@ export default function Interface({ user })  {
                       value={addressDetails.lot}
                       onChange={(e) => handleAddressDetailsChange('lot', e.target.value)}
                       placeholder="Ex: Lot 123, Lot ABC, Lot 45B"
-                      className={`w-full px-4 py-3 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent ${
-                        formError ? "border-red-500" : "border-gray-300"
-                      }`}
+                      className={`w-full px-4 py-3 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent ${formError ? "border-red-500" : "border-gray-300"}`}
                       required
                     />
-                    {/* Message d'erreur */}
                     {formError && (
                       <p className="text-red-500 text-sm mt-1 flex items-center">
                         <Info size={14} className="mr-1" />
@@ -1032,9 +1148,7 @@ export default function Interface({ user })  {
                   </div>
                 </div>
 
-                {/* Boutons d'action */}
                 <div className="flex space-x-4 mt-6 pt-4 border-t border-gray-200">
-                  {/* MODIFICATION : Changer d'adresse utilise handleReturnToSelection */}
                   <button
                     onClick={handleReturnToSelection}
                     className="flex-1 px-1 py-3 text-base bg-gray-100 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
@@ -1054,12 +1168,11 @@ export default function Interface({ user })  {
         </>
       )}
 
-      {/* === SIDEBAR GAUCHE AVEC OPACITÉ === */}
+      {/* === SIDEBAR GAUCHE === */}
       <div className="absolute top-1 left-6 z-20">
-        <div className="bg-white/30 hover:bg-white/50  rounded-2xl shadow-lg py-4 flex flex-col items-center space-y-6 transition-all duration-300 ease-out w-55 border border-gray-200/60 hover:border-gray-300/80">
-          
-          {/* === SIGAP - MONTE VERS LE HAUT === */}
-          <button 
+        <div className="bg-white/30 hover:bg-white/50 rounded-2xl shadow-lg py-4 flex flex-col items-center space-y-6 transition-all duration-300 ease-out w-55 border border-gray-200/60 hover:border-gray-300/80">
+
+          <button
             onClick={handleLogoClick}
             className="w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 bg-transparent hover:bg-white"
           >
@@ -1067,107 +1180,109 @@ export default function Interface({ user })  {
               <span className="text-blue-600 font-bold text-sm">SG</span>
             </div>
             <span className="text-gray-800 font-medium whitespace-nowrap transition-all duration-300">
-              SIGAP {/* Toujours afficher "SIGAP" */}
+              SIGAP
             </span>
           </button>
 
-          {/* Bouton Résidence - BACKGROUND BLANC AU SURVOL */}
           <button
             onClick={handleResidenceClick}
-            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${
-              showResidence 
-                ? "bg-white border border-blue-200/60" 
-                : "bg-transparent hover:bg-white hover:border-blue-200/60"
-            }`}
+            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${showResidence
+              ? "bg-white border border-blue-200/60"
+              : "bg-transparent hover:bg-white hover:border-blue-200/60"}`}
           >
-            <div className={`p-2 rounded-full flex-shrink-0 ${
-              showResidence ? "bg-blue-100/70" : "bg-blue-100/70"
-            }`}>
-              <MapPin size={18} className={`${
-                showResidence ? "text-blue-600" : "text-blue-600"
-              } transition-all duration-300`} />
+            <div className={`p-2 rounded-full flex-shrink-0 ${showResidence ? "bg-blue-100/70" : "bg-blue-100/70"}`}>
+              <MapPin size={18} className={`${showResidence ? "text-blue-600" : "text-blue-600"} transition-all duration-300`} />
             </div>
-            <span className={`${
-              showResidence ? "text-gray-800" : "text-gray-800"}`
-            }>
+            <span className={`${showResidence ? "text-gray-800" : "text-gray-800"}`}>
               Résidence
             </span>
           </button>
 
-          {/* Bouton Statistique - BACKGROUND BLANC AU SURVOL */}
           <button
             onClick={handleStatistiqueClick}
-            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${
-              showStatistique 
-                ? "bg-white border border-green-200/60" 
-                : "bg-transparent hover:bg-white hover:border-green-200/60"
-            }`}
+            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${showStatistique
+              ? "bg-white border border-green-200/60"
+              : "bg-transparent hover:bg-white hover:border-green-200/60"}`}
           >
-            <div className={`p-2 rounded-full flex-shrink-0 ${
-              showStatistique ? "bg-green-100/70" : "bg-green-100/70"
-            }`}>
-              <BarChart3 size={18} className={`${
-                showStatistique ? "text-green-600" : "text-green-600"
-              } transition-all duration-300`} />
+            <div className={`p-2 rounded-full flex-shrink-0 ${showStatistique ? "bg-green-100/70" : "bg-green-100/70"}`}>
+              <BarChart3 size={18} className={`${showStatistique ? "text-green-600" : "text-green-600"} transition-all duration-300`} />
             </div>
-            <span className={`${
-              showStatistique ? "text-gray-800" : "text-gray-800"
-            } font-medium whitespace-nowrap transition-all duration-300`}>
+            <span className={`${showStatistique ? "text-gray-800" : "text-gray-800"} font-medium whitespace-nowrap transition-all duration-300`}>
               Statistique
             </span>
           </button>
+
+          {/* Bouton Demandes (seulement pour les secrétaires) */}
+          {currentUser?.role === 'secretaire' && (
+            <button
+              onClick={handlePendingResidencesClick}
+              className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${showPendingResidences
+                ? "bg-white border border-purple-200/60"
+                : "bg-transparent hover:bg-white hover:border-purple-200/60"}`}
+            >
+              <div className={`p-2 rounded-full flex-shrink-0 ${showPendingResidences ? "bg-purple-100/70" : "bg-purple-100/70"}`}>
+                <ClipboardList size={18} className={`${showPendingResidences ? "text-purple-600" : "text-purple-600"} transition-all duration-300`} />
+              </div>
+              <span className={`${showPendingResidences ? "text-gray-800" : "text-gray-800"} font-medium whitespace-nowrap transition-all duration-300`}>
+                Demandes
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* === PAGE RÉSIDENCE EN HAUT À GAUCHE === */}
+      {/* === PAGES === */}
       {showResidence && (
-        <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[86vh] w-315">
-          <ResidencePage 
-            onBack={handleCloseResidence} 
+        <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[85vh] w-316">
+          <ResidencePage
+            onBack={handleCloseResidence}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
           />
         </div>
       )}
 
-      {/* === PAGE STATISTIQUE EN HAUT À GAUCHE === */}
       {showStatistique && (
-        <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[85vh] w-315">
+        <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[85vh] w-316">
           <Statistique onBack={handleCloseStatistique} />
         </div>
       )}
 
-      {/* === PAGE UTILISATEUR EN HAUT À GAUCHE === */}
       {showUserPage && (
-        <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[87vh] w-250">
-          <UserPage 
-            user={currentUser} 
-            onBack={handleCloseUserPage} 
+        <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[85vh] w-316">
+          <UserPage
+            user={currentUser}
+            onBack={handleCloseUserPage}
             onLogout={handleLogout}
-            // NOUVELLES PROPS : passer l'état et la callback
             userPageState={userPageState}
             onUserPageStateChange={handleUserPageStateChange}
           />
         </div>
       )}
 
-      {/* === CONTROLES ZOOM ET COUCHE AVEC OPACITÉ === */}
+      {showPendingResidences && (
+        <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[85vh] w-316">
+          <PendingResidences onBack={handleClosePendingResidences} />
+        </div>
+      )}
+
+      {/* === CONTROLES ZOOM ET COUCHE === */}
       <div className="fixed right-6 bottom-24 z-10 flex flex-col items-center space-y-2">
-        <button 
+        <button
           onClick={handleZoomIn}
           className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
           title="Zoom avant"
         >
           <Plus size={20} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
         </button>
-        <button 
+        <button
           onClick={handleZoomOut}
           className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
           title="Zoom arrière"
         >
           <Minus size={20} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
         </button>
-        <button 
+        <button
           onClick={handleCenterMap}
           className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
           title={hasSelectedAddress ? "Aller à l'adresse sélectionnée" : "Voir la zone limite"}
@@ -1176,9 +1291,8 @@ export default function Interface({ user })  {
         </button>
       </div>
 
-      {/* === BOUTON COUCHE POUR CHANGER LE TYPE DE CARTE === */}
       <div className="fixed right-6 bottom-8 z-10">
-        <button 
+        <button
           onClick={handleMapTypeChange}
           className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 hover:shadow-xl border border-gray-200/60 hover:border-gray-300/80"
           title={mapType === "satellite" ? "Passer en vue plan" : "Passer en vue satellite"}
@@ -1187,21 +1301,18 @@ export default function Interface({ user })  {
         </button>
       </div>
 
-      {/* === GOOGLE MAPS - AVEC POLYGON ANDABOLY ET TOUS LES ÉLÉMENTS GOOGLE MAPS VISIBLES === */}
+      {/* === GOOGLE MAPS === */}
       <div className="absolute inset-0 z-0">
         <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_KEY || "AIza..."} >
           <GoogleMap
             mapContainerStyle={containerStyle}
             center={fokontanyCenter || ANDABOLY_CENTER}
             zoom={fokontanyCenter ? 14 : 14}
-            // assurer que le mapTypeId reflète l'état (hybrid pour satellite)
             mapTypeId={mapType === "satellite" ? "hybrid" : "roadmap"}
             onLoad={onMapLoad}
             options={getMapOptions()}
             onClick={handleMapClick}
           >
-            {/* === POLYGON DU FONKOTANY ANDABOLY - AGRANDI ET PLUS VISIBLE === */}
-            {/* Afficher le polygon actif (fokontany assigné ou fallback) */}
             {activePolygon && activePolygon.length > 0 && (
               <Polygon
                 paths={activePolygon}
@@ -1218,11 +1329,37 @@ export default function Interface({ user })  {
                 icon={markerIcon}
               />
             )}
+
+            {residences.map((r) => (
+              (r.lat != null && r.lng != null) ? (
+                <Marker
+                  key={`res-${r.id}`}
+                  position={{ lat: Number(r.lat), lng: Number(r.lng) }}
+                  icon={markerIcon}
+                  onMouseOver={() => setHoveredResidenceId(r.id)}
+                  onMouseOut={() => setHoveredResidenceId(null)}
+                  title={r.lot || `Lot ${r.id}`}
+                />
+              ) : null
+            ))}
+
+            {hoveredResidenceId && (() => {
+              const r = residences.find(x => x.id === hoveredResidenceId);
+              if (!r) return null;
+              const lat = Number(r.lat);
+              const lng = Number(r.lng);
+              if (!isFinite(lat) || !isFinite(lng)) return null;
+              const title = r.lot && r.lot.trim() ? r.lot : (r.name || `Lot ${r.id}`);
+              return (
+                <InfoWindow position={{ lat, lng }}>
+                  <div className="text-sm font-medium">{title}</div>
+                </InfoWindow>
+              );
+            })()}
           </GoogleMap>
         </LoadScript>
       </div>
 
-      {/* Modal Mot de passe oublié */}
       {showForgotPassword && (
         <ForgotPassword
           onClose={() => setShowForgotPassword(false)}
@@ -1263,7 +1400,7 @@ const normalizeCoordinates = (input) => {
     // find a ring of [lng,lat] pairs inside nested arrays
     const findRing = (d) => {
       if (!Array.isArray(d) || d.length === 0) return null;
-      // MultiPolygon: [ [ [ [lng,lat], ... ] ] ] -> d[0][0][0]
+      // MultiPolygon: [ [ [ [lng,lat], ... ] ] ] -> d[0][0]
       if (Array.isArray(d[0]) && Array.isArray(d[0][0]) && Array.isArray(d[0][0][0])) return d[0][0];
       // Polygon or MultiRing: [ [ [lng,lat], ... ] ] or [ [lng,lat], ... ] -> prefer first ring
       if (Array.isArray(d[0]) && Array.isArray(d[0][0]) && typeof d[0][0][0] === "number") return d[0];
@@ -1280,17 +1417,17 @@ const normalizeCoordinates = (input) => {
     const ring = findRing(data);
     if (!ring) return null;
 
-    const out = ring.map(p => {
-      if (!Array.isArray(p) || p.length < 2) return null;
-      const lng = Number(p[0]);
-      const lat = Number(p[1]);
-      if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
-      return { lat, lng };
-    }).filter(Boolean);
+    // convert to [{lat,lng}, ...]
+    const coords = ring.map((p) => {
+      if (Array.isArray(p) && typeof p[0] === "number" && typeof p[1] === "number") {
+        return { lat: +p[1], lng: +p[0] };
+      }
+      return null;
+    }).filter(p => p !== null);
 
-    return out.length ? out : null;
-  } catch (err) {
-    console.warn('[FOK] normalizeCoordinates error', err);
+    return coords.length > 0 ? coords : null;
+  } catch (e) {
+    console.warn('normalizeCoordinates error', e);
     return null;
   }
 };
