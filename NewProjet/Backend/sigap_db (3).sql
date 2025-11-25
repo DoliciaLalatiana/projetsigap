@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : ven. 21 nov. 2025 à 18:33
+-- Généré le : lun. 24 nov. 2025 à 08:43
 -- Version du serveur : 10.4.27-MariaDB
 -- Version de PHP : 8.2.0
 
@@ -143,6 +143,36 @@ INSERT INTO `fokontany` (`id`, `code`, `nom`, `commune`, `district`, `region`, `
 -- --------------------------------------------------------
 
 --
+-- Structure de la table `notifications`
+--
+
+CREATE TABLE `notifications` (
+  `id` int(11) NOT NULL,
+  `type` enum('residence_approval','password_change','password_reset') NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `recipient_id` int(11) NOT NULL,
+  `sender_id` int(11) DEFAULT NULL,
+  `related_entity_id` int(11) DEFAULT NULL,
+  `status` enum('pending','approved','rejected') DEFAULT 'pending',
+  `is_read` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Déchargement des données de la table `notifications`
+--
+
+INSERT INTO `notifications` (`id`, `type`, `title`, `message`, `recipient_id`, `sender_id`, `related_entity_id`, `status`, `is_read`, `created_at`, `updated_at`) VALUES
+(1, 'residence_approval', 'Nouvelle résidence à approuver', 'L\'agent Agent M a ajouté une nouvelle résidence (40 C 230) qui nécessite votre approbation.', 8, 9, 1, 'pending', 1, '2025-11-23 15:43:14', '2025-11-23 15:44:23'),
+(2, 'residence_approval', 'Résidence approuvée', 'Votre résidence (40 C 230) a été approuvée par le secrétaire.', 9, 8, 7, 'approved', 1, '2025-11-23 16:08:35', '2025-11-24 07:03:59'),
+(3, 'residence_approval', 'Nouvelle résidence à approuver', 'L\'agent Agent M a ajouté une nouvelle résidence (50 B 300) qui nécessite votre approbation.', 8, 9, 2, 'pending', 1, '2025-11-24 07:06:46', '2025-11-24 07:07:37'),
+(4, 'residence_approval', 'Résidence approuvée', 'Votre résidence (50 B 300) a été approuvée par le secrétaire.', 9, 8, 8, 'approved', 1, '2025-11-24 07:07:31', '2025-11-24 07:08:00');
+
+-- --------------------------------------------------------
+
+--
 -- Structure de la table `password_change_requests`
 --
 
@@ -161,7 +191,8 @@ CREATE TABLE `password_change_requests` (
 INSERT INTO `password_change_requests` (`id`, `user_id`, `new_password_hash`, `status`, `created_at`) VALUES
 (1, 3, '$2a$10$JuJACmPSNuhIW.tINo97HefN/IQ5bYFk3DxT1Ce8oRtcXc3FBrLWC', 'approved', '2025-11-12 08:26:38'),
 (2, 3, '$2a$10$a5Ngr4HDibQgQ1MKMwu9meUwRWi0zM48MkCLGaZpah/OsFI/E0GcC', 'approved', '2025-11-12 08:29:49'),
-(3, 8, '$2a$10$TiEAI0rYkBETrdLPcanJpuMyIKB9zVjXoHulXx8AFlmttsIH8LjWe', 'approved', '2025-11-21 10:28:44');
+(3, 8, '$2a$10$TiEAI0rYkBETrdLPcanJpuMyIKB9zVjXoHulXx8AFlmttsIH8LjWe', 'approved', '2025-11-21 10:28:44'),
+(4, 9, '$2a$10$PTMJSwKveXHk4aUw.mwjXeEV/UD44QGqYFaQFMlCoP7SVxR935Zc6', 'approved', '2025-11-23 15:43:43');
 
 -- --------------------------------------------------------
 
@@ -191,6 +222,31 @@ INSERT INTO `password_reset_requests` (`id`, `user_id`, `immatricule`, `status`,
 -- --------------------------------------------------------
 
 --
+-- Structure de la table `pending_residences`
+--
+
+CREATE TABLE `pending_residences` (
+  `id` int(11) NOT NULL,
+  `residence_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`residence_data`)),
+  `submitted_by` int(11) NOT NULL,
+  `status` enum('pending','approved','rejected') DEFAULT 'pending',
+  `reviewed_by` int(11) DEFAULT NULL,
+  `review_notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Déchargement des données de la table `pending_residences`
+--
+
+INSERT INTO `pending_residences` (`id`, `residence_data`, `submitted_by`, `status`, `reviewed_by`, `review_notes`, `created_at`, `updated_at`) VALUES
+(1, '{\"lot\":\"40 C 230\",\"quartier\":\"Andaboly Sud\",\"ville\":\"\",\"fokontany\":null,\"lat\":-23.35284956364854,\"lng\":43.684854639841426,\"created_by\":9}', 9, 'approved', 8, 'Bien recu', '2025-11-23 15:43:13', '2025-11-23 16:08:35'),
+(2, '{\"lot\":\"50 B 300\",\"quartier\":\"Andaboly Sud\",\"ville\":\"\",\"fokontany\":null,\"lat\":-23.352405710648,\"lng\":43.68498660822357,\"created_by\":9}', 9, 'approved', 8, 'Bien recu', '2025-11-24 07:06:46', '2025-11-24 07:07:31');
+
+-- --------------------------------------------------------
+
+--
 -- Structure de la table `persons`
 --
 
@@ -204,6 +260,63 @@ CREATE TABLE `persons` (
   `telephone` varchar(50) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Déchargement des données de la table `persons`
+--
+
+INSERT INTO `persons` (`id`, `residence_id`, `nom_complet`, `date_naissance`, `cin`, `genre`, `telephone`, `created_at`) VALUES
+(1, 2, 'Mika', '2025-11-05', '22222222222', 'homme', '5555542222', '2025-11-21 19:16:54'),
+(2, 4, 'aaaa', '2025-11-21', 'aaaaaaaaaa', 'homme', '44444444444', '2025-11-21 19:19:16'),
+(3, 5, 'Michael', '2002-06-13', '501031030343', 'homme', '0335988899', '2025-11-23 14:29:07');
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `person_relations`
+--
+
+CREATE TABLE `person_relations` (
+  `id` int(11) NOT NULL,
+  `person_id` int(11) NOT NULL,
+  `relation_type` enum('parent','enfant','conjoint','ami','autre') DEFAULT NULL,
+  `parent_id` int(11) DEFAULT NULL,
+  `is_proprietaire` tinyint(1) DEFAULT 0,
+  `famille_id` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Déchargement des données de la table `person_relations`
+--
+
+INSERT INTO `person_relations` (`id`, `person_id`, `relation_type`, `parent_id`, `is_proprietaire`, `famille_id`, `created_at`) VALUES
+(1, 3, 'conjoint', NULL, 0, NULL, '2025-11-23 14:29:07');
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `photos`
+--
+
+CREATE TABLE `photos` (
+  `id` int(11) NOT NULL,
+  `residence_id` int(11) NOT NULL,
+  `filename` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Déchargement des données de la table `photos`
+--
+
+INSERT INTO `photos` (`id`, `residence_id`, `filename`, `created_at`) VALUES
+(1, 2, 'residence-1763906922383-631014515.png', '2025-11-23 14:08:42'),
+(2, 2, 'residence-1763906922389-14209208.png', '2025-11-23 14:08:42'),
+(3, 2, 'residence-1763906922397-576215648.png', '2025-11-23 14:08:42'),
+(4, 4, 'residence-1763907775659-333113166.png', '2025-11-23 14:22:56'),
+(5, 4, 'residence-1763907776073-63716273.png', '2025-11-23 14:22:56'),
+(6, 4, 'residence-1763907776076-679333199.jpg', '2025-11-23 14:22:56');
 
 -- --------------------------------------------------------
 
@@ -252,16 +365,21 @@ CREATE TABLE `residences` (
   `lat` double DEFAULT NULL,
   `lng` double DEFAULT NULL,
   `created_by` int(11) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `is_active` tinyint(1) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `residences`
 --
 
-INSERT INTO `residences` (`id`, `lot`, `quartier`, `ville`, `fokontany`, `lat`, `lng`, `created_by`, `created_at`) VALUES
-(1, '123 N 40', 'Andaboly', 'Antananarivo', NULL, -23.350905030289788, 43.670350886272395, 8, '2025-11-21 12:24:04'),
-(2, '40 B 300', 'Andaboly Est', 'Antananarivo', NULL, -23.351588947824204, 43.685929622396436, 8, '2025-11-21 12:25:21');
+INSERT INTO `residences` (`id`, `lot`, `quartier`, `ville`, `fokontany`, `lat`, `lng`, `created_by`, `created_at`, `is_active`) VALUES
+(2, '40 B 300', 'Andaboly Est', 'Toliara', NULL, -23.351588947824204, 43.685929622396436, 8, '2025-11-21 12:25:21', 1),
+(4, '40 B 400', 'Andaboly Sud', 'Toliara I', NULL, -23.353169656928312, 43.6839560148028, 8, '2025-11-21 19:18:23', 1),
+(5, '40 N 500', 'Andaboly Est', NULL, NULL, -23.351935013134597, 43.687510255595484, 8, '2025-11-21 19:43:11', 1),
+(6, '50 B 300', 'Andaboly Sud', NULL, NULL, -23.352737297776997, 43.689356109897616, 8, '2025-11-23 15:02:57', 1),
+(7, '40 C 230', 'Andaboly Sud', '', NULL, -23.35284956364854, 43.684854639841426, 9, '2025-11-23 16:08:35', 1),
+(8, '50 B 300', 'Andaboly Sud', '', NULL, -23.352405710648, 43.68498660822357, 9, '2025-11-24 07:07:31', 1);
 
 -- --------------------------------------------------------
 
@@ -292,7 +410,8 @@ INSERT INTO `users` (`id`, `immatricule`, `nom_complet`, `username`, `password`,
 (3, 'MIKA001', 'Michael', 'mika001', '$2a$10$a5Ngr4HDibQgQ1MKMwu9meUwRWi0zM48MkCLGaZpah/OsFI/E0GcC', 'agent', 1, '2025-11-07 17:31:53', '2025-11-20 18:53:00', 'profile-3-1762864064994-304422636.jfif', 1),
 (6, 'MIKA002', 'Mika2', 'mika002', '$2a$10$ioPl2ZFpralRUgXmu7dCb.d9GC4TChKfS43P2/oHIz8TErMmtLUIi', 'secretaire', 1, '2025-11-21 08:24:01', '2025-11-21 08:24:01', NULL, 30),
 (7, 'MIKA003', 'Mika3', 'mika003', '$2a$10$fHFybfSIQMD1vJ5M13bcH..ZbCarfebQV7QjevmUFPpBeuN5zOyqS', 'agent', 1, '2025-11-21 10:03:13', '2025-11-21 10:03:13', NULL, 1),
-(8, 'MIKA004', 'Mika4', 'mika004', '$2a$10$TiEAI0rYkBETrdLPcanJpuMyIKB9zVjXoHulXx8AFlmttsIH8LjWe', 'secretaire', 1, '2025-11-21 10:05:43', '2025-11-21 10:29:15', 'profile-8-1763720874625-966445399.jpg', 40);
+(8, 'MIKA004', 'Mika4', 'mika004', '$2a$10$TiEAI0rYkBETrdLPcanJpuMyIKB9zVjXoHulXx8AFlmttsIH8LjWe', 'secretaire', 1, '2025-11-21 10:05:43', '2025-11-21 10:29:15', 'profile-8-1763720874625-966445399.jpg', 40),
+(9, 'AGENT004', 'Agent M', 'agent004', '$2a$10$PTMJSwKveXHk4aUw.mwjXeEV/UD44QGqYFaQFMlCoP7SVxR935Zc6', 'agent', 1, '2025-11-23 15:42:12', '2025-11-24 07:04:54', 'profile-9-1763967893924-482081514.png', 40);
 
 --
 -- Index pour les tables déchargées
@@ -310,6 +429,14 @@ ALTER TABLE `fokontany`
   ADD KEY `idx_fokontany_centre` (`centre_lat`,`centre_lng`);
 
 --
+-- Index pour la table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `recipient_id` (`recipient_id`),
+  ADD KEY `sender_id` (`sender_id`);
+
+--
 -- Index pour la table `password_change_requests`
 --
 ALTER TABLE `password_change_requests`
@@ -324,11 +451,34 @@ ALTER TABLE `password_reset_requests`
   ADD KEY `user_id` (`user_id`);
 
 --
+-- Index pour la table `pending_residences`
+--
+ALTER TABLE `pending_residences`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `submitted_by` (`submitted_by`),
+  ADD KEY `reviewed_by` (`reviewed_by`);
+
+--
 -- Index pour la table `persons`
 --
 ALTER TABLE `persons`
   ADD PRIMARY KEY (`id`),
   ADD KEY `residence_id` (`residence_id`);
+
+--
+-- Index pour la table `person_relations`
+--
+ALTER TABLE `person_relations`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `parent_id` (`parent_id`),
+  ADD KEY `idx_person_relations_person_id` (`person_id`);
+
+--
+-- Index pour la table `photos`
+--
+ALTER TABLE `photos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_photos_residence_id` (`residence_id`);
 
 --
 -- Index pour la table `regions`
@@ -341,7 +491,8 @@ ALTER TABLE `regions`
 -- Index pour la table `residences`
 --
 ALTER TABLE `residences`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_residences_active` (`is_active`);
 
 --
 -- Index pour la table `users`
@@ -363,10 +514,16 @@ ALTER TABLE `fokontany`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=86;
 
 --
+-- AUTO_INCREMENT pour la table `notifications`
+--
+ALTER TABLE `notifications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
 -- AUTO_INCREMENT pour la table `password_change_requests`
 --
 ALTER TABLE `password_change_requests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT pour la table `password_reset_requests`
@@ -375,10 +532,28 @@ ALTER TABLE `password_reset_requests`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
+-- AUTO_INCREMENT pour la table `pending_residences`
+--
+ALTER TABLE `pending_residences`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT pour la table `persons`
 --
 ALTER TABLE `persons`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT pour la table `person_relations`
+--
+ALTER TABLE `person_relations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT pour la table `photos`
+--
+ALTER TABLE `photos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT pour la table `regions`
@@ -390,17 +565,24 @@ ALTER TABLE `regions`
 -- AUTO_INCREMENT pour la table `residences`
 --
 ALTER TABLE `residences`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT pour la table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- Contraintes pour les tables déchargées
 --
+
+--
+-- Contraintes pour la table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`recipient_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `notifications_ibfk_2` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Contraintes pour la table `password_change_requests`
@@ -415,10 +597,30 @@ ALTER TABLE `password_reset_requests`
   ADD CONSTRAINT `password_reset_requests_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
+-- Contraintes pour la table `pending_residences`
+--
+ALTER TABLE `pending_residences`
+  ADD CONSTRAINT `pending_residences_ibfk_1` FOREIGN KEY (`submitted_by`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `pending_residences_ibfk_2` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
 -- Contraintes pour la table `persons`
 --
 ALTER TABLE `persons`
   ADD CONSTRAINT `persons_ibfk_1` FOREIGN KEY (`residence_id`) REFERENCES `residences` (`id`) ON DELETE CASCADE;
+
+--
+-- Contraintes pour la table `person_relations`
+--
+ALTER TABLE `person_relations`
+  ADD CONSTRAINT `person_relations_ibfk_1` FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `person_relations_ibfk_2` FOREIGN KEY (`parent_id`) REFERENCES `persons` (`id`) ON DELETE SET NULL;
+
+--
+-- Contraintes pour la table `photos`
+--
+ALTER TABLE `photos`
+  ADD CONSTRAINT `photos_ibfk_1` FOREIGN KEY (`residence_id`) REFERENCES `residences` (`id`) ON DELETE CASCADE;
 
 --
 -- Contraintes pour la table `users`

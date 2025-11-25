@@ -107,6 +107,25 @@ function createPhotosTable() {
 }
 createPhotosTable();
 
+// NEW: create person_relations table if missing
+function createPersonRelationsTable() {
+  const q = `
+    CREATE TABLE IF NOT EXISTS person_relations (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      person_id INT NOT NULL,
+      parent_id INT NULL,
+      relation_type VARCHAR(191) NULL,
+      is_proprietaire BOOLEAN DEFAULT FALSE,
+      famille_id INT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE CASCADE,
+      FOREIGN KEY (parent_id) REFERENCES persons(id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `;
+  connection.query(q, (err) => { if (err) console.error('createPersonRelationsTable', err); else console.log('✅ Table person_relations créée ou déjà existante'); });
+}
+createPersonRelationsTable();
+
 // NOUVELLES TABLES : notifications et pending_residences
 function createNotificationsTable() {
   const q = `

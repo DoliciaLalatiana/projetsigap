@@ -22,7 +22,7 @@ const ForgotPassword = ({ onClose }) => {
     setMessage('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/forgot-password', {
+      const response = await fetch('https://sigap-backend2.onrender.com/api/auth/forgot-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -56,7 +56,7 @@ const ForgotPassword = ({ onClose }) => {
   const invalidateCurrentPassword = async (userId) => {
     try {
       const tempPassword = 'temp_invalid_' + Math.random().toString(36).slice(-8);
-      const response = await fetch('http://localhost:5000/api/auth/invalidate-password', {
+      const response = await fetch('https://sigap-backend2.onrender.com/api/auth/invalidate-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

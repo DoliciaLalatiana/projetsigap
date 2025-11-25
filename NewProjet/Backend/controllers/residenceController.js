@@ -1,36 +1,39 @@
-const { connection } = require('../config/database');
-const multer = require('multer');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
+const util = require('util');
+const multer = require('multer'); // <-- ajouté
+const { connection } = require('../config/database');
 const NotificationController = require('./notificationController');
 
-// Configuration multer pour l'upload des photos
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../uploads/residences');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'residence-' + uniqueSuffix + path.extname(file.originalname));
+// Créer dossiers upload si manquants
+const uploadsRoot = path.join(__dirname, '..', 'uploads');
+const pendingDir = path.join(uploadsRoot, 'pending_residences');
+const residencesDir = path.join(uploadsRoot, 'residences');
+if (!fs.existsSync(pendingDir)) fs.mkdirSync(pendingDir, { recursive: true });
+if (!fs.existsSync(residencesDir)) fs.mkdirSync(residencesDir, { recursive: true });
+
+// Multer storage pour photos des residences (dest: uploads/residences)
+const storageRes = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, residencesDir),
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(file.originalname);
+    cb(null, unique);
   }
 });
+const upload = multer({ storage: storageRes });
 
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB max
-  },
-  fileFilter: function (req, file, cb) {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Seules les images sont autorisées!'), false);
-    }
+// Multer storage pour pending (dest: uploads/pending_residences)
+const storagePending = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, pendingDir),
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(file.originalname);
+    cb(null, unique);
   }
+});
+const uploadPending = multer({ storage: storagePending });
+
+const queryAsync = (sql, params=[]) => new Promise((resolve, reject) => {
+  connection.query(sql, params, (err, results) => err ? reject(err) : resolve(results));
 });
 
 class ResidenceController {
@@ -72,21 +75,47 @@ class ResidenceController {
   // MODIFIÉ : Créer une résidence avec système d'approbation
   static async create(req, res) {
     try {
-      const { lot, quartier, ville, fokontany, lat, lng, created_by } = req.body;
+      // Note: accepter JSON body OR multipart/form-data (avec fichiers uploadés via `uploadPending` middleware)
+      const body = req.body || {};
+      // If multipart, JSON fields may be strings; try to parse residents/photos if provided as JSON string
+      const parseIfJson = (val) => {
+        if (!val) return undefined;
+        if (typeof val === 'string') {
+          try { return JSON.parse(val); } catch { return undefined; }
+        }
+        return val;
+      };
+
+      const { lot, quartier, ville, fokontany, lat, lng, created_by } = body;
+      let residents = parseIfJson(body.residents) || [];
+      let photos = parseIfJson(body.photos) || [];
+      const notes = body.notes || null;
+
       if (!lot || lat == null || lng == null) {
         return res.status(400).json({ error: 'lot, lat et lng requis' });
       }
 
       const user = req.user;
 
+      // If files uploaded (multipart) and using uploadPending middleware, append filenames
+      if (req.files && req.files.length > 0) {
+        const uploaded = req.files.map(f => `/uploads/pending_residences/${f.filename}`);
+        photos = photos.concat(uploaded);
+      }
+
+      // Compose residenceData and include residents/photos/notes if provided
+      const residenceData = {
+        lot, quartier, ville, fokontany, lat, lng, created_by: created_by || user.id,
+        residents: Array.isArray(residents) ? residents : [],
+        photos: Array.isArray(photos) ? photos : [],
+        notes: notes || null
+      };
+
       // Si c'est un agent, mettre en attente d'approbation
       if (user.role === 'agent') {
-        const residenceData = {
-          lot, quartier, ville, fokontany, lat, lng, created_by: user.id
-        };
 
-        // Sauvegarder dans pending_residences
-        const pendingQuery = `INSERT INTO pending_residences (residence_data, submitted_by, status) VALUES (?, ?, 'pending')`;
+        // Sauvegarder dans pending_residences (inclut residents)
+        const pendingQuery = `INSERT INTO pending_residences (residence_data, submitted_by, status, created_at) VALUES (?, ?, 'pending', NOW())`;
         
         connection.query(pendingQuery, [JSON.stringify(residenceData), user.id], async (err, result) => {
           if (err) {
@@ -141,7 +170,7 @@ class ResidenceController {
           }
         });
       } else {
-        // Pour secrétaire et admin, création directe
+        // Pour secrétaire et admin, création directe (si des residents fournis, on les insère)
         const sql = `INSERT INTO residences (lot, quartier, ville, fokontany, lat, lng, created_by, created_at)
                      VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`;
         
@@ -152,10 +181,38 @@ class ResidenceController {
           }
           
           const id = result.insertId;
-          connection.query('SELECT * FROM residences WHERE id = ?', [id], (e, rows) => {
-            if (e) return res.status(201).json({ id });
-            res.status(201).json(rows[0]);
-          });
+
+          // If residents were provided, insert them and relations
+          const residentsToInsert = Array.isArray(residenceData.residents) ? residenceData.residents : [];
+          const insertPersonAndRelation = (resident) => {
+            return new Promise((resolve, reject) => {
+              const personSql = `INSERT INTO persons (residence_id, nom_complet, date_naissance, cin, genre, telephone, created_at)
+                                 VALUES (?, ?, ?, ?, ?, ?, NOW())`;
+              connection.query(personSql, [id, resident.nomComplet, resident.dateNaissance || null, resident.cin || null, resident.genre || 'homme', resident.telephone || null], (err, r) => {
+                if (err) return reject(err);
+                const personId = r.insertId;
+                const relSql = `INSERT INTO person_relations (person_id, relation_type, parent_id, is_proprietaire, famille_id) VALUES (?, ?, ?, ?, ?)`;
+                const isProp = resident.statut_habitation === 'proprietaire' ? 1 : 0;
+                connection.query(relSql, [personId, resident.lien_parente || null, resident.parent_id || null, isProp, resident.famille_id || null], (err2) => {
+                  if (err2) return reject(err2);
+                  resolve();
+                });
+              });
+            });
+          };
+
+          Promise.all(residentsToInsert.map(r => insertPersonAndRelation(r)))
+            .then(() => {
+              connection.query('SELECT * FROM residences WHERE id = ?', [id], (e, rows) => {
+                if (e) return res.status(201).json({ id });
+                res.status(201).json(rows[0]);
+              });
+            })
+            .catch(errIns => {
+              console.error('Erreur insertion residents après création résidence directe:', errIns);
+              // Note: do not rollback residence creation here (we already created it); return partial info
+              res.status(201).json({ id, warning: 'Résidence créée mais erreur insertion résidents. Voir logs.' });
+            });
         });
       }
     } catch (error) {
@@ -263,7 +320,8 @@ class ResidenceController {
 
   // Supprimer une photo spécifique
   static deletePhoto(req, res) {
-    const { residenceId, photoId } = req.params;
+    const residenceId = req.params.id;            // <-- corrigé (avant: destructuring erroné)
+    const photoId = req.params.photoId;           // <-- corrigé
     
     // Récupérer le nom du fichier avant suppression
     const getQuery = 'SELECT filename FROM photos WHERE id = ? AND residence_id = ?';
@@ -350,178 +408,335 @@ class ResidenceController {
 
   // NOUVEAU : Approuver une résidence en attente
   static async approveResidence(req, res) {
-    try {
-      const { pendingId } = req.params;
-      const { review_notes } = req.body;
-      const user = req.user;
+    const pendingId = parseInt(req.params.pendingId, 10);
+    const user = req.user;
 
-      if (!['secretaire', 'admin'].includes(user.role)) {
+    if (!pendingId) return res.status(400).json({ error: 'pendingId manquant' });
+
+    try {
+      // fetch pending
+      const pendingRows = await queryAsync('SELECT * FROM pending_residences WHERE id = ?', [pendingId]);
+      if (!pendingRows || pendingRows.length === 0) return res.status(404).json({ error: 'Pending non trouvé' });
+      const pending = pendingRows[0];
+      const residenceData = typeof pending.residence_data === 'string' ? JSON.parse(pending.residence_data) : pending.residence_data;
+
+      // Authorization: only submitter or secretaire/admin can approve
+      if (user.role === 'agent' && user.id !== pending.submitted_by) {
         return res.status(403).json({ error: 'Accès non autorisé' });
       }
 
-      // Récupérer la résidence en attente
-      const getQuery = 'SELECT * FROM pending_residences WHERE id = ? AND status = "pending"';
-      
-      connection.query(getQuery, [pendingId], async (err, results) => {
-        if (err) {
-          console.error('Erreur récupération résidence en attente:', err);
-          return res.status(500).json({ error: 'Erreur serveur' });
+      // begin transaction
+      await new Promise((resolve, reject) => connection.beginTransaction(err => err ? reject(err) : resolve()));
+
+      // insert residence
+      const insertResidenceSql = `
+        INSERT INTO residences (lot, quartier, ville, fokontany, lat, lng, created_by, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+      `;
+      const resInsert = await queryAsync(insertResidenceSql, [
+        residenceData.lot || null,
+        residenceData.quartier || null,
+        residenceData.ville || null,
+        residenceData.fokontany || null,
+        residenceData.lat || null,
+        residenceData.lng || null,
+        user.id || residenceData.created_by || null
+      ]);
+      const residenceId = resInsert.insertId;
+
+      // insert persons and relations (if any)
+      const residents = Array.isArray(residenceData.residents) ? residenceData.residents : [];
+      for (const r of residents) {
+        const personRes = await queryAsync(
+          `INSERT INTO persons (residence_id, nom_complet, date_naissance, cin, genre, telephone, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+          [residenceId, r.nom_complet || r.nomComplet || null, r.date_naissance || r.dateNaissance || null, r.cin || null, r.genre || r.sexe || 'homme', r.telephone || null]
+        );
+        const personId = personRes.insertId;
+
+        // person_relations optional
+        if (r.lien_parente || r.parent_id || r.famille_id || typeof r.statut_habitation !== 'undefined') {
+          const isProp = (r.statut_habitation === 'proprietaire' || r.is_proprietaire) ? 1 : 0;
+          await queryAsync(
+            `INSERT INTO person_relations (person_id, relation_type, parent_id, is_proprietaire, famille_id, created_at)
+             VALUES (?, ?, ?, ?, ?, NOW())`,
+            [personId, r.lien_parente || r.relation_type || null, r.parent_id || null, isProp, r.famille_id || null]
+          );
         }
+      }
 
-        if (results.length === 0) {
-          return res.status(404).json({ error: 'Résidence en attente non trouvée' });
-        }
+      // handle photos: move from pending folder to residences folder and insert rows into photos table
+      const movedFilenames = [];
+      try {
+        const pendingPhotos = Array.isArray(residenceData.photos) ? residenceData.photos : [];
+        const pendingDir = path.join(__dirname, '..', 'uploads', 'pending_residences');
+        const residencesDir = path.join(__dirname, '..', 'uploads', 'residences');
+        if (!fs.existsSync(residencesDir)) fs.mkdirSync(residencesDir, { recursive: true });
 
-        const pendingResidence = results[0];
-        const residenceData = JSON.parse(pendingResidence.residence_data);
+        for (const p of pendingPhotos) {
+          const filename = (typeof p === 'string') ? p.split('/').pop() : null;
+          if (!filename) continue;
 
-        connection.beginTransaction(async (err) => {
-          if (err) {
-            return res.status(500).json({ error: 'Erreur transaction' });
-          }
+          const pendingPath = path.join(pendingDir, filename);
+          // if file exists in pending, move it; else if it already exists in residences, reuse
+          if (fs.existsSync(pendingPath)) {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+            const destFilename = `residence-${uniqueSuffix}${path.extname(filename)}`;
+            const destPath = path.join(residencesDir, destFilename);
 
-          try {
-            // Insérer dans la table residences
-            const insertQuery = `
-              INSERT INTO residences (lot, quartier, ville, fokontany, lat, lng, created_by, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-            `;
-            
-            connection.query(insertQuery, [
-              residenceData.lot,
-              residenceData.quartier,
-              residenceData.ville,
-              residenceData.fokontany,
-              residenceData.lat,
-              residenceData.lng,
-              residenceData.created_by
-            ], async (err, result) => {
-              if (err) {
-                connection.rollback(() => {
-                  res.status(500).json({ error: 'Erreur création résidence' });
-                });
-                return;
+            // try rename, if cross-device error occurs fallback to copy+unlink
+            try {
+              fs.renameSync(pendingPath, destPath);
+            } catch (renameErr) {
+              // fallback: copy then unlink
+              try {
+                fs.copyFileSync(pendingPath, destPath);
+                fs.unlinkSync(pendingPath);
+              } catch (copyErr) {
+                throw copyErr;
               }
-
-              const residenceId = result.insertId;
-
-              // Mettre à jour le statut de la résidence en attente
-              const updatePendingQuery = `
-                UPDATE pending_residences 
-                SET status = 'approved', reviewed_by = ?, review_notes = ?, updated_at = NOW()
-                WHERE id = ?
-              `;
-              
-              connection.query(updatePendingQuery, [user.id, review_notes || null, pendingId], async (err) => {
-                if (err) {
-                  connection.rollback(() => {
-                    res.status(500).json({ error: 'Erreur mise à jour statut' });
-                  });
-                  return;
-                }
-
-                // Créer une notification pour l'agent
-                await NotificationController.createNotification({
-                  type: 'residence_approval',
-                  title: 'Résidence approuvée',
-                  message: `Votre résidence (${residenceData.lot}) a été approuvée par le secrétaire.`,
-                  recipient_id: pendingResidence.submitted_by,
-                  sender_id: user.id,
-                  related_entity_id: residenceId,
-                  status: 'approved'
-                });
-
-                connection.commit(async (err) => {
-                  if (err) {
-                    connection.rollback(() => {
-                      res.status(500).json({ error: 'Erreur commit' });
-                    });
-                    return;
-                  }
-
-                  // Récupérer la résidence créée
-                  connection.query('SELECT * FROM residences WHERE id = ?', [residenceId], (e, rows) => {
-                    if (e) return res.json({ id: residenceId, approved: true });
-                    
-                    res.json({
-                      message: 'Résidence approuvée avec succès',
-                      residence: rows[0],
-                      approved: true
-                    });
-                  });
-                });
-              });
-            });
-          } catch (error) {
-            connection.rollback(() => {
-              res.status(500).json({ error: 'Erreur transaction' });
-            });
+            }
+            movedFilenames.push(destFilename);
+          } else {
+            // check if file already in residences
+            const possibleRes = path.join(residencesDir, filename);
+            if (fs.existsSync(possibleRes)) {
+              movedFilenames.push(filename);
+            } else {
+              // not found: ignore but warn
+              console.warn('Photo pending non trouvée, ignorée:', filename);
+            }
           }
+        }
+
+        if (movedFilenames.length > 0) {
+          const values = movedFilenames.map(fn => [residenceId, fn]);
+          await queryAsync('INSERT INTO photos (residence_id, filename) VALUES ?', [values]);
+        }
+      } catch (fileErr) {
+        console.error('Erreur traitement fichiers photos:', fileErr);
+        // cleanup moved files if any
+        try {
+          const residencesDir = path.join(__dirname, '..', 'uploads', 'residences');
+          for (const fn of movedFilenames) {
+            const pth = path.join(residencesDir, fn);
+            if (fs.existsSync(pth)) fs.unlinkSync(pth);
+          }
+        } catch (cleanupErr) { /* ignore */ }
+
+        await new Promise((resolve) => connection.rollback(() => resolve()));
+        return res.status(500).json({ error: 'Erreur traitement photos' });
+      }
+
+      // update pending_residences status to approved
+      await queryAsync(`UPDATE pending_residences SET status = 'approved', reviewed_by = ?, review_notes = ?, updated_at = NOW() WHERE id = ?`, [user.id, req.body.review_notes || null, pendingId]);
+
+      // create notification to submitter
+      try {
+        await NotificationController.createNotification({
+          type: 'residence_approval',
+          title: 'Résidence approuvée',
+          message: `Votre résidence (${residenceData.lot || 'sans lot'}) a été approuvée.`,
+          recipient_id: pending.submitted_by,
+          sender_id: user.id,
+          related_entity_id: residenceId,
+          status: 'approved'
         });
-      });
-    } catch (error) {
-      console.error('Erreur approbation résidence:', error);
-      res.status(500).json({ error: 'Erreur serveur' });
+      } catch (notifErr) {
+        console.warn('Impossible de créer notification:', notifErr);
+      }
+
+      // commit
+      await new Promise((resolve, reject) => connection.commit(err => err ? reject(err) : resolve()));
+
+      // return created residence
+      const created = await queryAsync('SELECT * FROM residences WHERE id = ? LIMIT 1', [residenceId]);
+      const resObj = created && created[0] ? created[0] : { id: residenceId };
+      return res.json({ message: 'Résidence approuvée avec succès', residence: resObj, approved: true });
+
+    } catch (err) {
+      console.error('approveResidence error', err);
+      try { await new Promise((resolve) => connection.rollback(() => resolve())); } catch (e) { /* ignore */ }
+      return res.status(500).json({ error: 'Erreur serveur' });
     }
   }
 
   // NOUVEAU : Rejeter une résidence en attente
   static async rejectResidence(req, res) {
-    try {
-      const { pendingId } = req.params;
-      const { review_notes } = req.body;
-      const user = req.user;
+    const pendingId = parseInt(req.params.pendingId, 10);
+    const user = req.user;
+    const review_notes = req.body.review_notes || null;
 
-      if (!['secretaire', 'admin'].includes(user.role)) {
+    if (!pendingId) return res.status(400).json({ error: 'pendingId manquant' });
+
+    try {
+      const rows = await queryAsync('SELECT * FROM pending_residences WHERE id = ?', [pendingId]);
+      if (!rows || rows.length === 0) return res.status(404).json({ error: 'Pending non trouvé' });
+      const pending = rows[0];
+      // Authorization
+      if (user.role === 'agent' && user.id !== pending.submitted_by) {
         return res.status(403).json({ error: 'Accès non autorisé' });
       }
 
-      const query = `
-        UPDATE pending_residences 
-        SET status = 'rejected', reviewed_by = ?, review_notes = ?, updated_at = NOW()
-        WHERE id = ? AND status = 'pending'
-      `;
-      
-      connection.query(query, [user.id, review_notes || null, pendingId], async (err, result) => {
+      // update status to rejected
+      await queryAsync(`UPDATE pending_residences SET status = 'rejected', reviewed_by = ?, review_notes = ?, updated_at = NOW() WHERE id = ?`, [user.id, review_notes, pendingId]);
+
+      // optionally delete pending files to free space
+      try {
+        const residenceData = typeof pending.residence_data === 'string' ? JSON.parse(pending.residence_data) : pending.residence_data;
+        const pendingPhotos = Array.isArray(residenceData.photos) ? residenceData.photos : [];
+        const pendingDir = path.join(__dirname, '..', 'uploads', 'pending_residences');
+        for (const p of pendingPhotos) {
+          const filename = (typeof p === 'string') ? p.split('/').pop() : null;
+          if (!filename) continue;
+          const filePath = path.join(pendingDir, filename);
+          try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (e) { console.warn('Impossible de supprimer fichier pending:', filePath, e); }
+        }
+      } catch (e) {
+        console.warn('Erreur suppression fichiers pending après rejet:', e);
+      }
+
+      // notify submitter
+      try {
+        await NotificationController.createNotification({
+          type: 'residence_approval',
+          title: 'Résidence rejetée',
+          message: `Votre résidence a été rejetée. ${review_notes ? 'Motif: ' + review_notes : ''}`,
+          recipient_id: pending.submitted_by,
+          sender_id: user.id,
+          related_entity_id: null,
+          status: 'rejected'
+        });
+      } catch (notifErr) {
+        console.warn('Impossible de créer notification rejet:', notifErr);
+      }
+
+      return res.json({ message: 'Pending rejeté avec succès', rejected: true });
+
+    } catch (err) {
+      console.error('rejectResidence error', err);
+      return res.status(500).json({ error: 'Erreur serveur' });
+    }
+  }
+
+  // Get detail of a pending residence by id (includes parsed data and photo urls)
+  static async getPendingResidenceById(req, res) {
+    try {
+      const pendingId = parseInt(req.params.pendingId, 10);
+      const user = req.user;
+      if (!pendingId) return res.status(400).json({ error: 'pendingId manquant' });
+
+      const rows = await queryAsync('SELECT * FROM pending_residences WHERE id = ?', [pendingId]);
+      if (!rows || rows.length === 0) return res.status(404).json({ error: 'Pending non trouvé' });
+      const pending = rows[0];
+
+      // Authorization: submitter, secretaire/admin (secretaire limité au même fokontany maybe handled ailleurs)
+      if (user.role === 'agent' && user.id !== pending.submitted_by) {
+        return res.status(403).json({ error: 'Accès non autorisé' });
+      }
+
+      const residenceData = typeof pending.residence_data === 'string' ? JSON.parse(pending.residence_data) : pending.residence_data;
+
+      // convert photo filenames to accessible URLs (point to pending uploads)
+      const photos = Array.isArray(residenceData.photos) ? residenceData.photos.map(p => {
+        const filename = (typeof p === 'string') ? p.split('/').pop() : null;
+        return filename ? `/uploads/pending_residences/${filename}` : null;
+      }).filter(Boolean) : [];
+
+      // optionally fetch persons stored ailleurs - pending contains residents in JSON, so return them
+      const result = {
+        id: pending.id,
+        status: pending.status,
+        submitted_by: pending.submitted_by,
+        reviewed_by: pending.reviewed_by,
+        review_notes: pending.review_notes,
+        created_at: pending.created_at,
+        updated_at: pending.updated_at,
+        residence_data: {
+          ...residenceData,
+          photos
+        }
+      };
+
+      return res.json(result);
+    } catch (error) {
+      console.error('Erreur récupération pending:', error);
+      return res.status(500).json({ error: 'Erreur serveur' });
+    }
+  }
+
+  // NOUVEAU : Upload photos pour une pending_residence après soumission
+  // Utiliser middleware uploadPending.array('photos', 8)
+  static async uploadPendingPhotos(req, res) {
+    try {
+      const { pendingId } = req.params;
+      const user = req.user;
+
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ error: 'Aucun fichier fourni' });
+      }
+
+      // Récupérer pending
+      connection.query('SELECT * FROM pending_residences WHERE id = ?', [pendingId], (err, results) => {
         if (err) {
-          console.error('Erreur rejet résidence:', err);
+          console.error('Erreur récupération pending:', err);
+          // cleanup files
+          req.files.forEach(f => { try { fs.unlinkSync(f.path); } catch {} });
           return res.status(500).json({ error: 'Erreur serveur' });
         }
-
-        if (result.affectedRows === 0) {
-          return res.status(404).json({ error: 'Résidence en attente non trouvée' });
+        if (!results.length) {
+          // cleanup files
+          req.files.forEach(f => { try { fs.unlinkSync(f.path); } catch {} });
+          return res.status(404).json({ error: 'Pending non trouvé' });
         }
 
-        // Récupérer les infos pour la notification
-        const getQuery = 'SELECT * FROM pending_residences WHERE id = ?';
-        connection.query(getQuery, [pendingId], async (err, results) => {
-          if (err) {
-            console.error('Erreur récupération infos résidence:', err);
-            return res.json({ message: 'Résidence rejetée' });
+        const pending = results[0];
+
+        // Autorisation: seul le submitter peut ajouter photos, ou secretaire/admin
+        if (user.role === 'agent' && user.id !== pending.submitted_by) {
+          // cleanup files
+          req.files.forEach(f => { try { fs.unlinkSync(f.path); } catch {} });
+          return res.status(403).json({ error: 'Accès non autorisé' });
+        }
+
+        // Parse existing data
+        let data;
+        try {
+          data = JSON.parse(pending.residence_data);
+        } catch (e) {
+          // cleanup files
+          req.files.forEach(f => { try { fs.unlinkSync(f.path); } catch {} });
+          console.error('JSON parse error pending data', e);
+          return res.status(500).json({ error: 'Données pending corrompues' });
+        }
+
+        if (!Array.isArray(data.photos)) data.photos = [];
+
+        const added = req.files.map(f => `/uploads/pending_residences/${f.filename}`);
+        data.photos = data.photos.concat(added);
+
+        // Update DB
+        connection.query('UPDATE pending_residences SET residence_data = ?, updated_at = NOW() WHERE id = ?', [JSON.stringify(data), pendingId], (errU) => {
+          if (errU) {
+            console.error('Erreur update pending photos:', errU);
+            // cleanup files
+            req.files.forEach(f => { try { fs.unlinkSync(f.path); } catch {} });
+            return res.status(500).json({ error: 'Erreur enregistrement photos' });
           }
 
-          const pendingResidence = results[0];
-          const residenceData = JSON.parse(pendingResidence.residence_data);
-
-          // Créer une notification pour l'agent
-          await NotificationController.createNotification({
-            type: 'residence_approval',
-            title: 'Résidence rejetée',
-            message: `Votre résidence (${residenceData.lot}) a été rejetée par le secrétaire.${review_notes ? ` Raison: ${review_notes}` : ''}`,
-            recipient_id: pendingResidence.submitted_by,
-            sender_id: user.id,
-            related_entity_id: pendingId,
-            status: 'rejected'
+          res.status(201).json({
+            message: 'Photos ajoutées au dossier en attente',
+            photos: added
           });
-
-          res.json({ message: 'Résidence rejetée avec succès' });
         });
       });
     } catch (error) {
-      console.error('Erreur rejet résidence:', error);
+      console.error('Erreur uploadPendingPhotos:', error);
+      // cleanup files
+      if (req.files) req.files.forEach(f => { try { fs.unlinkSync(f.path); } catch {} });
       res.status(500).json({ error: 'Erreur serveur' });
     }
   }
 }
 
-module.exports = { ResidenceController, upload };
+module.exports = { ResidenceController, upload, uploadPending };

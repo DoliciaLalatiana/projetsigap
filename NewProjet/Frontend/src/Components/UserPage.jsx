@@ -24,7 +24,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
     const fetchUserData = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/auth/me', {
+        const response = await fetch('https://sigap-backend2.onrender.com/api/auth/me', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -36,7 +36,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
           const userData = await response.json();
           setUserData(userData);
           if (userData.photo) {
-            setProfileImage(`http://localhost:5000/uploads/${userData.photo}?t=${Date.now()}`);
+            setProfileImage(`https://sigap-backend2.onrender.com/uploads/${userData.photo}?t=${Date.now()}`);
           }
         } else {
           console.error('Erreur lors du chargement des données utilisateur');
@@ -81,7 +81,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
       const formData = new FormData();
       formData.append('photo', file);
 
-      const response = await fetch('http://localhost:5000/api/auth/upload-photo', {
+      const response = await fetch('https://sigap-backend2.onrender.com/api/auth/upload-photo', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -92,7 +92,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
       if (response.ok) {
         const result = await response.json();
         setMessage('Photo de profil mise à jour avec succès!');
-        setProfileImage(`http://localhost:5000/uploads/${result.photo}?t=${Date.now()}`);
+        setProfileImage(`https://sigap-backend2.onrender.com/uploads/${result.photo}?t=${Date.now()}`);
         
         setTimeout(() => {
           setMessage('');
@@ -151,7 +151,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/auth/change-password', {
+      const response = await fetch('https://sigap-backend2.onrender.com/api/auth/change-password', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
