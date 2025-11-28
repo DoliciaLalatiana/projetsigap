@@ -54,16 +54,11 @@ const Login = ({ onLogin }) => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Background Animation */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-200/20 via-purple-200/20 to-pink-200/20 animate-pulse"></div>
-            <div className="absolute top-10 left-10 w-64 h-64 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-            <div className="absolute top-10 right-10 w-64 h-64 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
-            <div className="absolute bottom-10 left-20 w-64 h-64 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
+        <div className="min-h-screen bg-gray-300 backdrop-blur-sm flex items-center justify-center p-4 relative overflow-hidden">
 
             <div className="bg-white rounded-3xl shadow-2xl border border-blue-100/50 p-8 w-full max-w-md relative z-10 transform hover:scale-[1.02] transition-all duration-300">
                 {/* Header */}
-                <div className="text-center mb-8">
+                <div className="text-center bg-transparent mb-8">
                     <div className="relative inline-block mb-4">
                         <div className="bg-gradient-to-br from-blue-500 to-purple-600 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto shadow-2xl relative">
                             <MapPin className="text-white w-10 h-10" />

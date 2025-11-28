@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { LanguageProvider } from './Components/LanguageContext';
 import Interface from './Components/Interface';
 import Statistique from './Components/Statistique';
 import AdminPanel from './Components/AdminPanel';
@@ -51,48 +52,50 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route 
-        path="/login" 
-        element={
-          user ? <Navigate to={user.role === 'admin' ? '/admin' : '/'} /> : <Login onLogin={handleLogin} />
-        } 
-      />
-      <Route 
-        path="/admin" 
-        element={
-          user && user.role === 'admin' ? (
-            <AdminPanel onLogout={handleLogout} currentUser={user} />
-          ) : (
-            <Navigate to="/login" />
-          )
-        } 
-      />
-      <Route 
-        path="/statistique" 
-        element={
-          user ? <Statistique user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
-        } 
-      />
-      <Route 
-        path="/userPage" 
-        element={
-          user ? <UserPage user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
-        } 
-      />
-      <Route 
-        path="/residence" 
-        element={
-          user ? <ResidencePage user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
-        } 
-      />
-      <Route 
-        path="/" 
-        element={
-          user ? <Interface user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
-        } 
-      />
-    </Routes>
+    <LanguageProvider>
+      <Routes>
+        <Route 
+          path="/login" 
+          element={
+            user ? <Navigate to={user.role === 'admin' ? '/admin' : '/'} /> : <Login onLogin={handleLogin} />
+          } 
+        />
+        <Route 
+          path="/admin" 
+          element={
+            user && user.role === 'admin' ? (
+              <AdminPanel onLogout={handleLogout} currentUser={user} />
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
+        />
+        <Route 
+          path="/statistique" 
+          element={
+            user ? <Statistique user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
+          } 
+        />
+        <Route 
+          path="/userPage" 
+          element={
+            user ? <UserPage user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
+          } 
+        />
+        <Route 
+          path="/residence" 
+          element={
+            user ? <ResidencePage user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
+          } 
+        />
+        <Route 
+          path="/" 
+          element={
+            user ? <Interface user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
+          } 
+        />
+      </Routes>
+    </LanguageProvider>
   );
 }
 

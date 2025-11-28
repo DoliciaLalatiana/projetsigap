@@ -112,6 +112,17 @@ export default function Interface({ user }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
 
+  // NOUVEL ÉTAT : pour gérer la résidence cliquée
+  const [clickedResidenceId, setClickedResidenceId] = useState(null);
+
+  // NOUVEL ÉTAT : pour sauvegarder le niveau de zoom avant la sélection d'adresse
+  const [previousZoom, setPreviousZoom] = useState(null);
+  const [previousCenter, setPreviousCenter] = useState(null);
+
+  // NOUVEL ÉTAT : pour sauvegarder le niveau de zoom avant le clic sur une résidence
+  const [zoomBeforeResidenceClick, setZoomBeforeResidenceClick] = useState(null);
+  const [centerBeforeResidenceClick, setCenterBeforeResidenceClick] = useState(null);
+
   // handlers pour le polygon (évite ReferenceError)
   const handlePolygonMouseOver = (e) => {
     try {
@@ -167,7 +178,6 @@ export default function Interface({ user }) {
   const [fokontanyCenter, setFokontanyCenter] = useState(null);
   const [fokontanyName, setFokontanyName] = useState(null);
   const [residences, setResidences] = useState([]);
-  const [hoveredResidenceId, setHoveredResidenceId] = useState(null);
 
   // Charger les notifications
   const fetchNotifications = async () => {
@@ -216,6 +226,60 @@ export default function Interface({ user }) {
     }
   };
 
+  // NOUVELLE FONCTION : Effacer automatiquement les notifications de résidences approuvées
+  const checkAndClearApprovedResidenceNotifications = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Récupérer les résidences approuvées
+      const residencesResponse = await fetch(`${API_BASE}/api/residences?status=approved`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (residencesResponse.ok) {
+        const approvedResidences = await residencesResponse.json();
+        
+        // Pour chaque résidence approuvée, supprimer sa notification associée
+        for (const residence of approvedResidences) {
+          // Supposer que la notification a un champ residence_id ou un titre/message spécifique
+          await fetch(`${API_BASE}/api/notifications/residence/${residence.id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        }
+        
+        // Recharger les notifications après suppression
+        fetchNotifications();
+        fetchUnreadCount();
+      }
+    } catch (error) {
+      console.error('Erreur suppression notifications approuvées:', error);
+    }
+  };
+
+  // NOUVELLE FONCTION : Gérer le clic sur une notification
+  const handleNotificationClick = async (notification) => {
+    // Marquer comme lu
+    await markAsRead(notification.id);
+    
+    // Fermer le panneau de notifications
+    setShowNotifications(false);
+    
+    // Rediriger vers la page des demandes si l'utilisateur est secrétaire
+    if (currentUser?.role === 'secretaire') {
+      setShowPendingResidences(true);
+      setShowResidence(false);
+      setShowStatistique(false);
+      setShowUserPage(false);
+      setUserPageState({ showPasswordModal: false });
+      
+      // Vérifier et effacer les notifications pour les résidences approuvées
+      setTimeout(() => {
+        checkAndClearApprovedResidenceNotifications();
+      }, 1000);
+    }
+  };
+
   const fetchResidences = async () => {
     try {
       let url = `${API_BASE}/api/residences`;
@@ -236,6 +300,8 @@ export default function Interface({ user }) {
     // Rafraîchir toutes les 30 secondes
     const interval = setInterval(() => {
       fetchUnreadCount();
+      // Vérifier périodiquement les résidences approuvées pour effacer les notifications
+      checkAndClearApprovedResidenceNotifications();
     }, 30000);
 
     return () => clearInterval(interval);
@@ -246,6 +312,16 @@ export default function Interface({ user }) {
     fetchResidences();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fokontanyName]);
+
+  // NOUVEL EFFET : Vérifier les notifications à effacer quand on ouvre la page des demandes
+  useEffect(() => {
+    if (showPendingResidences && currentUser?.role === 'secretaire') {
+      // Vérifier et effacer les notifications pour les résidences approuvées
+      setTimeout(() => {
+        checkAndClearApprovedResidenceNotifications();
+      }, 500);
+    }
+  }, [showPendingResidences]);
 
   useEffect(() => {
     const loadMyFokontany = async () => {
@@ -329,6 +405,22 @@ export default function Interface({ user }) {
 
   // Vérifier si une page est ouverte
   const isAnyPageOpen = showResidence || showStatistique || showUserPage || showPendingResidences;
+
+  // NOUVEL EFFET : Fermer la sélection d'adresse quand une page s'ouvre
+  useEffect(() => {
+    if (isAnyPageOpen && isSelectingLocation) {
+      setIsSelectingLocation(false);
+      setSelectedLocation(null);
+      setSelectedAddress("");
+      setHasSelectedAddress(false);
+      setAddressDetails({
+        lot: "",
+        quartier: "",
+        ville: ""
+      });
+      setMessageStatus("normal");
+    }
+  }, [isAnyPageOpen, isSelectingLocation]);
 
   // Fonction pour gérer la recherche selon la page active
   const handleSearchSubmit = (e) => {
@@ -474,6 +566,12 @@ export default function Interface({ user }) {
   const handleAddAddressClick = () => {
     if (isAnyPageOpen) return;
 
+    // Sauvegarder l'état actuel de la carte AVANT de zoomer
+    if (map) {
+      setPreviousZoom(map.getZoom());
+      setPreviousCenter(map.getCenter());
+    }
+
     setIsSelectingLocation(true);
     setSelectedLocation(null);
     setShowAddAddress(false);
@@ -491,8 +589,76 @@ export default function Interface({ user }) {
     }, 100);
   };
 
+  // FONCTION CORRIGÉE : Utiliser l'API Google Geocoding pour obtenir l'adresse exacte
+  const getAddressFromCoordinates = async (lat, lng) => {
+    try {
+      const geocoder = new window.google.maps.Geocoder();
+      
+      const result = await new Promise((resolve, reject) => {
+        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+          if (status === 'OK' && results[0]) {
+            resolve(results[0]);
+          } else {
+            reject(new Error('Geocoding failed: ' + status));
+          }
+        });
+      });
+
+      // Extraire les composants d'adresse
+      let quartier = "";
+      let ville = "";
+      let fullAddress = result.formatted_address;
+
+      // Analyser les composants d'adresse
+      result.address_components.forEach(component => {
+        const types = component.types;
+        
+        if (types.includes('sublocality') || types.includes('neighborhood')) {
+          quartier = component.long_name;
+        } else if (types.includes('locality')) {
+          ville = component.long_name;
+        } else if (types.includes('administrative_area_level_2') && !ville) {
+          ville = component.long_name;
+        }
+      });
+
+      // Si aucun quartier n'est trouvé, utiliser le nom de la localité ou une valeur par défaut
+      if (!quartier) {
+        quartier = ville || "Quartier non spécifié";
+      }
+
+      const addressInfo = {
+        lot: "",
+        quartier,
+        ville,
+        fullAddress
+      };
+
+      console.log('[GEOCODING] Adresse trouvée:', addressInfo);
+      
+      setSelectedAddress(fullAddress);
+      setAddressDetails({
+        lot: "",
+        quartier: addressInfo.quartier,
+        ville: addressInfo.ville
+      });
+
+    } catch (error) {
+      console.error('[GEOCODING] Erreur:', error);
+      
+      // Fallback en cas d'erreur
+      const fallbackAddress = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`;
+      setSelectedAddress(fallbackAddress);
+      setAddressDetails({
+        lot: "",
+        quartier: "Quartier inconnu",
+        ville: "Ville inconnue"
+      });
+    }
+  };
+
   // MODIFICATION COMPLÈTE : Fonction pour gérer le clic sur la carte
-  const handleMapClick = (event) => {
+  const handleMapClick = async (event) => {
     if (isSelectingLocation) {
       const lat = event.latLng.lat();
       const lng = event.latLng.lng();
@@ -501,9 +667,13 @@ export default function Interface({ user }) {
       const activePoly = (fokontanyPolygon && fokontanyPolygon.length) ? fokontanyPolygon : ANDABOLY_POLYGON;
       const isInsidePolygon = isPointInPolygon(clickedPoint, activePoly);
       console.log('[FOK] handleMapClick: isInsidePolygon?', isInsidePolygon);
+      
       if (isInsidePolygon) {
         setSelectedLocation({ lat, lng });
-        getAddressFromCoordinates(lat, lng);
+        
+        // Appeler la fonction de géocoding pour obtenir l'adresse exacte
+        await getAddressFromCoordinates(lat, lng);
+        
         setMessageStatus("normal");
         setIsSelectingLocation(false);
         setTimeout(() => setShowAddAddress(true), 100);
@@ -511,35 +681,6 @@ export default function Interface({ user }) {
         setMessageStatus("error");
       }
     }
-  };
-
-  // FONCTION MODIFIÉE : Pour obtenir l'adresse à partir des coordonnées
-  const getAddressFromCoordinates = (lat, lng) => {
-    let quartier = "Andaboly";
-    let ville = "";
-
-    if (lat > -23.348 && lng < 43.670) {
-      quartier = "Andaboly Nord";
-    } else if (lat < -23.352 && lng > 43.672) {
-      quartier = "Andaboly Sud";
-    } else if (lng > 43.673) {
-      quartier = "Andaboly Est";
-    } else if (lng < 43.667) {
-      quartier = "Andaboly Ouest";
-    }
-
-    const addressInfo = {
-      lot: "",
-      quartier,
-      ville
-    };
-
-    setSelectedAddress(addressInfo.quartier);
-    setAddressDetails({
-      lot: "",
-      quartier: addressInfo.quartier,
-      ville: addressInfo.ville
-    });
   };
 
   // NOUVELLE FONCTION : Pour retourner à la sélection d'adresse
@@ -642,7 +783,7 @@ export default function Interface({ user }) {
     }
   };
 
-  // Fonction pour annuler la sélection
+  // MODIFICATION : Fonction pour annuler la sélection - RESTAURER LE ZOOM PRÉCÉDENT
   const handleCancelSelection = () => {
     setIsSelectingLocation(false);
     setSelectedLocation(null);
@@ -655,6 +796,14 @@ export default function Interface({ user }) {
     });
 
     setMessageStatus("normal");
+
+    // RESTAURER LE ZOOM ET LE CENTRE PRÉCÉDENTS
+    if (map && previousZoom && previousCenter) {
+      setTimeout(() => {
+        map.setCenter(previousCenter);
+        map.setZoom(previousZoom);
+      }, 100);
+    }
   };
 
   // FONCTION MODIFIÉE : Pour mettre à jour seulement le champ Lot
@@ -722,6 +871,30 @@ export default function Interface({ user }) {
   // Fonction pour changer le type de carte
   const handleMapTypeChange = () => {
     setMapType(mapType === "satellite" ? "roadmap" : "satellite");
+  };
+
+  // NOUVELLE FONCTION : Pour gérer le clic sur une résidence (marqueur)
+  const handleResidenceMarkerClick = (residenceId) => {
+    // Sauvegarder l'état actuel de la carte AVANT d'afficher la fenêtre modale
+    if (map) {
+      setZoomBeforeResidenceClick(map.getZoom());
+      setCenterBeforeResidenceClick(map.getCenter());
+    }
+    
+    setClickedResidenceId(residenceId);
+  };
+
+  // NOUVELLE FONCTION : Pour fermer la fenêtre modale des détails de résidence
+  const handleCloseResidenceInfo = () => {
+    setClickedResidenceId(null);
+    
+    // RESTAURER LE ZOOM ET LE CENTRE PRÉCÉDENTS
+    if (map && zoomBeforeResidenceClick && centerBeforeResidenceClick) {
+      setTimeout(() => {
+        map.setCenter(centerBeforeResidenceClick);
+        map.setZoom(zoomBeforeResidenceClick);
+      }, 100);
+    }
   };
 
   // NOUVEAU : charger fokontany depuis l'utilisateur (login) ou via API si absent
@@ -936,45 +1109,54 @@ export default function Interface({ user }) {
 
   return (
     <div className="relative w-full h-screen bg-gradient-to-r from-blue-50 to-indigo-50 overflow-hidden">
-      {/* === NAVBAR SÉPARÉE EN DEUX PARTIES === */}
+      {/* === OVERLAY GRIS/FLOU QUAND UNE PAGE EST OUVERTE === */}
+      {isAnyPageOpen && (
+        <div className="absolute inset-0 z-20 bg-gray-500/30 backdrop-blur-sm transition-all duration-300 ease-in-out"></div>
+      )}
 
-      {/* Partie gauche - Barre de recherche avec opacité */}
-      <div className={`absolute top-5 z-30 transition-all px-7 py-2 rounded-3xl bg-white/30 hover:bg-white/50 duration-300 ease-out ${isAnyPageOpen ? "left-64" : "left-1/2 transform -translate-x-1/2"}`}>
-        <div className={`rounded-full flex items-center px-6 py-1 w-96 border transition-all duration-300 ${isSearchDisabled
-          ? "bg-gray-100/80 border-gray-300 cursor-not-allowed backdrop-blur-sm"
-          : "bg-white/50 backdrop-blur-sm border-gray-200/60 hover:bg-white hover:border-gray-300/80"}`}>
-          <Search className={`mr-3 flex-shrink-0 ${isSearchDisabled ? "text-gray-400" : "text-gray-600"}`} size={20} />
-          <form onSubmit={handleSearchSubmit} className="flex-1 flex items-center">
-            <input
-              ref={searchRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={getSearchPlaceholder()}
-              disabled={isSearchDisabled}
-              className={`w-full p-1 bg-transparent outline-none text-sm ${isSearchDisabled
-                ? "text-gray-400 placeholder-gray-400 cursor-not-allowed"
-                : "text-gray-700 placeholder-gray-600"}`}
-            />
-          </form>
+      <div className="absolute top-5 left-1/2 transform -translate-x-1/2 z-30">
+        <div className="px-7 py-2 rounded-3xl bg-white/30 hover:bg-white/50 duration-300 ease-out opacity-100">
+          <div className="rounded-full flex items-center px-6 py-1 w-96 border bg-white backdrop-blur-sm border-gray-200/60 hover:border-gray-300/80 transition-all duration-300">
+            <Search className="mr-3 flex-shrink-0 text-gray-600" size={20} />
+
+            <form onSubmit={handleSearchSubmit} className="flex-1 flex items-center">
+              <input
+                ref={searchRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={getSearchPlaceholder()}
+                disabled={isSearchDisabled}
+                className="w-full p-1 bg-transparent outline-none text-sm text-gray-700 placeholder-gray-600"
+              />
+            </form>
+          </div>
         </div>
       </div>
 
-      {/* Partie droite - Bouton et icônes avec background fixe */}
+      {/* === BOUTONS DROITS (AJOUTER, NOTIFICATIONS, PROFIL) === */}
       <div className="absolute top-6 right-4 z-20">
         <div className="bg-white/30 hover:bg-white/50 rounded-2xl shadow-lg border border-gray-200/60 hover:border-gray-300/80 transition-all duration-300">
           <div className="flex items-center justify-end px-4 py-1 space-x-4">
 
-            {/* Bouton Ajouter */}
+            {/* Bouton Ajouter - MODIFICATION IMPORTANTE */}
             <button
               onClick={handleAddAddressClick}
-              disabled={isAnyPageOpen}
-              className={`flex items-center px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap ${isAnyPageOpen
-                ? "bg-gray-400/80 text-gray-200 cursor-not-allowed backdrop-blur-sm"
-                : isSelectingLocation
+              disabled={isAnyPageOpen || isSelectingLocation}
+              className={`flex items-center px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap ${
+                isAnyPageOpen || isSelectingLocation
+                  ? "bg-green-600 text-gray-200 cursor-not-allowed backdrop-blur-sm"
+                  : isSelectingLocation
                   ? "bg-green-600 text-white hover:bg-green-700 backdrop-blur-sm"
-                  : "bg-green-600 text-white hover:bg-green-700 backdrop-blur-sm"}`}
-              title={isAnyPageOpen ? "Fermez les autres pages pour ajouter une adresse" : "Ajouter une nouvelle adresse"}
+                  : "bg-green-600 text-white hover:bg-green-700 backdrop-blur-sm"
+              }`}
+              title={
+                isAnyPageOpen 
+                  ? "Fermez les autres pages pour ajouter une adresse" 
+                  : isSelectingLocation
+                  ? "Sélection en cours - cliquez sur la carte ou annulez"
+                  : "Ajouter une nouvelle adresse"
+              }
             >
               {isSelectingLocation ? (
                 <Navigation size={18} className="mr-2 flex-shrink-0" />
@@ -986,7 +1168,7 @@ export default function Interface({ user }) {
               </span>
             </button>
 
-            {/* Notification */}
+            {/* Notification - MODIFICATION : Toujours accessible */}
             <button
               onClick={() => {
                 setShowNotifications(!showNotifications);
@@ -1015,9 +1197,9 @@ export default function Interface({ user }) {
         </div>
       </div>
 
-      {/* Panneau de notifications */}
+      {/* Panneau de notifications - MODIFICATION : Toujours accessible */}
       {showNotifications && (
-        <div className="absolute top-12 right-4 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
+        <div className="absolute top-18 right-4 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
           <div className="p-4 border-b border-gray-200">
             <h3 className="font-semibold text-gray-800">Notifications</h3>
           </div>
@@ -1029,7 +1211,7 @@ export default function Interface({ user }) {
                 <div
                   key={notification.id}
                   className={`p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${!notification.is_read ? 'bg-blue-50' : ''}`}
-                  onClick={() => markAsRead(notification.id)}
+                  onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex justify-between items-start">
                     <h4 className="font-medium text-sm text-gray-800">{notification.title}</h4>
@@ -1054,7 +1236,8 @@ export default function Interface({ user }) {
       )}
 
       {/* === OVERLAY DE SÉLECTION D'ADRESSE === */}
-      {isSelectingLocation && (
+      {/* MODIFICATION : Le message disparaît quand une page est ouverte */}
+      {isSelectingLocation && !isAnyPageOpen && (
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-end pb-8 pointer-events-none">
           <div className={`rounded-2xl shadow-2xl p-4 mx-4 border relative w-full max-w-2xl ${messageStatus === "error"
             ? "bg-red-50 border-red-200"
@@ -1262,7 +1445,10 @@ export default function Interface({ user }) {
 
       {showPendingResidences && (
         <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[85vh] w-316">
-          <PendingResidences onBack={handleClosePendingResidences} />
+          <PendingResidences 
+            onBack={handleClosePendingResidences} 
+            onResidenceApproved={checkAndClearApprovedResidenceNotifications}
+          />
         </div>
       )}
 
@@ -1336,23 +1522,44 @@ export default function Interface({ user }) {
                   key={`res-${r.id}`}
                   position={{ lat: Number(r.lat), lng: Number(r.lng) }}
                   icon={markerIcon}
-                  onMouseOver={() => setHoveredResidenceId(r.id)}
-                  onMouseOut={() => setHoveredResidenceId(null)}
+                  onClick={() => handleResidenceMarkerClick(r.id)}
                   title={r.lot || `Lot ${r.id}`}
                 />
               ) : null
             ))}
 
-            {hoveredResidenceId && (() => {
-              const r = residences.find(x => x.id === hoveredResidenceId);
+            {clickedResidenceId && (() => {
+              const r = residences.find(x => x.id === clickedResidenceId);
               if (!r) return null;
               const lat = Number(r.lat);
               const lng = Number(r.lng);
               if (!isFinite(lat) || !isFinite(lng)) return null;
-              const title = r.lot && r.lot.trim() ? r.lot : (r.name || `Lot ${r.id}`);
+              
               return (
-                <InfoWindow position={{ lat, lng }}>
-                  <div className="text-sm font-medium">{title}</div>
+                <InfoWindow 
+                  position={{ lat, lng }}
+                  onCloseClick={handleCloseResidenceInfo}
+                  options={{
+                    disableAutoPan: true, // EMPÊCHE LE RECENTRAGE AUTOMATIQUE
+                    maxWidth: 200,
+                    pixelOffset: new window.google.maps.Size(0, -30)
+                  }}
+                >
+                  <div className="p-2 max-w-xs">
+                    <div className="font-semibold text-gray-800 text-sm mb-2">
+                      {r.lot && r.lot.trim() ? r.lot : `Lot ${r.id}`}
+                    </div>
+                    {r.quartier && (
+                      <div className="text-xs text-gray-600 mb-1">
+                        <span className="font-medium">Quartier:</span> {r.quartier}
+                      </div>
+                    )}
+                    {r.ville && (
+                      <div className="text-xs text-gray-600">
+                        <span className="font-medium">Ville:</span> {r.ville}
+                      </div>
+                    )}
+                  </div>
                 </InfoWindow>
               );
             })()}

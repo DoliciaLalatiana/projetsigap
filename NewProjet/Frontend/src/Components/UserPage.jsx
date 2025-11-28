@@ -19,6 +19,98 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
   // Utiliser l'état passé en props
   const { showPasswordModal } = userPageState;
 
+  // Récupérer la langue depuis le localStorage ou utiliser 'fr' par défaut
+  const [language, setLanguage] = useState(() => {
+    return localStorage.getItem('appLanguage') || 'fr';
+  });
+
+  // Textes selon la langue
+  const texts = {
+    fr: {
+      title: "Paramètres du Compte",
+      changePassword: "Changer de mot de passe",
+      logout: "Déconnexion",
+      profilePhoto: "Photo de profil",
+      immatriculation: "Immatriculation",
+      username: "Nom d'utilisateur",
+      secureProcess: "Processus sécurisé",
+      secureProcessDesc: "Votre demande sera envoyée à l'administrateur pour approbation. Vous recevrez une notification une fois le changement effectué.",
+      oldPassword: "Ancien mot de passe",
+      newPassword: "Nouveau mot de passe",
+      confirmPassword: "Confirmer le nouveau mot de passe",
+      oldPasswordPlaceholder: "Entrez votre ancien mot de passe",
+      newPasswordPlaceholder: "Entrez votre nouveau mot de passe",
+      confirmPasswordPlaceholder: "Confirmez votre nouveau mot de passe",
+      cancel: "Annuler",
+      sendRequest: "Envoyer la demande",
+      sending: "Envoi...",
+      passwordChangeTitle: "Changer le mot de passe",
+      photoTooLarge: "La photo ne doit pas dépasser 5MB",
+      invalidImage: "Veuillez sélectionner une image valide",
+      photoUpdated: "Photo de profil mise à jour avec succès!",
+      allFieldsRequired: "Tous les champs sont obligatoires",
+      passwordsDontMatch: "Les nouveaux mots de passe ne correspondent pas",
+      passwordTooShort: "Le nouveau mot de passe doit contenir au moins 6 caractères",
+      passwordChangeRequest: "Demande de changement de mot de passe envoyée! L'administrateur doit l'approuver.",
+      connectionError: "Erreur de connexion au serveur"
+    },
+    mg: {
+      title: "Fikirana ny Kaonty",
+      changePassword: "Hanova teny miafina",
+      logout: "Fialana",
+      profilePhoto: "Sarin'ny mpikambana",
+      immatriculation: "Fampidirana",
+      username: "Anaran'ny mpikambana",
+      secureProcess: "Dingina azo antoka",
+      secureProcessDesc: "Halefa ny fangatahanao any amin'ny mpiandraikitra ho fanamarinana. Hahazo fampandrenesana ianao rehefa vita ny fanovana.",
+      oldPassword: "Teny miafina taloha",
+      newPassword: "Teny miafina vaovao",
+      confirmPassword: "Hamarinina ny teny miafina vaovao",
+      oldPasswordPlaceholder: "Ampidiro ny teny miafina talohanao",
+      newPasswordPlaceholder: "Ampidiro ny teny miafina vaovao",
+      confirmPasswordPlaceholder: "Hamarinina ny teny miafina vaovao",
+      cancel: "Afoana",
+      sendRequest: "Alefa ny fangatahana",
+      sending: "Alefa...",
+      passwordChangeTitle: "Hanova teny miafina",
+      photoTooLarge: "Tsy tokony ho lehibe noho ny 5MB ny sary",
+      invalidImage: "Mifidiana sary azo ekena azafady",
+      photoUpdated: "Nohavaozina soa aman-tsara ny sarin'ny mpikambana!",
+      allFieldsRequired: "Ilaina ny fenoina ny saha rehetra",
+      passwordsDontMatch: "Tsy mifanaraka ny teny miafina vaovao",
+      passwordTooShort: "Tokony misy farafahakeliny 6 caractère ny teny miafina vaovao",
+      passwordChangeRequest: "Nalefa ny fangatahana fanovana teny miafina! Mila hanamarina ny mpiandraikitra.",
+      connectionError: "Olana amin'ny fifandraisana amin'ny server"
+    }
+  };
+
+  const t = texts[language];
+
+  // Fonction pour changer la langue
+  const toggleLanguage = () => {
+    const newLanguage = language === 'fr' ? 'mg' : 'fr';
+    setLanguage(newLanguage);
+    localStorage.setItem('appLanguage', newLanguage);
+    
+    // Déclencher un événement personnalisé pour notifier les autres composants
+    window.dispatchEvent(new CustomEvent('languageChanged', { 
+      detail: { language: newLanguage } 
+    }));
+  };
+
+  // Écouter les changements de langue depuis d'autres composants
+  useEffect(() => {
+    const handleLanguageChange = (event) => {
+      setLanguage(event.detail.language);
+    };
+
+    window.addEventListener('languageChanged', handleLanguageChange);
+    
+    return () => {
+      window.removeEventListener('languageChanged', handleLanguageChange);
+    };
+  }, []);
+
   // Charger les données utilisateur depuis l'API
   useEffect(() => {
     const fetchUserData = async () => {
@@ -56,12 +148,12 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
     const file = event.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        setMessage('La photo ne doit pas dépasser 5MB');
+        setMessage(t.photoTooLarge);
         return;
       }
 
       if (!file.type.startsWith('image/')) {
-        setMessage('Veuillez sélectionner une image valide');
+        setMessage(t.invalidImage);
         return;
       }
 
@@ -91,7 +183,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
 
       if (response.ok) {
         const result = await response.json();
-        setMessage('Photo de profil mise à jour avec succès!');
+        setMessage(t.photoUpdated);
         setProfileImage(`https://sigap-backend2.onrender.com/uploads/${result.photo}?t=${Date.now()}`);
         
         setTimeout(() => {
@@ -103,7 +195,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
       }
     } catch (error) {
       console.error('Erreur upload photo:', error);
-      setMessage('Erreur de connexion au serveur');
+      setMessage(t.connectionError);
     }
   };
 
@@ -132,19 +224,19 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
     setMessage('');
 
     if (!passwordData.oldPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-      setMessage("Tous les champs sont obligatoires");
+      setMessage(t.allFieldsRequired);
       setLoading(false);
       return;
     }
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setMessage("Les nouveaux mots de passe ne correspondent pas");
+      setMessage(t.passwordsDontMatch);
       setLoading(false);
       return;
     }
 
     if (passwordData.newPassword.length < 6) {
-      setMessage("Le nouveau mot de passe doit contenir au moins 6 caractères");
+      setMessage(t.passwordTooShort);
       setLoading(false);
       return;
     }
@@ -166,7 +258,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
       const data = await response.json();
 
       if (response.ok) {
-        setMessage("Demande de changement de mot de passe envoyée! L'administrateur doit l'approuver.");
+        setMessage(t.passwordChangeRequest);
         setTimeout(() => {
           handleCloseModal();
         }, 3000);
@@ -175,7 +267,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
       }
     } catch (error) {
       console.error('Erreur:', error);
-      setMessage('Erreur de connexion au serveur');
+      setMessage(t.connectionError);
     } finally {
       setLoading(false);
     }
@@ -206,11 +298,40 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
   return (
     <div className="min-h-screen bg-transparent py-4 px-4 relative overflow-hidden">
       
+      {/* Bouton de changement de langue */}
+      <div className="absolute top-4 right-4 z-20">
+        <button
+          onClick={toggleLanguage}
+          className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-lg hover:scale-110 transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          title={language === 'fr' ? 'Changer en Malagasy' : 'Hiova amin\'ny frantsay'}
+        >
+          {language === 'fr' ? (
+            // Drapeau français (bandes verticales)
+            <div className="w-full h-full flex">
+              <div className="w-1/3 bg-blue-600"></div>
+              <div className="w-1/3 bg-white"></div>
+              <div className="w-1/3 bg-red-600"></div>
+            </div>
+          ) : (
+            // Drapeau malgache CORRIGÉ : bande verticale blanche à gauche, bandes horizontales rouge et verte à droite
+            <div className="w-full h-full flex">
+              {/* Bande verticale blanche */}
+              <div className="w-1/3 bg-white"></div>
+              {/* Partie droite avec bandes horizontales */}
+              <div className="w-2/3 flex flex-col">
+                <div className="h-1/2 bg-red-600"></div>
+                <div className="h-1/2 bg-green-600"></div>
+              </div>
+            </div>
+          )}
+        </button>
+      </div>
+
       {/* Message de notification */}
       {message && (
         <div className="max-w-lg mx-auto mb-4 relative z-10">
           <div className={`p-4 rounded-xl backdrop-blur-sm ${
-            message.includes('succès') || message.includes('envoyée') 
+            message.includes('succès') || message.includes('envoyée') || message.includes('soa aman-tsara') || message.includes('nalefa')
               ? 'bg-green-50/80 border border-green-200/60 text-green-800' 
               : 'bg-red-50/80 border border-red-200/60 text-red-800'
           }`}>
@@ -241,7 +362,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
             <div className="bg-gradient-to-r from-blue-500/80 to-purple-600/80 backdrop-blur-sm py-6 px-6">
               <div className="text-center">
                 <h1 className="text-2xl font-bold text-white">
-                  Paramètres du Compte
+                  {t.title}
                 </h1>
               </div>
             </div>
@@ -271,7 +392,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
                   <button
                     onClick={triggerFileInput}
                     className="absolute -bottom-1 -right-1 bg-gradient-to-r from-blue-500/80 to-purple-600/80 backdrop-blur-sm text-white p-2 rounded-full shadow-lg hover:from-blue-600/80 hover:to-purple-700/80 transition-all duration-300 transform hover:scale-110 border-2 border-white"
-                    title="Changer la photo"
+                    title={t.profilePhoto}
                     type="button"
                   >
                     <Camera size={16} />
@@ -294,10 +415,10 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
                     {userData?.role || "Utilisateur"}
                   </p>
                   <p className="text-gray-600 text-sm">
-                    Immatriculation: <span className="font-medium text-purple-600">{userData?.immatricule || "Chargement..."}</span>
+                    {t.immatriculation}: <span className="font-medium text-purple-600">{userData?.immatricule || "Chargement..."}</span>
                   </p>
                   <p className="text-gray-600 text-sm">
-                    Username: <span className="font-medium text-purple-600">{userData?.username || "Chargement..."}</span>
+                    {t.username}: <span className="font-medium text-purple-600">{userData?.username || "Chargement..."}</span>
                   </p>
                 </div>
               </div>
@@ -309,7 +430,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
                   type="button"
                 >
                   <Key size={20} />
-                  <span>Changer de mot de passe</span>
+                  <span>{t.changePassword}</span>
                 </button>
               </div>
             </div>
@@ -323,7 +444,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
               type="button"
             >
               <LogOut size={20} />
-              <span>Déconnexion</span>
+              <span>{t.logout}</span>
             </button>
           </div>
         </div>
@@ -338,7 +459,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
             <div className="bg-gradient-to-r from-blue-500/80 to-purple-600/80 backdrop-blur-sm py-6 px-6 relative">
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-white text-center">
-                  Changer le mot de passe
+                  {t.passwordChangeTitle}
                 </h2>
               </div>
             </div>
@@ -346,20 +467,20 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
             <div className="p-6">
               <form onSubmit={handlePasswordSubmit} className="space-y-3">
 
-              <div className="bg-blue-50/80 backdrop-blur-sm border border-blue-200/60 rounded-xl p-4">
+                <div className="bg-blue-50/80 backdrop-blur-sm border border-blue-200/60 rounded-xl p-4">
                   <div className="flex items-start space-x-3">
                     <Lock className="text-blue-500 w-5 h-5 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-blue-800 text-sm font-medium">Processus sécurisé</p>
+                      <p className="text-blue-800 text-sm font-medium">{t.secureProcess}</p>
                       <p className="text-blue-700 text-xs mt-1">
-                        Votre demande sera envoyée à l'administrateur pour approbation. Vous recevrez une notification une fois le changement effectué.
+                        {t.secureProcessDesc}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 <div className="group">
-                  <label className="text-gray-800 text-sm font-medium mb-2 block">Ancien mot de passe</label>
+                  <label className="text-gray-800 text-sm font-medium mb-2 block">{t.oldPassword}</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-600 group-focus-within:text-blue-500 transition-colors">
                       <Lock className="h-5 w-5" />
@@ -369,7 +490,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
                       value={passwordData.oldPassword}
                       onChange={(e) => handlePasswordChange('oldPassword', e.target.value)}
                       className="block w-full pl-10 pr-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-300/60 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      placeholder="Entrez votre ancien mot de passe"
+                      placeholder={t.oldPasswordPlaceholder}
                       required
                       disabled={loading}
                     />
@@ -377,7 +498,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
                 </div>
 
                 <div className="group">
-                  <label className="text-gray-800 text-sm font-medium mb-2 block">Nouveau mot de passe</label>
+                  <label className="text-gray-800 text-sm font-medium mb-2 block">{t.newPassword}</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-600 group-focus-within:text-blue-500 transition-colors">
                       <Lock className="h-5 w-5" />
@@ -387,7 +508,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
                       value={passwordData.newPassword}
                       onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
                       className="block w-full pl-10 pr-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-300/60 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      placeholder="Entrez votre nouveau mot de passe"
+                      placeholder={t.newPasswordPlaceholder}
                       required
                       minLength={6}
                       disabled={loading}
@@ -396,7 +517,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
                 </div>
 
                 <div className="group">
-                  <label className="text-gray-800 text-sm font-medium mb-2 block">Confirmer le nouveau mot de passe</label>
+                  <label className="text-gray-800 text-sm font-medium mb-2 block">{t.confirmPassword}</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-600 group-focus-within:text-blue-500 transition-colors">
                       <Lock className="h-5 w-5" />
@@ -406,7 +527,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
                       value={passwordData.confirmPassword}
                       onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
                       className="block w-full pl-10 pr-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-300/60 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      placeholder="Confirmez votre nouveau mot de passe"
+                      placeholder={t.confirmPasswordPlaceholder}
                       required
                       minLength={6}
                       disabled={loading}
@@ -421,7 +542,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
                     disabled={loading}
                     className="flex-1 bg-gray-500/80 backdrop-blur-sm text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:bg-gray-600/80 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Annuler
+                    {t.cancel}
                   </button>
                   <button
                     type="submit"
@@ -431,10 +552,10 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
                     {loading ? (
                       <div className="flex items-center justify-center space-x-2">
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Envoi...</span>
+                        <span>{t.sending}</span>
                       </div>
                     ) : (
-                      'Envoyer la demande'
+                      t.sendRequest
                     )}
                   </button>
                 </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Users,
   Filter,
@@ -14,47 +14,185 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "";
+
 const Statistique = ({ onBack }) => {
   const [selectedFokontany, setSelectedFokontany] = useState("Tsimenantsy");
+  const [statistics, setStatistics] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const fokontanyData = {
-    Tsimenantsy: {
-      residences: 15,
-      habitants: 445,
-      hommes: 218,
-      femmes: 227,
-      densite: 35.8,
-      zones: 4,
-      menages: 132,
-      messages: 152,
-      croissanceData: [
-        { mois: "Jan", residences: 8, habitants: 240 },
-        { mois: "Fév", residences: 9, habitants: 265 },
-        { mois: "Mar", residences: 10, habitants: 290 },
-        { mois: "Avr", residences: 11, habitants: 315 },
-        { mois: "Mai", residences: 12, habitants: 345 },
-        { mois: "Juin", residences: 13, habitants: 380 },
-        { mois: "Juil", residences: 14, habitants: 410 },
-        { mois: "Août", residences: 15, habitants: 445 },
-      ],
-      densiteData: [
-        { zone: "Amboditsiry", densite: 45, residences: 6, progression: 12 },
-        { zone: "Ankadindramamy", densite: 32, residences: 4, progression: 8 },
-        { zone: "Andranomena", densite: 28, residences: 3, progression: 5 },
-        { zone: "Antanetibe", densite: 38, residences: 5, progression: 15 },
-      ],
-      pyramideAges: [
-        { groupe: "0-18", hommes: 45, femmes: 43 },
-        { groupe: "19-35", hommes: 68, femmes: 72 },
-        { groupe: "36-60", hommes: 85, femmes: 88 },
-        { groupe: "60+", hommes: 20, femmes: 24 },
-      ],
-    },
+  // Charger les données réelles depuis l'API
+  useEffect(() => {
+    const fetchStatistics = async () => {
+      try {
+        setLoading(true);
+        
+        // 1. Charger toutes les résidences
+        const residencesResp = await fetch(`${API_BASE}/api/residences`);
+        const residences = residencesResp.ok ? await residencesResp.json() : [];
+        
+        // 2. Charger toutes les personnes
+        const token = localStorage.getItem("token");
+        const headers = token 
+          ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
+          : { "Content-Type": "application/json" };
+          
+        const personsResp = await fetch(`${API_BASE}/api/persons`, { headers });
+        const allPersons = personsResp.ok ? await personsResp.json() : [];
+
+        // 3. Calculer les statistiques
+        const totalResidences = residences.length;
+        
+        // Filtrer les personnes qui sont dans les résidences
+        const residentsInResidences = allPersons.filter(person => 
+          residences.some(residence => residence.id === person.residence_id)
+        );
+
+        const totalResidents = residentsInResidences.length;
+        const totalHommes = residentsInResidences.filter(person => 
+          person.genre === 'homme' || person.genre === 'Homme' || person.genre === 'male'
+        ).length;
+        const totalFemmes = residentsInResidences.filter(person => 
+          person.genre === 'femme' || person.genre === 'Femme' || person.genre === 'female'
+        ).length;
+
+        // 4. Calculer la densité (approximative)
+        const densite = totalResidences > 0 ? (totalResidents / totalResidences).toFixed(1) : 0;
+
+        // 5. Calculer la pyramide des âges
+        const pyramideAges = calculerPyramideAges(residentsInResidences);
+
+        // 6. Données de croissance (simulées basées sur les données actuelles)
+        const croissanceData = genererDonneesCroissance(totalResidences, totalResidents);
+
+        // 7. Données de densité par zone (basées sur les quartiers réels)
+        const densiteData = calculerDensiteParZone(residences, residentsInResidences);
+
+        setStatistics({
+          totalResidences,
+          totalResidents,
+          totalHommes,
+          totalFemmes,
+          densite: parseFloat(densite),
+          zones: new Set(residences.map(r => r.quartier).filter(Boolean)).size,
+          menages: totalResidences, // Approximation : 1 résidence = 1 ménage
+          messages: 0, // À adapter selon vos besoins
+          croissanceData,
+          densiteData,
+          pyramideAges
+        });
+
+      } catch (error) {
+        console.error("Erreur chargement statistiques:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStatistics();
+  }, []);
+
+  // Fonction pour calculer la pyramide des âges
+  const calculerPyramideAges = (persons) => {
+    const groupes = [
+      { groupe: "0-18", min: 0, max: 18 },
+      { groupe: "19-35", min: 19, max: 35 },
+      { groupe: "36-60", min: 36, max: 60 },
+      { groupe: "60+", min: 61, max: 120 }
+    ];
+
+    return groupes.map(groupe => {
+      const personnesGroupe = persons.filter(person => {
+        if (!person.date_naissance && !person.dateNaissance) return false;
+        
+        const dateNaissance = person.date_naissance || person.dateNaissance;
+        const age = calculerAge(dateNaissance);
+        return age >= groupe.min && age <= groupe.max;
+      });
+
+      const hommes = personnesGroupe.filter(p => 
+        p.genre === 'homme' || p.genre === 'Homme' || p.genre === 'male'
+      ).length;
+      
+      const femmes = personnesGroupe.filter(p => 
+        p.genre === 'femme' || p.genre === 'Femme' || p.genre === 'female'
+      ).length;
+
+      return {
+        groupe: groupe.groupe,
+        hommes,
+        femmes
+      };
+    });
   };
 
-  const data = fokontanyData[selectedFokontany];
+  // Fonction pour calculer l'âge
+  const calculerAge = (dateNaissance) => {
+    const today = new Date();
+    const birthDate = new Date(dateNaissance);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // Générer des données de croissance basées sur les données actuelles
+  const genererDonneesCroissance = (totalResidences, totalResidents) => {
+    const mois = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août"];
+    const data = [];
+    
+    // Simulation de croissance progressive
+    let residences = Math.max(1, Math.round(totalResidences * 0.5)); // Commence à 50%
+    let habitants = Math.max(1, Math.round(totalResidents * 0.5));
+    
+    mois.forEach(mois => {
+      data.push({
+        mois,
+        residences: Math.min(residences, totalResidences),
+        habitants: Math.min(habitants, totalResidents)
+      });
+      
+      // Augmentation progressive
+      residences = Math.min(residences + Math.round(totalResidences / 8), totalResidences);
+      habitants = Math.min(habitants + Math.round(totalResidents / 8), totalResidents);
+    });
+
+    return data;
+  };
+
+  // Calculer la densité par zone/quartier
+  const calculerDensiteParZone = (residences, persons) => {
+    const zones = {};
+    
+    residences.forEach(residence => {
+      const zone = residence.quartier || "Non spécifié";
+      if (!zones[zone]) {
+        zones[zone] = {
+          residences: 0,
+          residents: 0
+        };
+      }
+      zones[zone].residences++;
+      
+      // Compter les résidents de cette résidence
+      const residentsZone = persons.filter(p => p.residence_id === residence.id);
+      zones[zone].residents += residentsZone.length;
+    });
+
+    return Object.entries(zones).map(([zone, data], index) => ({
+      zone,
+      densite: data.residences > 0 ? Math.round(data.residents / data.residences) : 0,
+      residences: data.residences,
+      progression: Math.round(Math.random() * 20) + 5 // Simulation
+    }));
+  };
 
   const genererPDF = () => {
+    if (!statistics) return;
+
     const date = new Date().toLocaleDateString("fr-FR", {
       weekday: "long",
       year: "numeric",
@@ -117,11 +255,11 @@ const Statistique = ({ onBack }) => {
         <div class="stats-grid">
           <div class="stat-card">
             <h3>Résidences</h3>
-            <p>${data.residences}</p>
+            <p>${statistics.totalResidences}</p>
           </div>
           <div class="stat-card">
             <h3>Habitants</h3>
-            <p>${data.habitants}</p>
+            <p>${statistics.totalResidents}</p>
           </div>
         </div>
         
@@ -136,7 +274,7 @@ const Statistique = ({ onBack }) => {
             </tr>
           </thead>
           <tbody>
-            ${data.pyramideAges.map(age => `
+            ${statistics.pyramideAges.map(age => `
               <tr>
                 <td>${age.groupe} ans</td>
                 <td>${age.hommes}</td>
@@ -157,6 +295,27 @@ const Statistique = ({ onBack }) => {
     printWindow.document.close();
     printWindow.print();
   };
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement des statistiques...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!statistics) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600">Erreur lors du chargement des statistiques</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -197,7 +356,7 @@ const Statistique = ({ onBack }) => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-gray-800">
-                  {data.residences}
+                  {statistics.totalResidences}
                 </div>
                 <div className="text-xs text-gray-600 mt-1">Résidences</div>
               </div>
@@ -216,7 +375,7 @@ const Statistique = ({ onBack }) => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-gray-800">
-                  {data.habitants}
+                  {statistics.totalResidents}
                 </div>
                 <div className="text-xs text-gray-600 mt-1">Habitants</div>
               </div>
@@ -235,7 +394,7 @@ const Statistique = ({ onBack }) => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-gray-800">
-                  {data.hommes}
+                  {statistics.totalHommes}
                 </div>
                 <div className="text-xs text-gray-600 mt-1">Hommes</div>
               </div>
@@ -244,7 +403,7 @@ const Statistique = ({ onBack }) => {
               </div>
             </div>
             <div className="mt-2 flex items-center text-xs text-blue-600">
-              <span>{Math.round((data.hommes / data.habitants) * 100)}%</span>
+              <span>{Math.round((statistics.totalHommes / statistics.totalResidents) * 100)}%</span>
               <span className="text-gray-500 ml-1">of total</span>
             </div>
           </div>
@@ -254,7 +413,7 @@ const Statistique = ({ onBack }) => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-gray-800">
-                  {data.femmes}
+                  {statistics.totalFemmes}
                 </div>
                 <div className="text-xs text-gray-600 mt-1">Femmes</div>
               </div>
@@ -263,7 +422,7 @@ const Statistique = ({ onBack }) => {
               </div>
             </div>
             <div className="mt-2 flex items-center text-xs text-pink-600">
-              <span>{Math.round((data.femmes / data.habitants) * 100)}%</span>
+              <span>{Math.round((statistics.totalFemmes / statistics.totalResidents) * 100)}%</span>
               <span className="text-gray-500 ml-1">of total</span>
             </div>
           </div>
@@ -294,7 +453,7 @@ const Statistique = ({ onBack }) => {
               </div>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.croissanceData}>
+                  <BarChart data={statistics.croissanceData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="mois" fontSize={10} />
                     <YAxis fontSize={10} />
@@ -324,17 +483,17 @@ const Statistique = ({ onBack }) => {
                 </div>
               </div>
               <div className="space-y-3">
-                {data.pyramideAges.map((groupe, index) => (
+                {statistics.pyramideAges.map((groupe, index) => (
                   <div key={index} className="flex items-center space-x-2 text-xs">
                     <span className="w-12 font-medium text-gray-700">{groupe.groupe}</span>
                     <div className="flex-1 flex h-4 bg-gray-100 rounded overflow-hidden">
                       <div
                         className="bg-blue-500 transition-all duration-300"
-                        style={{ width: `${(groupe.hommes / 100) * 100}%` }}
+                        style={{ width: `${(groupe.hommes / (groupe.hommes + groupe.femmes)) * 100}%` }}
                       />
                       <div
                         className="bg-pink-500 transition-all duration-300"
-                        style={{ width: `${(groupe.femmes / 100) * 100}%` }}
+                        style={{ width: `${(groupe.femmes / (groupe.hommes + groupe.femmes)) * 100}%` }}
                       />
                     </div>
                     <div className="w-16 text-right text-xs">
@@ -353,7 +512,7 @@ const Statistique = ({ onBack }) => {
               Analyse Spatiale par Zone
             </h3>
             <div className="grid grid-cols-2 gap-3">
-              {data.densiteData.map((zone, index) => (
+              {statistics.densiteData.map((zone, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50/50 backdrop-blur-sm rounded border border-gray-200/60">
                   <div>
                     <p className="font-semibold text-gray-800 text-sm">{zone.zone}</p>

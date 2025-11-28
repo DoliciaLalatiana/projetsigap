@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, MapPin, User, Clock, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Check, X, MapPin, User, Clock, AlertCircle } from 'lucide-react';
 
 const PendingResidences = ({ onBack }) => {
   const [pendingResidences, setPendingResidences] = useState([]);
@@ -106,25 +106,20 @@ const PendingResidences = ({ onBack }) => {
   }
 
   return (
-    <div className="h-full flex bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden">
+    <div className="h-full flex bg-white/30 rounded-3xl overflow-hidden">
       {/* Liste des demandes */}
       <div className="w-1/2 border-r border-gray-200/60 overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center space-x-3 mb-6">
-            <button
-              onClick={onBack}
-              className="p-2 hover:bg-white/50 rounded-lg transition-colors"
-            >
-              <ArrowLeft size={20} className="text-gray-600" />
-            </button>
-            <h2 className="text-2xl font-bold text-gray-800">Demandes en attente</h2>
+            {/* SUPPRESSION DU BOUTON RETOUR - On utilise SIGAP pour le retour */}
+            <h2 className="text-2xl bg-white backdrop-blur-sm py-1.5 px-4 rounded-2xl font-bold text-gray-800">Demandes en attente</h2>
           </div>
 
           {pendingResidences.length === 0 ? (
             <div className="text-center py-12">
               <Clock className="mx-auto text-gray-400 mb-4" size={48} />
-              <p className="text-gray-500 text-lg">Aucune demande en attente</p>
-              <p className="text-gray-400 text-sm mt-2">
+              <p className="text-black text-lg">Aucune demande en attente</p>
+              <p className="text-black text-sm mt-2">
                 Les nouvelles résidences soumises par les agents apparaîtront ici
               </p>
             </div>
@@ -256,8 +251,8 @@ const PendingResidences = ({ onBack }) => {
         ) : (
           <div className="text-center py-12">
             <AlertCircle className="mx-auto text-gray-400 mb-4 mt-16" size={48} />
-            <p className="text-gray-500 text-lg">Sélectionnez une demande</p>
-            <p className="text-gray-400 text-sm mt-2">
+            <p className="text-black text-lg">Sélectionnez une demande</p>
+            <p className="text-black text-sm mt-2">
               Cliquez sur une demande dans la liste pour voir les détails
             </p>
           </div>
