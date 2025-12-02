@@ -19,6 +19,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Camera,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";
@@ -37,17 +39,17 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
   const [currentPage, setCurrentPage] = useState(1);
   const [residencesPerPage] = useState(4);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-  const [showAddForm, setShowAddForm] = useState(false);
   const [newResident, setNewResident] = useState({
-    nomComplet: "",
+    nom: "",
+    prenom: "",
     dateNaissance: "",
     cin: "",
-    genre: "homme",
     telephone: "",
-    relation_type: "",
-    is_proprietaire: false,
-    parent_id: null,
+    sexe: "homme",
   });
+
+  // ÉTAT POUR GÉRER LA DATE DE NAISSANCE DE MANIÈRE SIMPLE
+  const [dateInput, setDateInput] = useState("");
 
   // NOUVEAUX ÉTATS : Pour stocker les résidents de toutes les résidences
   const [allResidents, setAllResidents] = useState([]);
@@ -56,6 +58,22 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
   const [residentSearchQuery, setResidentSearchQuery] = useState("");
   const [residentSearchResults, setResidentSearchResults] = useState([]);
   const [showResidentSearch, setShowResidentSearch] = useState(false);
+
+  // ÉTAT POUR L'ANIMATION DE SLIDE
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [slideDirection, setSlideDirection] = useState('left');
+
+  // NOUVEAUX ÉTATS POUR LA GESTION DES PHOTOS
+  const [isPhotoExpanded, setIsPhotoExpanded] = useState(false);
+  const [isFullScreenPhoto, setIsFullScreenPhoto] = useState(false);
+
+  // Références pour les inputs du formulaire (navigation avec Entrée)
+  const nomInputRef = useRef(null);
+  const prenomInputRef = useRef(null);
+  const dateNaissanceInputRef = useRef(null);
+  const cinInputRef = useRef(null);
+  const telephoneInputRef = useRef(null);
+  const sexeSelectRef = useRef(null);
 
   // LOAD residences from backend on mount - version corrigée
   useEffect(() => {
@@ -178,6 +196,15 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showResidentSearch]);
+
+  // EFFET : Focus sur le premier champ quand on entre en mode édition
+  useEffect(() => {
+    if (isEditMode && nomInputRef.current) {
+      setTimeout(() => {
+        nomInputRef.current.focus();
+      }, 100);
+    }
+  }, [isEditMode]);
 
   // NOUVELLE FONCTION : Calculer les statistiques basées sur la liste des résidents
   const calculateStatistics = () => {
@@ -327,7 +354,8 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
       if (photoInputRef.current) photoInputRef.current.click();
       return;
     }
-    // when photos exist do nothing (carousel controls already visible)
+    // Toggle l'expansion de la photo
+    setIsPhotoExpanded(!isPhotoExpanded);
   };
 
   // Fonction pour charger les photos d'une résidence
@@ -510,35 +538,74 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
         photos: photos, // Utiliser les photos chargées
         residents: normalizedPersons,
       });
+      
+      // Réinitialiser l'état de la photo
+      setIsPhotoExpanded(false);
+      setIsFullScreenPhoto(false);
+      
+      // Animation de slide
+      setSlideDirection('left');
+      setIsAnimating(true);
+      setTimeout(() => {
+        setShowModal(true);
+        setIsAnimating(false);
+      }, 300);
     } catch (e) {
       console.warn("load persons error", e);
       setSelectedResidence(residence);
+      // Animation de slide même en cas d'erreur
+      setSlideDirection('left');
+      setIsAnimating(true);
+      setTimeout(() => {
+        setShowModal(true);
+        setIsAnimating(false);
+      }, 300);
     }
     setCurrentPhotoIndex(0);
     setIsEditMode(false);
-    setShowModal(true);
   };
 
   const handleCloseModal = () => {
-    setShowModal(false);
-    setSelectedResidence(null);
-    setCurrentPhotoIndex(0);
-    setIsEditMode(false);
-    setEditedResidents([]);
-    setShowAddForm(false);
-    setNewResident({
-      nomComplet: "",
-      dateNaissance: "",
-      cin: "",
-      genre: "homme",
-      telephone: "",
-      relation_type: "",
-      is_proprietaire: false,
-      parent_id: null,
-    });
+    // Animation de slide pour fermer
+    setSlideDirection('right');
+    setIsAnimating(true);
+    setTimeout(() => {
+      setShowModal(false);
+      setSelectedResidence(null);
+      setCurrentPhotoIndex(0);
+      setIsEditMode(false);
+      setEditedResidents([]);
+      setIsPhotoExpanded(false);
+      setIsFullScreenPhoto(false);
+      setNewResident({
+        nom: "",
+        prenom: "",
+        dateNaissance: "",
+        cin: "",
+        telephone: "",
+        sexe: "homme",
+      });
+      setDateInput("");
+      setIsAnimating(false);
+    }, 300);
   };
 
-  const handleNextPhoto = () => {
+  const handleBackFromEdit = () => {
+    setIsEditMode(false);
+    setEditedResidents([]);
+    setNewResident({
+      nom: "",
+      prenom: "",
+      dateNaissance: "",
+      cin: "",
+      telephone: "",
+      sexe: "homme",
+    });
+    setDateInput("");
+  };
+
+  const handleNextPhoto = (e) => {
+    e.stopPropagation();
     if (
       selectedResidence &&
       selectedResidence.photos &&
@@ -550,7 +617,8 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
     }
   };
 
-  const handlePrevPhoto = () => {
+  const handlePrevPhoto = (e) => {
+    e.stopPropagation();
     if (
       selectedResidence &&
       selectedResidence.photos &&
@@ -560,6 +628,11 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
         prev === 0 ? selectedResidence.photos.length - 1 : prev - 1
       );
     }
+  };
+
+  const handleToggleFullScreen = (e) => {
+    e.stopPropagation();
+    setIsFullScreenPhoto(!isFullScreenPhoto);
   };
 
   // FONCTION CORRIGÉE : Pour rechercher et afficher sur la carte
@@ -641,239 +714,312 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
     }
   };
 
+  // FONCTION SIMPLIFIÉE POUR LA DATE
+  const handleDateInput = (e) => {
+    const value = e.target.value;
+    
+    // Garder seulement les chiffres
+    const numbers = value.replace(/\D/g, '');
+    
+    // Limiter à 8 chiffres (jjmmAAAA)
+    let formatted = numbers.substring(0, 8);
+    
+    // Ajouter les séparateurs automatiquement
+    if (formatted.length > 4) {
+      formatted = formatted.substring(0, 2) + '/' + formatted.substring(2, 4) + '/' + formatted.substring(4);
+    } else if (formatted.length > 2) {
+      formatted = formatted.substring(0, 2) + '/' + formatted.substring(2);
+    }
+    
+    // Mettre à jour l'état
+    setDateInput(formatted);
+    setNewResident(prev => ({
+      ...prev,
+      dateNaissance: formatted
+    }));
+  };
+
+  // FONCTION POUR GÉRER LE FOCUS SUR LE CHAMP DATE
+  const handleDateFocus = (e) => {
+    // Si vide, initialiser
+    if (!dateInput) {
+      setDateInput("");
+      setNewResident(prev => ({
+        ...prev,
+        dateNaissance: ""
+      }));
+    }
+  };
+
+  // FONCTION POUR VÉRIFIER SI MAJEUR (SIMPLIFIÉE)
+  const estMajeurFromInput = () => {
+    const dateStr = dateInput;
+    if (!dateStr || dateStr.length !== 10) {
+      return false; // Date incomplète
+    }
+    
+    try {
+      const parts = dateStr.split('/');
+      if (parts.length !== 3) return false;
+      
+      const [day, month, year] = parts;
+      
+      // Vérifier que tous les champs sont remplis
+      if (!day || !month || !year || day.length !== 2 || month.length !== 2 || year.length !== 4) {
+        return false;
+      }
+      
+      const birthDate = new Date(`${year}-${month}-${day}`);
+      if (isNaN(birthDate.getTime())) return false;
+      
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      return age >= 18;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  // FONCTION POUR CONVERTIR EN ISO
+  const frenchDateToISO = (frenchDate) => {
+    if (!frenchDate || frenchDate.length !== 10) {
+      return null; // Date incomplète
+    }
+    
+    try {
+      const parts = frenchDate.split('/');
+      if (parts.length !== 3) return null;
+      
+      const [day, month, year] = parts;
+      
+      // Vérifier que c'est une date valide
+      const date = new Date(`${year}-${month}-${day}`);
+      if (isNaN(date.getTime())) return null;
+      
+      // Formater en YYYY-MM-DD
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    } catch (error) {
+      return null;
+    }
+  };
+
   // Save edited residents: sync to backend (updates, deletes)
   const handleSaveEdit = async () => {
     if (!selectedResidence) return;
     try {
-      const original = origResidentsBeforeEdit || [];
-      const edited = editedResidents || [];
-
-      // deleted = in original but not in edited
-      const deleted = original.filter(
-        (o) => !edited.some((e) => e.id === o.id)
-      );
-
-      // to update: numeric ids that still exist and differ
-      const toUpdate = edited.filter(
-        (e) => typeof e.id === "number" && original.some((o) => o.id === e.id)
-      );
-
-      // perform deletes
-      for (const d of deleted) {
-        if (typeof d.id === "number") {
-          await fetch(`${API_BASE}/api/persons/${d.id}`, {
-            method: "DELETE",
-            headers: getHeaders(),
-          });
-        }
+      // CORRECTION : Pour l'affichage malgache, on met NOM puis PRÉNOM
+      // Nettoyer et formater le nom et prénom
+      const nom = (newResident.nom || '').trim().toUpperCase();
+      const prenom = (newResident.prenom || '').trim();
+      
+      // Format malgache : NOM Prénom
+      const nomComplet = `${nom} ${prenom}`.trim();
+      
+      // Vérifier les champs requis
+      if (!nom || !prenom || !dateInput) {
+        alert("Nom, Prénom et Date de naissance sont requis");
+        return;
       }
 
-      // update existing
-      for (const u of toUpdate) {
-        const payload = {
-          nom_complet: u.nomComplet,
-          date_naissance: u.dateNaissance || null,
-          cin: u.cin === "Mineur" ? null : u.cin, // Ne pas sauvegarder "Mineur" en base
-          genre: u.genre || "homme",
-          telephone: u.telephone || null,
-        };
-        await fetch(`${API_BASE}/api/persons/${u.id}`, {
-          method: "PUT",
-          headers: getHeaders(),
-          body: JSON.stringify(payload),
-        });
+      // Vérifier que la date est complète
+      if (!dateInput || dateInput.length !== 10) {
+        alert("Veuillez compléter la date de naissance (format jj/mm/aaaa)");
+        return;
       }
 
-      // reload persons list for this residence
-      const resp = await fetch(
-        `${API_BASE}/api/persons?residence_id=${selectedResidence.id}`,
-        { headers: getHeaders() }
-      );
-      const persons = resp.ok ? await resp.json() : [];
-      const normalizedPersons = (persons || []).map((p) => ({
-        id: p.id,
-        nomComplet: p.nom_complet || p.nomComplet || "",
-        dateNaissance: p.date_naissance || p.dateNaissance || "",
-        cin: p.cin || p.cin || "",
-        genre: p.genre || p.genre || "homme",
-        telephone: p.telephone || p.telephone || "",
-        relation_type: p.relation_type || "",
-        is_proprietaire: p.is_proprietaire || false,
-      }));
-      setSelectedResidence((prev) => ({
-        ...prev,
-        residents: normalizedPersons,
-      }));
-      setIsEditMode(false);
-      setEditedResidents([]);
-      setOrigResidentsBeforeEdit([]);
-      setShowAddForm(false);
-
-      // Recharger tous les résidents pour mettre à jour les statistiques
-      const allPersonsResp = await fetch(`${API_BASE}/api/persons`, {
-        headers: getHeaders()
-      });
-      if (allPersonsResp.ok) {
-        const allPersons = await allPersonsResp.json();
-        setAllResidents(allPersons || []);
+      // Convertir la date au format ISO
+      const dateISO = frenchDateToISO(dateInput);
+      if (!dateISO) {
+        alert("Format de date invalide. Utilisez jj/mm/aaaa avec une date valide");
+        return;
       }
-    } catch (e) {
-      console.warn("handleSaveEdit error", e);
-      alert("Erreur lors de la sauvegarde des résidents");
-    }
-  };
 
-  // Add resident -> POST immediately to backend and append returned person to editedResidents
-  const handleAddResident = async () => {
-    if (!selectedResidence) return;
-    if (!newResident.nomComplet || !newResident.dateNaissance) {
-      alert("Nom et date de naissance requis");
-      return;
-    }
-    try {
+      // Vérifier que le téléphone a exactement 10 chiffres s'il est rempli
+      if (newResident.telephone && newResident.telephone.length !== 10) {
+        alert("Le numéro de téléphone doit contenir exactement 10 chiffres");
+        return;
+      }
+
+      // Calculer l'âge pour vérifier si majeur
+      const birthDate = new Date(dateISO);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+
       const payload = {
         residence_id: selectedResidence.id,
-        nom_complet: newResident.nomComplet,
-        date_naissance: newResident.dateNaissance,
-        cin: newResident.cin === "Mineur" ? null : newResident.cin, // Ne pas sauvegarder "Mineur"
-        genre: newResident.genre || "homme",
+        nom_complet: nomComplet,
+        date_naissance: dateISO,
+        cin: age < 18 ? null : (newResident.cin || null), // Pas de CIN pour mineur
+        genre: newResident.sexe || "homme",
         telephone: newResident.telephone || null,
-        relation_type: newResident.relation_type || null,
-        is_proprietaire: newResident.is_proprietaire || false,
-        parent_id: newResident.parent_id || null,
       };
+
       const resp = await fetch(`${API_BASE}/api/persons`, {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify(payload),
       });
+
       if (!resp.ok) {
         const body = await resp.text().catch(() => "");
         console.warn("create person failed", resp.status, body);
         throw new Error("Erreur création personne");
       }
+
       const created = await resp.json();
-      const person = {
-        id: created.id,
-        nomComplet: created.nom_complet || newResident.nomComplet,
-        dateNaissance: created.date_naissance || newResident.dateNaissance,
-        cin: created.cin || newResident.cin || "",
-        genre: created.genre || newResident.genre || "homme",
-        telephone: created.telephone || newResident.telephone || "",
-        relation_type: created.relation_type || newResident.relation_type || "",
-        is_proprietaire:
-          created.is_proprietaire || newResident.is_proprietaire || false,
-      };
-      setEditedResidents((prev) => [...prev, person]);
-      // also update selectedResidence.residents for immediate view
-      setSelectedResidence((prev) => ({
-        ...(prev || {}),
-        residents: [...(prev?.residents || []), person],
-      }));
       
+      // Mettre à jour la liste des résidents
+      setSelectedResidence((prev) => ({
+        ...prev,
+        residents: [...(prev?.residents || []), {
+          id: created.id,
+          nomComplet: created.nom_complet || nomComplet,
+          dateNaissance: created.date_naissance || dateInput,
+          cin: created.cin || newResident.cin || "",
+          genre: created.genre || newResident.sexe || "homme",
+          telephone: created.telephone || newResident.telephone || "",
+        }],
+      }));
+
       // Mettre à jour la liste globale des résidents
       setAllResidents(prev => [...prev, created]);
       
+      // Réinitialiser le formulaire et retourner au mode détails
       setNewResident({
-        nomComplet: "",
+        nom: "",
+        prenom: "",
         dateNaissance: "",
         cin: "",
-        genre: "homme",
         telephone: "",
-        relation_type: "",
-        is_proprietaire: false,
-        parent_id: null,
+        sexe: "homme",
       });
-      setShowAddForm(false);
+      setDateInput("");
+      setIsEditMode(false);
     } catch (err) {
-      console.warn("handleAddResident error", err);
-      alert("Erreur ajout personne");
+      console.warn("handleSaveEdit error", err);
+      alert("Erreur lors de la sauvegarde du résident");
     }
   };
 
-  const handleRemoveResident = (residentId) => {
-    setEditedResidents((prev) =>
-      prev.filter((resident) => resident.id !== residentId)
-    );
+  // Fonction pour valider que le texte ne contient que des lettres
+  const validateLettersOnly = (value) => {
+    return /^[A-Za-zÀ-ÿ\s'-]*$/.test(value);
   };
 
-  const handleResidentChange = (residentId, field, value) => {
-    setEditedResidents((prev) =>
-      prev.map((resident) =>
-        resident.id === residentId ? { ...resident, [field]: value } : resident
-      )
-    );
+  // Fonction pour valider et formater le numéro de téléphone
+  const validatePhoneNumber = (value) => {
+    // Accepter seulement les chiffres
+    const numbersOnly = value.replace(/\D/g, '');
     
-    // Si la date de naissance change et que la personne devient mineure, mettre "Mineur" dans le champ CIN
-    if (field === "dateNaissance" && value) {
-      const age = calculerAge(value);
-      if (age < 18) {
-        setEditedResidents((prev) =>
-          prev.map((resident) =>
-            resident.id === residentId ? { ...resident, cin: "Mineur" } : resident
-          )
-        );
-      }
+    // Limiter à 10 chiffres maximum
+    if (numbersOnly.length > 10) {
+      return numbersOnly.slice(0, 10);
     }
+    
+    return numbersOnly;
   };
 
   const handleNewResidentChange = (field, value) => {
+    // Validation selon le type de champ
+    let validatedValue = value;
+    
+    if (field === "nom" || field === "prenom") {
+      // Seulement des lettres pour nom et prénom
+      if (!validateLettersOnly(value)) {
+        return; // Ne pas mettre à jour si ce ne sont pas que des lettres
+      }
+    } else if (field === "cin") {
+      // Seulement des chiffres pour CIN
+      if (!/^[0-9]*$/.test(value)) {
+        return;
+      }
+      if (value.length > 12) {
+        validatedValue = value.slice(0, 12); // Limiter à 12 chiffres
+      }
+    } else if (field === "telephone") {
+      // Validation spéciale pour téléphone
+      validatedValue = validatePhoneNumber(value);
+    } else if (field === "dateNaissance") {
+      // Géré par handleDateInput
+      return;
+    }
+
     setNewResident((prev) => ({
       ...prev,
-      [field]: value,
+      [field]: validatedValue,
     }));
-    
-    // Si la date de naissance change et que la personne devient mineure, mettre "Mineur" dans le champ CIN
-    if (field === "dateNaissance" && value) {
-      const age = calculerAge(value);
-      if (age < 18) {
-        setNewResident((prev) => ({
-          ...prev,
-          cin: "Mineur",
-        }));
+  };
+
+  // NOUVELLE FONCTION : Navigation avec la touche Entrée
+  const handleKeyDown = (e, nextField) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      
+      switch (nextField) {
+        case 'prenom':
+          prenomInputRef.current?.focus();
+          break;
+        case 'dateNaissance':
+          dateNaissanceInputRef.current?.focus();
+          break;
+        case 'cin':
+          // Ne focus le CIN que si la personne est majeure
+          if (estMajeurFromInput() && cinInputRef.current) {
+            cinInputRef.current.focus();
+          } else {
+            telephoneInputRef.current?.focus();
+          }
+          break;
+        case 'telephone':
+          telephoneInputRef.current?.focus();
+          break;
+        case 'sexe':
+          sexeSelectRef.current?.focus();
+          break;
+        case 'save':
+          handleSaveEdit();
+          break;
+        default:
+          break;
       }
     }
   };
 
   const handleEditResidents = () => {
-    setEditedResidents([...selectedResidence.residents]);
-    // keep original copy to detect deletions
-    setOrigResidentsBeforeEdit([...selectedResidence.residents]);
     setIsEditMode(true);
+    // Réinitialiser le formulaire
+    setNewResident({
+      nom: "",
+      prenom: "",
+      dateNaissance: "",
+      cin: "",
+      telephone: "",
+      sexe: "homme",
+    });
+    setDateInput("");
   };
 
   const handleCancelEdit = () => {
     setIsEditMode(false);
-    setEditedResidents([]);
-    setShowAddForm(false);
     setNewResident({
-      nomComplet: "",
+      nom: "",
+      prenom: "",
       dateNaissance: "",
       cin: "",
-      genre: "homme",
       telephone: "",
-      relation_type: "",
-      is_proprietaire: false,
-      parent_id: null,
+      sexe: "homme",
     });
-  };
-
-  const handleAddNewResident = () => {
-    setShowAddForm(true);
-  };
-
-  const cancelAddNewResident = () => {
-    setShowAddForm(false);
-    setNewResident({
-      nomComplet: "",
-      dateNaissance: "",
-      cin: "",
-      genre: "homme",
-      telephone: "",
-      relation_type: "",
-      is_proprietaire: false,
-      parent_id: null,
-    });
+    setDateInput("");
   };
 
   // Filtrage et tri des résidences avec la searchQuery passée en props
@@ -957,27 +1103,29 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
     return genre === "homme" ? "Masculin" : "Féminin";
   };
 
-  // Fonction utilitaire pour formater l'affichage des résidents
-  const formatResidentDisplay = (resident) => {
-    const age = resident.date_naissance ? calculerAge(resident.date_naissance) : null;
-    return {
-      id: resident.id,
-      nomComplet: resident.nom_complet || resident.nomComplet,
-      dateNaissance: resident.date_naissance || resident.dateNaissance,
-      cin: resident.cin || (age && age < 18 ? "Mineur" : ""),
-      genre: resident.genre,
-      telephone: resident.telephone,
-      age: age,
-      residenceId: resident.residence_id
-    };
+  // Fonction pour formater l'affichage du nom selon la logique malgache
+  const formatNomMalgache = (nomComplet) => {
+    if (!nomComplet) return "";
+    const parts = nomComplet.split(' ');
+    if (parts.length > 1) {
+      // Première partie (le nom) en majuscules, le reste (prénom) tel quel
+      return `${parts[0].toUpperCase()} ${parts.slice(1).join(' ')}`;
+    }
+    return nomComplet.toUpperCase();
   };
 
   return (
     <div className="h-full flex">
-      {/* Section principale des résidences */}
+      {/* Section principale des résidences - ANIMATION MODIFIÉE */}
       <div
-        className={`transition-all duration-300 ease-in-out ${
-          showModal ? "w-1/2" : "w-full"
+        className={`transition-all duration-300 ease-in-out overflow-hidden ${
+          showModal 
+            ? isAnimating 
+              ? slideDirection === 'left' 
+                ? 'w-0 opacity-0' 
+                : 'w-full opacity-100'
+              : 'w-0 opacity-0'
+            : 'w-full opacity-100'
         }`}
       >
         <div className="h-full flex flex-col mt-3">
@@ -1236,39 +1384,60 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
         </div>
       </div>
 
-      {/* Modal de détails/édition - VERSION CORRIGÉE AVEC TABLEAU COMPLET */}
+      {/* Modal de détails/édition - PREND TOUTE LA PLACE AVEC SLIDE */}
       {showModal && selectedResidence && (
-        <div className="w-1/2 bg-white/30 rounded-r-3xl overflow-hidden shadow-xl border-l border-gray-200/60">
+        <div
+          className={`transition-all duration-300 ease-in-out overflow-hidden ${
+            isAnimating
+              ? slideDirection === 'left'
+                ? 'w-full opacity-100'
+                : 'w-0 opacity-0'
+              : 'w-full opacity-100'
+          }`}
+        >
           <div className="h-full flex flex-col">
-            {/* En-tête du modal */}
+            {/* En-tête du modal avec bouton retour */}
             <div className="flex justify-between items-center p-4 border-gray-200/60">
-              <h2 className="text-xl font-bold text-gray-800">
-                {isEditMode ? "Modifier les résidents" : ""}
-              </h2>
               <button
-                onClick={isEditMode ? handleCancelEdit : handleCloseModal}
-                className="p-1 hover:bg-white rounded-lg transition-colors"
+                onClick={isEditMode ? handleBackFromEdit : handleCloseModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex items-center space-x-2"
               >
-                <X size={20} className="text-gray-600" />
+                <ChevronLeft size={20} className="text-gray-600" />
+                <span className="text-gray-600">Retour</span>
               </button>
+              <h2 className="text-xl font-bold text-gray-800">
+                {isEditMode ? "Ajouter un résident" : "Détails de la résidence"}
+              </h2>
+              <div className="w-10"></div> {/* Pour l'équilibrage */}
             </div>
 
-            {/* Contenu du modal AVEC scroll limité à la liste des résidents */}
+            {/* Contenu du modal */}
             <div className="flex-1 p-6 overflow-hidden flex flex-col">
               {!isEditMode ? (
-                /* MODE DÉTAILS - STRUCTURE ORIGINALE AVEC SCROLL */
+                /* MODE DÉTAILS */
                 <>
                   {/* Photo et informations de localisation */}
                   <div className="flex space-x-6 mb-6">
-                    {/* Carousel de photos */}
-                    <div className="w-1/2">
-                      <div className="relative rounded-lg overflow-hidden bg-gray-100 h-48">
+                    {/* Photo - PETITE PAR DÉFAUT, S'AGRANDIT AU CLIC */}
+                    <div className="w-1/3">
+                      <div 
+                        className={`relative rounded-lg overflow-hidden bg-gray-100 cursor-pointer transition-all duration-300 ease-in-out ${
+                          isPhotoExpanded 
+                            ? isFullScreenPhoto
+                              ? 'fixed inset-0 z-50 m-0 bg-black'
+                              : 'h-96'
+                            : 'h-48'
+                        }`}
+                        onClick={handleImageClick}
+                      >
                         {selectedResidence.photos && selectedResidence.photos.length > 0 ? (
                           <>
                             <img
                               src={selectedResidence.photos[currentPhotoIndex]}
                               alt={`${selectedResidence.name} - Photo ${currentPhotoIndex + 1}`}
-                              className="w-full h-full object-cover"
+                              className={`w-full h-full object-contain ${
+                                isFullScreenPhoto ? 'object-contain' : 'object-cover'
+                              }`}
                               onError={(e) => {
                                 console.warn(
                                   "Image failed to load in carousel:",
@@ -1279,18 +1448,30 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                             />
 
                             {/* Bouton pour modifier/ajouter des photos */}
-                            <div className="absolute top-2 right-2">
+                            <div className="absolute top-2 right-2 flex space-x-2">
                               <button
-                                onClick={() => photoInputRef.current?.click()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  photoInputRef.current?.click();
+                                }}
                                 className="bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
                                 title="Modifier les photos"
                               >
                                 <Camera size={16} />
                               </button>
+                              {isPhotoExpanded && selectedResidence.photos.length > 0 && (
+                                <button
+                                  onClick={handleToggleFullScreen}
+                                  className="bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                                  title={isFullScreenPhoto ? "Réduire" : "Plein écran"}
+                                >
+                                  {isFullScreenPhoto ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                                </button>
+                              )}
                             </div>
 
-                            {/* Contrôles du carousel - SEULEMENT s'il y a plus d'une photo */}
-                            {selectedResidence.photos.length > 1 && (
+                            {/* Contrôles du carousel - TOUJOURS VISIBLES QUAND EXPANDED */}
+                            {isPhotoExpanded && selectedResidence.photos.length > 1 && (
                               <>
                                 <button
                                   onClick={handlePrevPhoto}
@@ -1319,11 +1500,21 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                                 </div>
                               </>
                             )}
+                            
+                            {/* Indicateur de photo miniature en bas à droite quand expanded */}
+                            {isPhotoExpanded && selectedResidence.photos.length > 1 && (
+                              <div className="absolute bottom-2 right-2 text-xs text-white bg-black/50 px-2 py-1 rounded">
+                                {currentPhotoIndex + 1} / {selectedResidence.photos.length}
+                              </div>
+                            )}
                           </>
                         ) : (
                           <div 
                             className="w-full h-full flex items-center justify-center bg-gray-200 cursor-pointer"
-                            onClick={() => photoInputRef.current?.click()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              photoInputRef.current?.click();
+                            }}
                           >
                             <div className="text-center">
                               <Camera size={32} className="text-gray-400 mx-auto mb-2" />
@@ -1334,19 +1525,30 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                           </div>
                         )}
                       </div>
+                      
+                      {/* Instructions */}
+                      {!isPhotoExpanded && selectedResidence.photos && selectedResidence.photos.length > 0 && (
+                        <div className="mt-2 text-xs text-gray-500 text-center">
+                          Cliquez sur la photo pour l'agrandir
+                          {selectedResidence.photos.length > 1 && " et voir le carousel"}
+                        </div>
+                      )}
                     </div>
 
                     {/* Informations de localisation */}
                     <div className="flex-1">
                       <div className="h-40 flex flex-col justify-center space-y-4">
-                        <div className="text-gray-800">
-                          {selectedResidence.lot || "-"}
+                        <div className="flex items-center space-x-2">
+                          <div className="w-24 text-gray-600">Lot :</div>
+                          <div className="text-gray-800 font-medium">{selectedResidence.lot || "-"}</div>
                         </div>
-                        <div className="text-gray-800">
-                          {selectedResidence.quartier || "-"}
+                        <div className="flex items-center space-x-2">
+                          <div className="w-24 text-gray-600">Quartier :</div>
+                          <div className="text-gray-800 font-medium">{selectedResidence.quartier || "-"}</div>
                         </div>
-                        <div className="text-gray-800">
-                          {selectedResidence.ville || ""}
+                        <div className="flex items-center space-x-2">
+                          <div className="w-24 text-gray-600">Ville :</div>
+                          <div className="text-gray-800 font-medium">{selectedResidence.ville || "-"}</div>
                         </div>
                       </div>
                     </div>
@@ -1371,11 +1573,11 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
                                   CIN
                                 </th>
-                                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider min-w-[130px]">
+                                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider min-w=[130px]">
                                   Téléphone
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
-                                  Genre
+                                  Sexe
                                 </th>
                               </tr>
                             </thead>
@@ -1384,7 +1586,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                               {selectedResidence.residents.map((resident) => (
                                 <tr key={resident.id} className="hover:bg-gray-50">
                                   <td className="px-6 py-4 text-sm text-gray-800">
-                                    {resident.nomComplet}
+                                    {formatNomMalgache(resident.nomComplet)}
                                   </td>
                                   <td className="px-6 py-4 text-sm text-gray-600">
                                     {resident.dateNaissance
@@ -1414,234 +1616,150 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                     <div className="flex-1 flex items-center justify-center mb-4">
                       <div className="bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60 p-8 text-center">
                         <Users className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                        <div className="text-gray-500">Aucun résident enregistré</div>
+                        <div className="text-gray-500 mb-4">Aucun résident enregistré</div>
                       </div>
                     </div>
                   )}
 
-                  {/* Bouton Modifier - TOUJOURS EN BAS ET FIXE */}
+                  {/* BOUTON AJOUTER */}
                   <div className="flex-shrink-0 mt-auto pt-4 border-t border-gray-200">
                     <button
                       onClick={handleEditResidents}
-                      className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center space-x-2"
+                      className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center space-x-2"
                     >
-                      <Edit size={16} />
-                      <span>Modifier les résidents</span>
+                      <Plus size={16} />
+                      <span>Ajouter des résidents</span>
                     </button>
                   </div>
                 </>
               ) : (
-                /* MODE ÉDITION - STRUCTURE ORIGINALE AVEC SCROLL */
+                /* MODE ÉDITION - AJOUTER DES RÉSIDENTS */
                 <>
-                  {/* En-tête avec bouton Ajouter */}
-                  <div className="flex justify-end items-center mb-4 flex-shrink-0">
-                    <button
-                      onClick={handleAddNewResident}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
-                    >
-                      <Plus size={16} />
-                      <span>Ajouter</span>
-                    </button>
-                  </div>
-
-                  {/* Tableau d'édition des résidents avec scroll */}
-                  <div className="flex-1 overflow-hidden flex flex-col mb-4">
-                    <div className="overflow-x-auto">
-                      <div className="overflow-y-auto" style={{ maxHeight: '400px' }}>
-                        <table className="w-full min-w-[1000px] border-collapse">
-                          <thead className="bg-gray-50 sticky top-0 z-10">
-                            <tr>
-                              <th className="border border-gray-200 py-2 text-center text-sm font-medium text-gray-500 uppercase tracking-wider min-w-[300px]">
-                                Nom Complet
-                              </th>
-                              <th className="border border-gray-200 py-2 text-center text-sm font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
-                                Date de Naissance
-                              </th>
-                              <th className="border border-gray-200 py-4 text-center text-sm font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
-                                CIN
-                              </th>
-                              <th className="border border-gray-200 py-4 text-center text-sm font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
-                                Téléphone
-                              </th>
-                              <th className="border border-gray-200 py-4 text-center text-sm font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
-                                Genre
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {/* Ligne pour ajouter un nouveau résident */}
-                            {showAddForm && (
-                              <tr className="bg-blue-50">
-                                <td className="border border-gray-200 p-2">
-                                  <input
-                                    type="text"
-                                    value={newResident.nomComplet}
-                                    onChange={(e) => handleNewResidentChange("nomComplet", e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded text-base"
-                                    placeholder=""
-                                  />
-                                </td>
-                                <td className="border border-gray-200 p-2">
-                                  <input
-                                    type="date"
-                                    value={newResident.dateNaissance}
-                                    onChange={(e) => handleNewResidentChange("dateNaissance", e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded text-base cursor-pointer"
-                                  />
-                                </td>
-                                <td className="border border-gray-200 p-2">
-                                  {newResident.dateNaissance && !estMajeur(newResident.dateNaissance) ? (
-                                    <input
-                                      type="text"
-                                      value="Mineur"
-                                      readOnly
-                                      className="w-full px-3 py-2 border border-gray-300 rounded text-base font-mono bg-gray-100 text-gray-600 cursor-not-allowed"
-                                    />
-                                  ) : (
-                                    <input
-                                      type="text"
-                                      value={newResident.cin}
-                                      onChange={(e) => handleNewResidentChange("cin", e.target.value)}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded text-base font-mono"
-                                      placeholder=""
-                                    />
-                                  )}
-                                </td>
-                                <td className="border border-gray-200 p-2">
-                                  <input
-                                    type="tel"
-                                    value={newResident.telephone}
-                                    onChange={(e) => handleNewResidentChange("telephone", e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded text-base font-mono"
-                                    placeholder=""
-                                  />
-                                </td>
-                                <td className="border border-gray-200 p-2">
-                                  <div className="flex space-x-2">
-                                    <select
-                                      value={newResident.genre}
-                                      onChange={(e) => handleNewResidentChange("genre", e.target.value)}
-                                      className="flex-1 px-3 py-2 border border-gray-300 rounded text-base"
-                                    >
-                                      <option value="homme">Masculin</option>
-                                      <option value="femme">Féminin</option>
-                                    </select>
-                                    <button
-                                      onClick={handleAddResident}
-                                      className="px-3 py-2 bg-green-600 text-white rounded text-base hover:bg-green-700 transition-colors"
-                                      title="Ajouter"
-                                    >
-                                      ✓
-                                    </button>
-                                    <button
-                                      onClick={cancelAddNewResident}
-                                      className="px-3 py-2 bg-gray-500 text-white rounded text-base hover:bg-gray-600 transition-colors"
-                                      title="Annuler"
-                                    >
-                                      ✕
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-
-                            {/* Résidents existants */}
-                            {editedResidents.map((resident) => {
-                              const age = resident.dateNaissance
-                                ? calculerAge(resident.dateNaissance)
-                                : 0;
-                              const majeur = age >= 18;
-
-                              return (
-                                <tr key={resident.id} className="hover:bg-white/30">
-                                  <td className="border border-gray-200 p-2">
-                                    <input
-                                      type="text"
-                                      value={resident.nomComplet || ""}
-                                      onChange={(e) =>
-                                        handleResidentChange(
-                                          resident.id,
-                                          "nomComplet",
-                                          e.target.value
-                                        )
-                                      }
-                                      className="w-full py-2 border border-gray-300 rounded text-base"
-                                      placeholder=""
-                                    />
-                                  </td>
-                                  <td className="border border-gray-200 p-2">
-                                    <input
-                                      type="date"
-                                      value={resident.dateNaissance || ""}
-                                      onChange={(e) => handleResidentChange(resident.id, "dateNaissance", e.target.value)}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded text-base cursor-pointer"
-                                    />
-                                  </td>
-                                  <td className="border border-gray-200 p-2">
-                                    {majeur ? (
-                                      <input
-                                        type="text"
-                                        value={resident.cin || ""}
-                                        onChange={(e) =>
-                                          handleResidentChange(
-                                            resident.id,
-                                            "cin",
-                                            e.target.value
-                                          )
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded text-base font-mono"
-                                        placeholder=""
-                                      />
-                                    ) : (
-                                      <input
-                                        type="text"
-                                        value="Mineur"
-                                        readOnly
-                                        className="w-full px-3 py-2 border border-gray-300 rounded text-base font-mono bg-gray-100 text-gray-600 cursor-not-allowed"
-                                      />
-                                    )}
-                                  </td>
-                                  <td className="border border-gray-200 p-4">
-                                    <input
-                                      type="tel"
-                                      value={resident.telephone || ""}
-                                      onChange={(e) =>
-                                        handleResidentChange(
-                                          resident.id,
-                                          "telephone",
-                                          e.target.value
-                                        )
-                                      }
-                                      className="w-full px-3 py-2 border border-gray-300 rounded text-base font-mono"
-                                      placeholder=""
-                                    />
-                                  </td>
-                                  <td className="border border-gray-200 p-4">
-                                    <select
-                                      value={resident.genre || "homme"}
-                                      onChange={(e) =>
-                                        handleResidentChange(
-                                          resident.id,
-                                          "genre",
-                                          e.target.value
-                                        )
-                                      }
-                                      className="w-full px-3 py-2 border border-gray-300 rounded text-base"
-                                    >
-                                      <option value="homme">Masculin</option>
-                                      <option value="femme">Féminin</option>
-                                    </select>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                  {/* Formulaire pour ajouter un résident */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Nouveau résident</h3>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Nom */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Nom <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          ref={nomInputRef}
+                          type="text"
+                          value={newResident.nom}
+                          onChange={(e) => handleNewResidentChange("nom", e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, 'prenom')}
+                          className="w-full px-3 py-2 border border-gray-300 rounded text-base text-left"
+                          placeholder=""
+                          maxLength={50}
+                        />
+                      </div>
+                      
+                      {/* Prénom */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Prénom <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          ref={prenomInputRef}
+                          type="text"
+                          value={newResident.prenom}
+                          onChange={(e) => handleNewResidentChange("prenom", e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, 'dateNaissance')}
+                          className="w-full px-3 py-2 border border-gray-300 rounded text-base text-left"
+                          placeholder=""
+                          maxLength={50}
+                        />
+                      </div>
+                      
+                      {/* Date de naissance - VERSION SIMPLIFIÉE */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Date de naissance <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          ref={dateNaissanceInputRef}
+                          type="text"
+                          value={dateInput}
+                          onChange={handleDateInput}
+                          onFocus={handleDateFocus}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (estMajeurFromInput() && cinInputRef.current) {
+                                cinInputRef.current.focus();
+                              } else {
+                                telephoneInputRef.current?.focus();
+                              }
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded text-base font-mono text-left"
+                          placeholder="jj/mm/aaaa"
+                          maxLength={10}
+                        />
+                        <div className="text-xs text-gray-500 mt-1">
+                          Format: jj/mm/aaaa
+                        </div>
+                      </div>
+                      
+                      {/* CIN - CONDITIONNEL */}
+                      {estMajeurFromInput() && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            CIN
+                          </label>
+                          <input
+                            ref={cinInputRef}
+                            type="text"
+                            value={newResident.cin}
+                            onChange={(e) => handleNewResidentChange("cin", e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(e, 'telephone')}
+                            className="w-full px-3 py-2 border border-gray-300 rounded text-base font-mono text-left"
+                            placeholder=""
+                            maxLength={12}
+                          />
+                        </div>
+                      )}
+                      
+                      {/* Téléphone */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Téléphone
+                        </label>
+                        <input
+                          ref={telephoneInputRef}
+                          type="text"
+                          value={newResident.telephone}
+                          onChange={(e) => handleNewResidentChange("telephone", e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, 'sexe')}
+                          className="w-full px-3 py-2 border border-gray-300 rounded text-base font-mono text-left"
+                          placeholder=""
+                          maxLength={10}
+                        />
+                      </div>
+                      
+                      {/* Sexe */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Sexe
+                        </label>
+                        <select
+                          ref={sexeSelectRef}
+                          value={newResident.sexe}
+                          onChange={(e) => handleNewResidentChange("sexe", e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, 'save')}
+                          className="w-full px-3 py-2 border border-gray-300 rounded text-base text-left"
+                        >
+                          <option value="homme">Masculin</option>
+                          <option value="femme">Féminin</option>
+                        </select>
                       </div>
                     </div>
                   </div>
 
-                  {/* Boutons de sauvegarde/annulation - FIXES EN BAS */}
+                  {/* Boutons de sauvegarde/annulation */}
                   <div className="flex-shrink-0 flex space-x-4 pt-4 border-t border-gray-200">
                     <button
                       onClick={handleCancelEdit}
@@ -1651,6 +1769,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                     </button>
                     <button
                       onClick={handleSaveEdit}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
                       className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                     >
                       Sauvegarder
@@ -1672,32 +1791,6 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
         multiple
         onChange={handlePhotoSelect}
       />
-
-      {/* Styles CSS pour le scrollbar */}
-      <style>{`
-        .search-results-container {
-          scrollbar-width: thin;
-          scrollbar-color: #cbd5e0 #f7fafc;
-        }
-        
-        .search-results-container::-webkit-scrollbar {
-          width: 6px;
-        }
-        
-        .search-results-container::-webkit-scrollbar-track {
-          background: #f7fafc;
-          border-radius: 3px;
-        }
-        
-        .search-results-container::-webkit-scrollbar-thumb {
-          background: #cbd5e0;
-          border-radius: 3px;
-        }
-        
-        .search-results-container::-webkit-scrollbar-thumb:hover {
-          background: #a0aec0;
-        }
-      `}</style>
     </div>
   );
 }

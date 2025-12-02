@@ -111,7 +111,6 @@ const PendingResidences = ({ onBack }) => {
       <div className="w-1/2 border-r border-gray-200/60 overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center space-x-3 mb-6">
-            {/* SUPPRESSION DU BOUTON RETOUR - On utilise SIGAP pour le retour */}
             <h2 className="text-2xl bg-white backdrop-blur-sm py-1.5 px-4 rounded-2xl font-bold text-gray-800">Demandes en attente</h2>
           </div>
 
@@ -167,7 +166,11 @@ const PendingResidences = ({ onBack }) => {
 
       {/* Détails de la demande sélectionnée */}
       <div className="w-1/2 p-6 overflow-y-auto">
-        {selectedResidence ? (
+        {pendingResidences.length === 0 ? (
+          // Partie droite vide quand il n'y a pas de demandes
+          <div></div>
+        ) : selectedResidence ? (
+          // Afficher les détails d'une résidence sélectionnée
           <div>
             <h3 className="text-xl font-bold text-gray-800 mb-6">
               Détails de la demande
@@ -249,6 +252,7 @@ const PendingResidences = ({ onBack }) => {
             </div>
           </div>
         ) : (
+          // Message "Sélectionnez une demande" seulement quand il y a des demandes
           <div className="text-center py-12">
             <AlertCircle className="mx-auto text-gray-400 mb-4 mt-16" size={48} />
             <p className="text-black text-lg">Sélectionnez une demande</p>

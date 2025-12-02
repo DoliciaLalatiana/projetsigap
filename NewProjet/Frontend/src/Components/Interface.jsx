@@ -71,6 +71,40 @@ const isPointInPolygon = (point, polygon) => {
 // base API pour Vite
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 
+// Fonction pour formater la date des notifications
+const formatNotificationDate = (dateString) => {
+  const notificationDate = new Date(dateString);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  const notificationDay = new Date(
+    notificationDate.getFullYear(),
+    notificationDate.getMonth(),
+    notificationDate.getDate()
+  );
+  
+  // Si la notification est d'aujourd'hui
+  if (notificationDay.getTime() === today.getTime()) {
+    // Retourne seulement l'heure et les minutes
+    const hours = notificationDate.getHours().toString().padStart(2, '0');
+    const minutes = notificationDate.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+  // Si la notification est d'hier
+  else if (notificationDay.getTime() === yesterday.getTime()) {
+    return "Hier";
+  }
+  // Pour les dates plus anciennes
+  else {
+    const day = notificationDate.getDate().toString().padStart(2, '0');
+    const month = (notificationDate.getMonth() + 1).toString().padStart(2, '0');
+    const year = notificationDate.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+};
+
 export default function Interface({ user }) {
   const navigate = useNavigate();
   const [openDropdown, setOpenDropdown] = useState(false);
@@ -123,6 +157,12 @@ export default function Interface({ user }) {
   const [zoomBeforeResidenceClick, setZoomBeforeResidenceClick] = useState(null);
   const [centerBeforeResidenceClick, setCenterBeforeResidenceClick] = useState(null);
 
+  // NOUVEL ÉTAT : pour indiquer si la carte doit être zoomée sur la zone limite
+  const [shouldZoomToPolygon, setShouldZoomToPolygon] = useState(true);
+
+  // NOUVEL ÉTAT : pour contrôler si les autres boutons sont désactivés
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   // handlers pour le polygon (évite ReferenceError)
   const handlePolygonMouseOver = (e) => {
     try {
@@ -149,24 +189,75 @@ export default function Interface({ user }) {
     try {
       const bounds = new window.google.maps.LatLngBounds();
       polygon.forEach(p => bounds.extend(p));
-      // marge 20%
+      // marge 10% (réduit pour zoomer plus près)
       const ne = bounds.getNorthEast();
       const sw = bounds.getSouthWest();
-      const latDiff = (ne.lat() - sw.lat()) * 0.2;
-      const lngDiff = (ne.lng() - sw.lng()) * 0.2;
+      const latDiff = (ne.lat() - sw.lat()) * 0.1;
+      const lngDiff = (ne.lng() - sw.lng()) * 0.1;
       bounds.extend({ lat: ne.lat() + latDiff, lng: ne.lng() + lngDiff });
       bounds.extend({ lat: sw.lat() - latDiff, lng: sw.lng() - lngDiff });
       map.fitBounds(bounds);
       // add listener only if google.maps.event is available
       if (window.google && window.google.maps && window.google.maps.event) {
         const listener = window.google.maps.event.addListener(map, 'bounds_changed', function () {
-          try { if (map.getZoom() > 16) map.setZoom(16); } catch (e) { }
+          try { 
+            // Zoom maximum pour remplir la page (augmenté à 18)
+            if (map.getZoom() > 18) map.setZoom(18); 
+          } catch (e) { }
           try { window.google.maps.event.removeListener(listener); } catch (e) { }
         });
       }
     } catch (e) {
       console.warn('handleFocusOnPolygon error', e);
     }
+  };
+
+  // NOUVELLE FONCTION : Calculer les limites du polygon pour zoom initial
+  const calculatePolygonBounds = (polygon) => {
+    if (!polygon || polygon.length === 0) return null;
+    try {
+      const bounds = new window.google.maps.LatLngBounds();
+      polygon.forEach(p => bounds.extend(p));
+      return bounds;
+    } catch (e) {
+      console.warn('calculatePolygonBounds error', e);
+      return null;
+    }
+  };
+
+  // NOUVELLE FONCTION : Calculer le centre et le zoom optimal pour le polygon
+  const calculateOptimalView = (polygon) => {
+    if (!polygon || polygon.length === 0) {
+      return { center: ANDABOLY_CENTER, zoom: 15 };
+    }
+    
+    // Calculer le centre du polygon
+    const center = {
+      lat: polygon.reduce((sum, point) => sum + point.lat, 0) / polygon.length,
+      lng: polygon.reduce((sum, point) => sum + point.lng, 0) / polygon.length
+    };
+    
+    // Calculer la taille du polygon pour déterminer le zoom
+    const bounds = calculatePolygonBounds(polygon);
+    if (bounds) {
+      const ne = bounds.getNorthEast();
+      const sw = bounds.getSouthWest();
+      const latDiff = Math.abs(ne.lat() - sw.lat());
+      const lngDiff = Math.abs(ne.lng() - sw.lng());
+      
+      // Déterminer le zoom basé sur la taille du polygon
+      let zoom = 18; // Zoom élevé par défaut pour remplir la page
+      const maxDiff = Math.max(latDiff, lngDiff);
+      
+      if (maxDiff > 0.05) zoom = 16;
+      if (maxDiff > 0.1) zoom = 15;
+      if (maxDiff > 0.2) zoom = 14;
+      if (maxDiff > 0.3) zoom = 13;
+      
+      return { center, zoom };
+    }
+    
+    return { center, zoom: 17 };
   };
 
   const dropdownRef = useRef(null);
@@ -179,16 +270,18 @@ export default function Interface({ user }) {
   const [fokontanyName, setFokontanyName] = useState(null);
   const [residences, setResidences] = useState([]);
 
-  // Charger les notifications
+  // Charger les notifications (UNIQUEMENT CELLES NON LUES)
   const fetchNotifications = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE}/api/notifications`, {
+      const response = await fetch(`${API_BASE}/api/notifications/unread`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
         const data = await response.json();
-        setNotifications(data);
+        // Filtrer uniquement les notifications non lues
+        const unreadNotifications = data.filter(notification => !notification.is_read);
+        setNotifications(unreadNotifications);
       }
     } catch (error) {
       console.error('Erreur chargement notifications:', error);
@@ -211,7 +304,7 @@ export default function Interface({ user }) {
     }
   };
 
-  // Marquer comme lu
+  // Marquer comme lu et SUPPRIMER de l'affichage
   const markAsRead = async (notificationId) => {
     try {
       const token = localStorage.getItem('token');
@@ -219,8 +312,13 @@ export default function Interface({ user }) {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      // Mettre à jour l'état local - SUPPRIMER la notification marquée comme lue
+      setNotifications(prevNotifications => 
+        prevNotifications.filter(notification => notification.id !== notificationId)
+      );
+      
       fetchUnreadCount();
-      fetchNotifications();
     } catch (error) {
       console.error('Erreur marquer comme lu:', error);
     }
@@ -239,13 +337,19 @@ export default function Interface({ user }) {
       if (residencesResponse.ok) {
         const approvedResidences = await residencesResponse.json();
         
-        // Pour chaque résidence approuvée, supprimer sa notification associée
+        // Pour chaque résidence approuvée, marquer comme lu ses notifications associées
         for (const residence of approvedResidences) {
-          // Supposer que la notification a un champ residence_id ou un titre/message spécifique
-          await fetch(`${API_BASE}/api/notifications/residence/${residence.id}`, {
-            method: 'DELETE',
+          // Marquer toutes les notifications liées à cette résidence comme lues
+          const notificationsResponse = await fetch(`${API_BASE}/api/notifications/residence/${residence.id}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
+          
+          if (notificationsResponse.ok) {
+            const residenceNotifications = await notificationsResponse.json();
+            for (const notification of residenceNotifications) {
+              await markAsRead(notification.id);
+            }
+          }
         }
         
         // Recharger les notifications après suppression
@@ -300,6 +404,7 @@ export default function Interface({ user }) {
     // Rafraîchir toutes les 30 secondes
     const interval = setInterval(() => {
       fetchUnreadCount();
+      fetchNotifications(); // Rafraîchir aussi la liste des notifications
       // Vérifier périodiquement les résidences approuvées pour effacer les notifications
       checkAndClearApprovedResidenceNotifications();
     }, 30000);
@@ -397,6 +502,7 @@ export default function Interface({ user }) {
         setIsSelectingLocation(false);
         setSelectedLocation(null);
         setHasSelectedAddress(false);
+        setIsModalOpen(false); // MODIFICATION : Réactiver les boutons
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -419,6 +525,7 @@ export default function Interface({ user }) {
         ville: ""
       });
       setMessageStatus("normal");
+      setIsModalOpen(false); // MODIFICATION : Réactiver les boutons
     }
   }, [isAnyPageOpen, isSelectingLocation]);
 
@@ -476,6 +583,7 @@ export default function Interface({ user }) {
 
   // Fonction pour afficher/masquer la page utilisateur
   const handleUserIconClick = () => {
+    if (isModalOpen) return; // MODIFICATION : Empêcher l'ouverture si modal est ouverte
     const newShowUserPage = !showUserPage;
     setShowUserPage(newShowUserPage);
     if (newShowUserPage) {
@@ -490,6 +598,7 @@ export default function Interface({ user }) {
 
   // Fonction pour afficher/masquer la page résidence
   const handleResidenceClick = () => {
+    if (isModalOpen) return; // MODIFICATION : Empêcher l'ouverture si modal est ouverte
     const newShowResidence = !showResidence;
     setShowResidence(newShowResidence);
     if (newShowResidence) {
@@ -509,11 +618,13 @@ export default function Interface({ user }) {
         quartier: "",
         ville: ""
       });
+      setIsModalOpen(false); // MODIFICATION : Réactiver les boutons
     }
   };
 
   // Fonction pour afficher/masquer la page statistique
   const handleStatistiqueClick = () => {
+    if (isModalOpen) return; // MODIFICATION : Empêcher l'ouverture si modal est ouverte
     const newShowStatistique = !showStatistique;
     setShowStatistique(newShowStatistique);
     if (newShowStatistique) {
@@ -533,11 +644,13 @@ export default function Interface({ user }) {
         quartier: "",
         ville: ""
       });
+      setIsModalOpen(false); // MODIFICATION : Réactiver les boutons
     }
   };
 
   // NOUVELLE FONCTION : Pour afficher/masquer les demandes en attente
   const handlePendingResidencesClick = () => {
+    if (isModalOpen) return; // MODIFICATION : Empêcher l'ouverture si modal est ouverte
     const newShowPending = !showPendingResidences;
     setShowPendingResidences(newShowPending);
     
@@ -559,12 +672,16 @@ export default function Interface({ user }) {
         quartier: "",
         ville: ""
       });
+      setIsModalOpen(false); // MODIFICATION : Réactiver les boutons
     }
   };
 
   // MODIFICATION : Fonction pour démarrer la sélection d'adresse sur la carte
   const handleAddAddressClick = () => {
-    if (isAnyPageOpen) return;
+    if (isAnyPageOpen || isSelectingLocation || isModalOpen) return;
+
+    // MODIFICATION : Indiquer qu'un modal est ouvert
+    setIsModalOpen(true);
 
     // Sauvegarder l'état actuel de la carte AVANT de zoomer
     if (map) {
@@ -676,6 +793,7 @@ export default function Interface({ user }) {
         
         setMessageStatus("normal");
         setIsSelectingLocation(false);
+        setIsModalOpen(true); // MODIFICATION : Maintenir modal ouvert
         setTimeout(() => setShowAddAddress(true), 100);
       } else {
         setMessageStatus("error");
@@ -697,6 +815,7 @@ export default function Interface({ user }) {
     });
 
     setMessageStatus("normal");
+    setIsModalOpen(true); // MODIFICATION : Maintenir modal ouvert
 
     setTimeout(() => {
       handleFocusOnPolygon();
@@ -717,6 +836,7 @@ export default function Interface({ user }) {
     });
 
     setMessageStatus("normal");
+    setIsModalOpen(false); // MODIFICATION : Réactiver les boutons
   };
 
   // FONCTION UNIQUE handleConfirmAddress : Pour confirmer l'ajout de l'adresse
@@ -765,6 +885,9 @@ export default function Interface({ user }) {
         setIsSelectingLocation(false);
         setFormError("");
 
+        // MODIFICATION : Réactiver les boutons après confirmation
+        setIsModalOpen(false);
+
         // Afficher message de succès avec attente d'approbation
         alert('Résidence soumise pour approbation. Vous recevrez une notification quand elle sera approuvée.');
       } else {
@@ -774,6 +897,9 @@ export default function Interface({ user }) {
         setShowAddAddress(false);
         setIsSelectingLocation(false);
         setFormError("");
+        
+        // MODIFICATION : Réactiver les boutons après confirmation
+        setIsModalOpen(false);
       }
 
       console.log('[RES] created', result);
@@ -796,6 +922,9 @@ export default function Interface({ user }) {
     });
 
     setMessageStatus("normal");
+
+    // MODIFICATION : Réactiver les boutons après annulation
+    setIsModalOpen(false);
 
     // RESTAURER LE ZOOM ET LE CENTRE PRÉCÉDENTS
     if (map && previousZoom && previousCenter) {
@@ -860,11 +989,9 @@ export default function Interface({ user }) {
 
   // MODIFICATION : Fonction pour centrer la carte
   const handleCenterMap = () => {
-    if (map && selectedLocation) {
-      map.setCenter(selectedLocation);
-      map.setZoom(16);
-    } else if (map) {
+    if (map) {
       handleFocusOnPolygon();
+      setShouldZoomToPolygon(true);
     }
   };
 
@@ -925,18 +1052,12 @@ export default function Interface({ user }) {
                 const sum = poly.reduce((acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }), { lat: 0, lng: 0 });
                 setFokontanyCenter({ lat: sum.lat / poly.length, lng: sum.lng / poly.length });
                 console.log('[FOK] initFokontanyFromUser: set polygon & center from user.fokontany');
-                if (map && window.google && window.google.maps) {
-                  const bounds = new window.google.maps.LatLngBounds();
-                  poly.forEach(p => bounds.extend(p));
-                  map.fitBounds(bounds);
-                }
                 return;
               }
             }
             if (f.centre_lat && f.centre_lng) {
               setFokontanyCenter({ lat: +f.centre_lat, lng: +f.centre_lng });
               console.log('[FOK] initFokontanyFromUser: set center from user.fokontany centre_lat/centre_lng');
-              if (map) map.panTo({ lat: +f.centre_lat, lng: +f.centre_lng });
               return;
             }
           } catch (e) { console.warn('[FOK] initFokontanyFromUser user fokontany parse error', e); }
@@ -968,18 +1089,12 @@ export default function Interface({ user }) {
                 const sum = poly.reduce((acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }), { lat: 0, lng: 0 });
                 setFokontanyCenter({ lat: sum.lat / poly.length, lng: sum.lng / poly.length });
                 console.log('[FOK] initFokontanyFromUser: set polygon & center from fallback API');
-                if (map && window.google && window.google.maps) {
-                  const bounds = new window.google.maps.LatLngBounds();
-                  poly.forEach(p => bounds.extend(p));
-                  map.fitBounds(bounds);
-                }
                 return;
               }
             }
             if (fok.centre_lat && fok.centre_lng) {
               setFokontanyCenter({ lat: +fok.centre_lat, lng: +fok.centre_lng });
               console.log('[FOK] initFokontanyFromUser: set center from fallback centre_lat/centre_lng');
-              if (map) map.panTo({ lat: +fok.centre_lat, lng: +fok.centre_lng });
             }
           } catch (e) { console.warn('[FOK] initFokontanyFromUser parse error', e); }
         } else {
@@ -1000,21 +1115,39 @@ export default function Interface({ user }) {
       setMap(mapInstance);
       setMapLoaded(true);
       console.log('[MAP] onMapLoad: map ready', !!mapInstance, 'fokontanyCenter=', fokontanyCenter);
-      if (fokontanyCenter && mapInstance && window.google && window.google.maps) {
-        try {
-          mapInstance.panTo(fokontanyCenter);
-          mapInstance.setZoom(15);
-        } catch (e) {
-          console.warn('[MAP] onMapLoad panTo error', e);
-        }
-      }
+      
+      // Zoomer sur la zone limite dès que la carte est chargée
+      setTimeout(() => {
+        handleFocusOnPolygon();
+      }, 500);
+      
     } catch (err) {
       console.warn('[MAP] onMapLoad error', err);
     }
   };
 
+  // NOUVELLE FONCTION : Gérer les changements de zoom manuels
+  const handleZoomChanged = () => {
+    if (map) {
+      const currentZoom = map.getZoom();
+      // Si l'utilisateur zoom out (dézoome), désactiver le zoom automatique
+      if (currentZoom < 16) {
+        setShouldZoomToPolygon(false);
+      }
+    }
+  };
+
+  // NOUVELLE FONCTION : Gérer les déplacements manuels de la carte
+  const handleDragEnd = () => {
+    // Quand l'utilisateur déplace la carte manuellement, désactiver le zoom automatique
+    setShouldZoomToPolygon(false);
+  };
+
   // options de la carte Google Maps
   const getMapOptions = () => {
+    const activePolygon = (fokontanyPolygon && fokontanyPolygon.length > 0) ? fokontanyPolygon : ANDABOLY_POLYGON;
+    const view = calculateOptimalView(activePolygon);
+    
     return {
       mapTypeId: mapType === "satellite" ? "hybrid" : "roadmap",
       styles: [],
@@ -1023,8 +1156,8 @@ export default function Interface({ user }) {
       draggable: true,
       scrollwheel: true,
       pinchZoom: true,
-      center: fokontanyCenter || ANDABOLY_CENTER,
-      zoom: fokontanyCenter ? 14 : 14,
+      center: view.center,
+      zoom: view.zoom, // Utiliser le zoom calculé
       fullscreenControl: false,
       mapTypeControl: false,
       streetViewControl: false,
@@ -1057,10 +1190,19 @@ export default function Interface({ user }) {
     };
     const handleZoomChanged = () => {
       console.log('[MAP] Zoom changed:', map.getZoom());
+      // Appeler la fonction pour gérer le changement de zoom
+      if (map) {
+        const currentZoom = map.getZoom();
+        if (currentZoom < 16) {
+          setShouldZoomToPolygon(false);
+        }
+      }
     };
     const handleDragEnd = () => {
       const center = map.getCenter();
       console.log('[MAP] Drag ended. New center:', center.lat(), center.lng());
+      // Quand l'utilisateur déplace la carte manuellement, désactiver le zoom automatique
+      setShouldZoomToPolygon(false);
     };
 
     map.addListener("click", handleClick);
@@ -1079,6 +1221,13 @@ export default function Interface({ user }) {
       }
     };
   }, [map]);
+
+  // Effet pour recentrer sur la zone limite quand l'utilisateur clique sur le bouton "Localiser"
+  useEffect(() => {
+    if (shouldZoomToPolygon && map && mapLoaded) {
+      handleFocusOnPolygon();
+    }
+  }, [shouldZoomToPolygon, map, mapLoaded]);
 
   // Hauteur de la carte - toujours pleine hauteur
   const containerStyle = {
@@ -1126,8 +1275,10 @@ export default function Interface({ user }) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={getSearchPlaceholder()}
-                disabled={isSearchDisabled}
-                className="w-full p-1 bg-transparent outline-none text-sm text-gray-700 placeholder-gray-600"
+                disabled={isSearchDisabled || isModalOpen} // MODIFICATION : Désactiver si modal ouvert
+                className={`w-full p-1 bg-transparent outline-none text-sm ${
+                  isSearchDisabled || isModalOpen ? 'text-gray-400' : 'text-gray-700'
+                } placeholder-gray-600`}
               />
             </form>
           </div>
@@ -1142,9 +1293,9 @@ export default function Interface({ user }) {
             {/* Bouton Ajouter - MODIFICATION IMPORTANTE */}
             <button
               onClick={handleAddAddressClick}
-              disabled={isAnyPageOpen || isSelectingLocation}
+              disabled={isAnyPageOpen || isSelectingLocation || isModalOpen}
               className={`flex items-center px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap ${
-                isAnyPageOpen || isSelectingLocation
+                isAnyPageOpen || isSelectingLocation || isModalOpen
                   ? "bg-green-600 text-gray-200 cursor-not-allowed backdrop-blur-sm"
                   : isSelectingLocation
                   ? "bg-green-600 text-white hover:bg-green-700 backdrop-blur-sm"
@@ -1153,6 +1304,8 @@ export default function Interface({ user }) {
               title={
                 isAnyPageOpen 
                   ? "Fermez les autres pages pour ajouter une adresse" 
+                  : isModalOpen
+                  ? "Une modal est déjà ouverte"
                   : isSelectingLocation
                   ? "Sélection en cours - cliquez sur la carte ou annulez"
                   : "Ajouter une nouvelle adresse"
@@ -1168,16 +1321,23 @@ export default function Interface({ user }) {
               </span>
             </button>
 
-            {/* Notification - MODIFICATION : Toujours accessible */}
+            {/* Notification - MODIFICATION : Toujours accessible mais désactivée si modal */}
             <button
               onClick={() => {
-                setShowNotifications(!showNotifications);
-                fetchNotifications();
+                if (!isModalOpen) {
+                  setShowNotifications(!showNotifications);
+                  fetchNotifications();
+                }
               }}
-              className="relative w-8 h-8 rounded-full flex items-center justify-center bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80"
-              title="Notifications"
+              disabled={isModalOpen}
+              className={`relative w-8 h-8 rounded-full flex items-center justify-center ${
+                isModalOpen
+                  ? 'bg-gray-100 cursor-not-allowed'
+                  : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
+              }`}
+              title={isModalOpen ? "Fermez la modal pour accéder aux notifications" : "Notifications"}
             >
-              <Bell size={20} className="text-gray-600 hover:text-gray-800 transition-all duration-300" />
+              <Bell size={20} className={`${isModalOpen ? 'text-gray-400' : 'text-gray-600 hover:text-gray-800 transition-all duration-300'}`} />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   {unreadCount > 9 ? '9+' : unreadCount}
@@ -1188,45 +1348,58 @@ export default function Interface({ user }) {
             {/* Utilisateur */}
             <button
               onClick={handleUserIconClick}
-              className="w-8 h-8 rounded-full flex items-center justify-center bg-white/30 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80"
-              title="Profil"
+              disabled={isModalOpen}
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                isModalOpen
+                  ? 'bg-gray-100 cursor-not-allowed'
+                  : 'bg-white/30 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
+              }`}
+              title={isModalOpen ? "Fermez la modal pour accéder au profil" : "Profil"}
             >
-              <User size={20} className="text-gray-600 hover:text-gray-800 transition-all duration-300" />
+              <User size={20} className={`${isModalOpen ? 'text-gray-400' : 'text-gray-600 hover:text-gray-800 transition-all duration-300'}`} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Panneau de notifications - MODIFICATION : Toujours accessible */}
+      {/* Panneau de notifications - MODIFICATION AVEC NOUVELLE STRUCTURE */}
       {showNotifications && (
         <div className="absolute top-18 right-4 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
           <div className="p-4 border-b border-gray-200">
             <h3 className="font-semibold text-gray-800">Notifications</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              {notifications.length} notification{notifications.length !== 1 ? 's' : ''} non lue{notifications.length !== 1 ? 's' : ''}
+            </p>
           </div>
           <div className="p-2">
             {notifications.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">Aucune notification</p>
+              <p className="text-gray-500 text-center py-4">Aucune notification non lue</p>
             ) : (
               notifications.map(notification => (
                 <div
                   key={notification.id}
-                  className={`p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${!notification.is_read ? 'bg-blue-50' : ''}`}
+                  className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer bg-blue-50"
                   onClick={() => handleNotificationClick(notification)}
                 >
-                  <div className="flex justify-between items-start">
+                  <div className="flex justify-between items-start mb-2">
                     <h4 className="font-medium text-sm text-gray-800">{notification.title}</h4>
-                    <span className="text-xs text-gray-500">
-                      {new Date(notification.created_at).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-xs text-gray-500">
+                    {/* Le nom de l'agent à la place de la date en haut à droite */}
+                    <span className="text-xs text-gray-500 font-medium">
                       {notification.sender_name || 'Système'}
                     </span>
-                    {!notification.is_read && (
-                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                    )}
+                  </div>
+                  <p className="text-xs text-gray-600 mb-2">{notification.message}</p>
+                  <div className="flex justify-between items-center">
+                    {/* La date en bas à gauche */}
+                    <span className="text-xs text-gray-400">
+                      {formatNotificationDate(notification.created_at)}
+                    </span>
+                    {/* Point jaune pour marque d'attente, bleu pour notification normale */}
+                    <span className={`w-2 h-2 rounded-full ${
+                      notification.type === 'pending' || notification.title.includes('attente') || notification.message.includes('attente') 
+                        ? 'bg-yellow-500' 
+                        : 'bg-blue-500'
+                    }`}></span>
                   </div>
                 </div>
               ))
@@ -1357,40 +1530,69 @@ export default function Interface({ user }) {
 
           <button
             onClick={handleLogoClick}
-            className="w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 bg-transparent hover:bg-white"
+            disabled={isModalOpen}
+            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${
+              isModalOpen
+                ? 'bg-transparent cursor-not-allowed'
+                : 'bg-transparent hover:bg-white'
+            }`}
           >
             <div className="p-2 rounded-full flex-shrink-0 bg-blue-100/70">
               <span className="text-blue-600 font-bold text-sm">SG</span>
             </div>
-            <span className="text-gray-800 font-medium whitespace-nowrap transition-all duration-300">
+            <span className={`text-gray-800 font-medium whitespace-nowrap transition-all duration-300 ${
+              isModalOpen ? 'opacity-50' : ''
+            }`}>
               SIGAP
             </span>
           </button>
 
           <button
             onClick={handleResidenceClick}
-            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${showResidence
-              ? "bg-white border border-blue-200/60"
-              : "bg-transparent hover:bg-white hover:border-blue-200/60"}`}
+            disabled={isModalOpen}
+            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${
+              showResidence
+                ? "bg-white border border-blue-200/60"
+                : isModalOpen
+                ? "bg-transparent cursor-not-allowed"
+                : "bg-transparent hover:bg-white hover:border-blue-200/60"
+            }`}
           >
-            <div className={`p-2 rounded-full flex-shrink-0 ${showResidence ? "bg-blue-100/70" : "bg-blue-100/70"}`}>
-              <MapPin size={18} className={`${showResidence ? "text-blue-600" : "text-blue-600"} transition-all duration-300`} />
+            <div className={`p-2 rounded-full flex-shrink-0 ${
+              showResidence ? "bg-blue-100/70" : isModalOpen ? "bg-blue-100/50" : "bg-blue-100/70"
+            }`}>
+              <MapPin size={18} className={`${
+                showResidence ? "text-blue-600" : isModalOpen ? "text-blue-400" : "text-blue-600"
+              } transition-all duration-300`} />
             </div>
-            <span className={`${showResidence ? "text-gray-800" : "text-gray-800"}`}>
+            <span className={`${
+              showResidence ? "text-gray-800" : isModalOpen ? "text-gray-500" : "text-gray-800"
+            }`}>
               Résidence
             </span>
           </button>
 
           <button
             onClick={handleStatistiqueClick}
-            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${showStatistique
-              ? "bg-white border border-green-200/60"
-              : "bg-transparent hover:bg-white hover:border-green-200/60"}`}
+            disabled={isModalOpen}
+            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${
+              showStatistique
+                ? "bg-white border border-green-200/60"
+                : isModalOpen
+                ? "bg-transparent cursor-not-allowed"
+                : "bg-transparent hover:bg-white hover:border-green-200/60"
+            }`}
           >
-            <div className={`p-2 rounded-full flex-shrink-0 ${showStatistique ? "bg-green-100/70" : "bg-green-100/70"}`}>
-              <BarChart3 size={18} className={`${showStatistique ? "text-green-600" : "text-green-600"} transition-all duration-300`} />
+            <div className={`p-2 rounded-full flex-shrink-0 ${
+              showStatistique ? "bg-green-100/70" : isModalOpen ? "bg-green-100/50" : "bg-green-100/70"
+            }`}>
+              <BarChart3 size={18} className={`${
+                showStatistique ? "text-green-600" : isModalOpen ? "text-green-400" : "text-green-600"
+              } transition-all duration-300`} />
             </div>
-            <span className={`${showStatistique ? "text-gray-800" : "text-gray-800"} font-medium whitespace-nowrap transition-all duration-300`}>
+            <span className={`${
+              showStatistique ? "text-gray-800" : isModalOpen ? "text-gray-500" : "text-gray-800"
+            } font-medium whitespace-nowrap transition-all duration-300`}>
               Statistique
             </span>
           </button>
@@ -1399,14 +1601,25 @@ export default function Interface({ user }) {
           {currentUser?.role === 'secretaire' && (
             <button
               onClick={handlePendingResidencesClick}
-              className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${showPendingResidences
-                ? "bg-white border border-purple-200/60"
-                : "bg-transparent hover:bg-white hover:border-purple-200/60"}`}
+              disabled={isModalOpen}
+              className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${
+                showPendingResidences
+                  ? "bg-white border border-purple-200/60"
+                  : isModalOpen
+                  ? "bg-transparent cursor-not-allowed"
+                  : "bg-transparent hover:bg-white hover:border-purple-200/60"
+              }`}
             >
-              <div className={`p-2 rounded-full flex-shrink-0 ${showPendingResidences ? "bg-purple-100/70" : "bg-purple-100/70"}`}>
-                <ClipboardList size={18} className={`${showPendingResidences ? "text-purple-600" : "text-purple-600"} transition-all duration-300`} />
+              <div className={`p-2 rounded-full flex-shrink-0 ${
+                showPendingResidences ? "bg-purple-100/70" : isModalOpen ? "bg-purple-100/50" : "bg-purple-100/70"
+              }`}>
+                <ClipboardList size={18} className={`${
+                  showPendingResidences ? "text-purple-600" : isModalOpen ? "text-purple-400" : "text-purple-600"
+                } transition-all duration-300`} />
               </div>
-              <span className={`${showPendingResidences ? "text-gray-800" : "text-gray-800"} font-medium whitespace-nowrap transition-all duration-300`}>
+              <span className={`${
+                showPendingResidences ? "text-gray-800" : isModalOpen ? "text-gray-500" : "text-gray-800"
+              } font-medium whitespace-nowrap transition-all duration-300`}>
                 Demandes
               </span>
             </button>
@@ -1471,9 +1684,9 @@ export default function Interface({ user }) {
         <button
           onClick={handleCenterMap}
           className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
-          title={hasSelectedAddress ? "Aller à l'adresse sélectionnée" : "Voir la zone limite"}
+          title="Voir la zone limite"
         >
-          <LocateFixed size={20} className={`${hasSelectedAddress ? "text-green-600" : "text-blue-600"} hover:text-blue-700 transition-all duration-300`} />
+          <LocateFixed size={20} className="text-blue-600 hover:text-blue-700 transition-all duration-300" />
         </button>
       </div>
 
@@ -1493,7 +1706,7 @@ export default function Interface({ user }) {
           <GoogleMap
             mapContainerStyle={containerStyle}
             center={fokontanyCenter || ANDABOLY_CENTER}
-            zoom={fokontanyCenter ? 14 : 14}
+            zoom={15}
             mapTypeId={mapType === "satellite" ? "hybrid" : "roadmap"}
             onLoad={onMapLoad}
             options={getMapOptions()}
