@@ -126,17 +126,18 @@ function createPersonRelationsTable() {
 }
 createPersonRelationsTable();
 
-// NOUVELLES TABLES : notifications et pending_residences
+// NOUVELLES TABLES : notifications et pending_residences (MODIFIÉ)
 function createNotificationsTable() {
   const q = `
     CREATE TABLE IF NOT EXISTS notifications (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      type ENUM('residence_approval', 'password_change', 'password_reset') NOT NULL,
+      type ENUM('residence_approval', 'password_change', 'password_reset', 'system') NOT NULL,
       title VARCHAR(255) NOT NULL,
       message TEXT NOT NULL,
       recipient_id INT NOT NULL,
       sender_id INT NULL,
       related_entity_id INT NULL,
+      metadata JSON NULL,
       status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
       is_read BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -172,7 +173,37 @@ function createPendingResidencesTable() {
   });
 }
 
-// Routes
+// ===============================
+// FONCTION UTILITAIRE POUR NOTIFICATIONS
+// ===============================
+function createNotification(recipientId, type, title, message, metadata, senderId, callback) {
+  try {
+    const query = `
+      INSERT INTO notifications (type, title, message, recipient_id, sender_id, metadata, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `;
+    
+    const metadataStr = metadata ? JSON.stringify(metadata) : null;
+    
+    connection.query(query, [type, title, message, recipientId, senderId, metadataStr], (err, result) => {
+      if (err) {
+        console.error('[NOTIF] Error creating notification:', err);
+        if (callback) callback(err);
+        return;
+      }
+      
+      console.log(`[NOTIF] Notification created with ID: ${result.insertId}`);
+      if (callback) callback(null, result.insertId);
+    });
+  } catch (error) {
+    console.error('[NOTIF] Error in createNotification function:', error);
+    if (callback) callback(error);
+  }
+}
+
+// ===============================
+// ROUTES EXISTANTES
+// ===============================
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/residences', residencesRoutes);
@@ -232,6 +263,238 @@ app.post('/api/residences/pending/:pendingId/reject', auth, async (req, res) => 
     await ResidenceController.rejectResidence(req, res);
   } catch (error) {
     res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// ===============================
+// NOUVELLE ROUTE POUR NOTIFICATIONS PAR RÉSIDENCE
+// ===============================
+app.patch('/api/notifications/mark-by-residence/:residenceId', auth, async (req, res) => {
+  try {
+    const { residenceId } = req.params;
+    const userId = req.user.id;
+    
+    console.log(`[NOTIF] Marking notifications as read for residence: ${residenceId}, user: ${userId}`);
+    
+    // Chercher d'abord toutes les notifications non lues de cet utilisateur
+    const checkQuery = 'SELECT * FROM notifications WHERE recipient_id = ? AND is_read = FALSE';
+    connection.query(checkQuery, [userId], (checkErr, checkResults) => {
+      if (checkErr) {
+        console.error('[NOTIF] Error checking notifications:', checkErr);
+        return res.status(500).json({ error: 'Erreur vérification notifications' });
+      }
+      
+      if (checkResults.length === 0) {
+        // Pas de notifications non lues
+        return res.json({ 
+          success: true, 
+          message: 'Aucune notification non lue à marquer',
+          modifiedCount: 0
+        });
+      }
+      
+      // Filtrer les notifications qui concernent cette résidence
+      const notificationsToMark = checkResults.filter(notification => {
+        try {
+          // Essayer d'extraire residence_id du metadata
+          if (notification.metadata) {
+            const metadata = typeof notification.metadata === 'string' 
+              ? JSON.parse(notification.metadata) 
+              : notification.metadata;
+            
+            // Vérifier plusieurs champs possibles
+            if (metadata.residence_id == residenceId || 
+                metadata.pending_id == residenceId || 
+                metadata.residence_data?.id == residenceId ||
+                notification.related_entity_id == residenceId) {
+              return true;
+            }
+          }
+          
+          // Vérifier aussi related_entity_id directement
+          if (notification.related_entity_id == residenceId) {
+            return true;
+          }
+          
+          return false;
+        } catch (e) {
+          console.warn('[NOTIF] Error parsing notification metadata:', e);
+          return false;
+        }
+      });
+      
+      if (notificationsToMark.length === 0) {
+        return res.json({ 
+          success: true, 
+          message: 'Aucune notification trouvée pour cette résidence',
+          modifiedCount: 0
+        });
+      }
+      
+      // Marquer ces notifications comme lues
+      const notificationIds = notificationsToMark.map(n => n.id);
+      const placeholders = notificationIds.map(() => '?').join(',');
+      
+      const updateQuery = `
+        UPDATE notifications 
+        SET is_read = TRUE, 
+            updated_at = CURRENT_TIMESTAMP 
+        WHERE id IN (${placeholders})
+      `;
+      
+      connection.query(updateQuery, notificationIds, (updateErr, updateResults) => {
+        if (updateErr) {
+          console.error('[NOTIF] Error updating notifications:', updateErr);
+          return res.status(500).json({ 
+            error: 'Erreur lors du marquage des notifications',
+            details: updateErr.message 
+          });
+        }
+        
+        console.log(`[NOTIF] Marked ${updateResults.affectedRows} notifications as read`);
+        
+        res.json({ 
+          success: true, 
+          message: 'Notifications marquées comme lues',
+          modifiedCount: updateResults.affectedRows,
+          notificationIds: notificationIds
+        });
+      });
+    });
+  } catch (error) {
+    console.error('[NOTIF] Error marking notifications:', error);
+    res.status(500).json({ 
+      error: 'Erreur serveur',
+      details: error.message 
+    });
+  }
+});
+
+// ===============================
+// NOUVELLE ROUTE POUR RÉSIDENCES EN ATTENTE AVEC SÉLECTION
+// ===============================
+app.get('/api/residences/pending-with-selection', auth, async (req, res) => {
+  try {
+    const { residenceId } = req.query; // ID de la résidence à sélectionner
+    const userId = req.user.id;
+    
+    console.log(`[PENDING] Fetching pending residences with selection for user: ${userId}, residenceId: ${residenceId}`);
+    
+    // Vérifier si l'utilisateur est secrétaire ou admin
+    const userQuery = 'SELECT role FROM users WHERE id = ?';
+    connection.query(userQuery, [userId], (userErr, userResults) => {
+      if (userErr) {
+        console.error('[PENDING] Error fetching user role:', userErr);
+        return res.status(500).json({ error: 'Erreur vérification rôle utilisateur' });
+      }
+      
+      if (userResults.length === 0) {
+        return res.status(404).json({ error: 'Utilisateur non trouvé' });
+      }
+      
+      const userRole = userResults[0].role;
+      
+      // Seuls les secrétaires et admins peuvent voir les demandes en attente
+      if (userRole !== 'secretaire' && userRole !== 'admin') {
+        return res.status(403).json({ error: 'Accès non autorisé' });
+      }
+      
+      // Récupérer les résidences en attente
+      const query = `
+        SELECT 
+          pr.id,
+          pr.residence_data,
+          pr.submitted_by,
+          pr.status,
+          pr.review_notes,
+          pr.reviewed_by,
+          pr.created_at,
+          pr.updated_at,
+          u.nom_complet as submitter_name,
+          u.immatricule as submitter_immatricule,
+          u.fokontany_id,
+          f.nom as fokontany_nom
+        FROM pending_residences pr
+        LEFT JOIN users u ON pr.submitted_by = u.id
+        LEFT JOIN fokontany f ON u.fokontany_id = f.id
+        WHERE pr.status = 'pending'
+        ORDER BY pr.created_at DESC
+      `;
+      
+      connection.query(query, (err, results) => {
+        if (err) {
+          console.error('[PENDING] Error fetching pending residences:', err);
+          return res.status(500).json({ 
+            error: 'Erreur lors du chargement des résidences en attente',
+            details: err.message 
+          });
+        }
+        
+        // Parser les données JSON et déterminer quelle résidence est sélectionnée
+        const formattedData = results.map(row => {
+          let residenceData = {};
+          try {
+            if (row.residence_data) {
+              residenceData = typeof row.residence_data === 'string' 
+                ? JSON.parse(row.residence_data) 
+                : row.residence_data;
+            }
+          } catch (parseErr) {
+            console.error('[PENDING] Error parsing residence_data:', parseErr);
+            residenceData = {};
+          }
+          
+          // Déterminer si cette résidence doit être sélectionnée
+          const isSelected = residenceId && (
+            row.id == residenceId ||
+            residenceData.id == residenceId ||
+            residenceData.residence_id == residenceId
+          );
+          
+          return {
+            id: row.id,
+            residence_id: residenceData.id || null,
+            residence_data: {
+              id: residenceData.id || null,
+              lot: residenceData.lot || 'Non spécifié',
+              quartier: residenceData.quartier || 'Non spécifié',
+              ville: residenceData.ville || 'Non spécifié',
+              fokontany: residenceData.fokontany,
+              lat: residenceData.lat,
+              lng: residenceData.lng,
+              created_by: residenceData.created_by,
+              created_at: residenceData.created_at
+            },
+            submitter_name: row.submitter_name || 'Agent inconnu',
+            submitter_immatricule: row.submitter_immatricule,
+            fokontany_nom: row.fokontany_nom || 'Non spécifié',
+            status: row.status,
+            review_notes: row.review_notes,
+            reviewed_by: row.reviewed_by,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+            is_selected: isSelected // Ajout du flag de sélection
+          };
+        });
+        
+        // Trouver la résidence sélectionnée
+        const selectedResidence = formattedData.find(r => r.is_selected);
+        
+        console.log(`[PENDING] Found ${formattedData.length} pending residences, selected: ${selectedResidence ? selectedResidence.id : 'none'}`);
+        
+        res.json({
+          residences: formattedData,
+          selected_residence: selectedResidence || null,
+          total_count: formattedData.length
+        });
+      });
+    });
+  } catch (error) {
+    console.error('[PENDING] Error in route:', error);
+    res.status(500).json({ 
+      error: 'Erreur serveur',
+      details: error.message 
+    });
   }
 });
 

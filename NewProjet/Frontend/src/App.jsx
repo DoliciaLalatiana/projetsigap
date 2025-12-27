@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { LanguageProvider } from './Components/LanguageContext';
+//import { LanguageProvider } from './Components/LanguageContext';
 import Interface from './Components/Interface';
 import Statistique from './Components/Statistique';
 import AdminPanel from './Components/AdminPanel';
@@ -52,7 +52,6 @@ function App() {
   }
 
   return (
-    <LanguageProvider>
       <Routes>
         <Route 
           path="/login" 
@@ -95,7 +94,6 @@ function App() {
           } 
         />
       </Routes>
-    </LanguageProvider>
   );
 }
 

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, MapPin, User, Clock, AlertCircle } from 'lucide-react';
+import { Check, X, MapPin, User, Clock, AlertCircle, Bell } from 'lucide-react';
 
-const PendingResidences = ({ onBack }) => {
+const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) => {
   const [pendingResidences, setPendingResidences] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedResidence, setSelectedResidence] = useState(null);
   const [reviewNotes, setReviewNotes] = useState('');
+  const [notificationCleared, setNotificationCleared] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE || '';
 
@@ -33,6 +34,114 @@ const PendingResidences = ({ onBack }) => {
     fetchPendingResidences();
   }, []);
 
+  // FONCTION POUR MARQUER UNE NOTIFICATION COMME LUE
+  const markNotificationAsRead = async (notificationId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/api/notifications/${notificationId}/read`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        console.log('Notification marquée comme lue:', notificationId);
+        // Rafraîchir les notifications si un callback est fourni
+        if (onResidenceApproved) {
+          onResidenceApproved();
+        }
+      }
+    } catch (error) {
+      console.error('Erreur marquage notification:', error);
+    }
+  };
+
+  // EFFET POUR SÉLECTIONNER AUTOMATIQUEMENT ET MARQUER LA NOTIFICATION COMME LUE
+  useEffect(() => {
+    console.log('[PENDING] residenceToSelect effect triggered:', residenceToSelect);
+    console.log('[PENDING] Current pendingResidences:', pendingResidences.length);
+    
+    if (residenceToSelect && pendingResidences.length > 0 && !notificationCleared) {
+      console.log('[PENDING] Looking for residence with ID:', residenceToSelect);
+      
+      // Essayer de trouver la résidence par différents critères
+      const foundResidence = pendingResidences.find(residence => {
+        console.log('[PENDING] Checking residence:', {
+          id: residence.id,
+          residence_id: residence.residence_id,
+          residence_data_id: residence.residence_data?.id,
+          pending_id: residence.pending_id
+        });
+        
+        // Essayer plusieurs façons de faire correspondre l'ID
+        if (residence.id && residence.id.toString() === residenceToSelect.toString()) {
+          return true;
+        }
+        if (residence.residence_id && residence.residence_id.toString() === residenceToSelect.toString()) {
+          return true;
+        }
+        if (residence.residence_data?.id && residence.residence_data.id.toString() === residenceToSelect.toString()) {
+          return true;
+        }
+        if (residence.pending_id && residence.pending_id.toString() === residenceToSelect.toString()) {
+          return true;
+        }
+        
+        // Vérifier également dans le message si présent
+        if (residence.residence_data?.lot && 
+            residence.residence_data.lot.toLowerCase().includes(residenceToSelect.toString().toLowerCase())) {
+          return true;
+        }
+        
+        return false;
+      });
+      
+      if (foundResidence) {
+        console.log('[PENDING] Found residence for auto-selection:', foundResidence);
+        setSelectedResidence(foundResidence);
+        setNotificationCleared(true);
+        
+        // Marquer les notifications liées à cette résidence comme lues
+        markNotificationAsRead(foundResidence.id);
+        
+        // Pré-remplir les notes avec des informations utiles
+        setReviewNotes(`Notification pour la résidence "${foundResidence.residence_data?.lot || ''}" - ` +
+                      `Soumis par: ${foundResidence.submitter_name || ''}`);
+        
+        // Scroll vers l'élément sélectionné
+        setTimeout(() => {
+          const selectedElement = document.querySelector(`[data-residence-id="${foundResidence.id}"]`);
+          if (selectedElement) {
+            selectedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      } else {
+        console.warn('[PENDING] No matching residence found for ID:', residenceToSelect);
+        console.warn('[PENDING] Available IDs:', pendingResidences.map(r => ({
+          id: r.id,
+          residence_id: r.residence_id,
+          residence_data_id: r.residence_data?.id,
+          lot: r.residence_data?.lot
+        })));
+      }
+    }
+  }, [residenceToSelect, pendingResidences, notificationCleared]);
+
+  // GESTIONNAIRE POUR CLIQUER SUR UNE RÉSIDENCE
+  const handleResidenceClick = (residence) => {
+    setSelectedResidence(residence);
+    setReviewNotes(`Résidence "${residence.residence_data?.lot || ''}" - ` +
+                  `Quartier: ${residence.residence_data?.quartier || ''}`);
+    
+    // Si cette résidence venait d'une notification, marquer comme lue
+    if (residence.id === residenceToSelect && !notificationCleared) {
+      markNotificationAsRead(residence.id);
+      setNotificationCleared(true);
+    }
+  };
+
   const handleApprove = async (pendingId) => {
     try {
       const token = localStorage.getItem('token');
@@ -51,7 +160,13 @@ const PendingResidences = ({ onBack }) => {
         alert('Résidence approuvée avec succès');
         setSelectedResidence(null);
         setReviewNotes('');
+        setNotificationCleared(false);
         fetchPendingResidences();
+        
+        // Appeler le callback pour mettre à jour les notifications
+        if (onResidenceApproved) {
+          onResidenceApproved();
+        }
       } else {
         alert('Erreur lors de l\'approbation');
       }
@@ -84,13 +199,35 @@ const PendingResidences = ({ onBack }) => {
         alert('Résidence rejetée avec succès');
         setSelectedResidence(null);
         setReviewNotes('');
+        setNotificationCleared(false);
         fetchPendingResidences();
+        
+        // Appeler le callback pour mettre à jour les notifications
+        if (onResidenceApproved) {
+          onResidenceApproved();
+        }
       } else {
         alert('Erreur lors du rejet');
       }
     } catch (error) {
       console.error('Erreur:', error);
       alert('Erreur réseau');
+    }
+  };
+
+  // Fonction pour formater la date
+  const formatDate = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return dateString || 'Date inconnue';
     }
   };
 
@@ -111,7 +248,13 @@ const PendingResidences = ({ onBack }) => {
       <div className="w-1/2 border-r border-gray-200/60 overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center space-x-3 mb-6">
+            <Bell className="text-blue-500" size={24} />
             <h2 className="text-2xl bg-white backdrop-blur-sm py-1.5 px-4 rounded-2xl font-bold text-gray-800">Demandes en attente</h2>
+            {residenceToSelect && !notificationCleared && (
+              <span className="text-xs px-3 py-1 bg-yellow-500 text-white rounded-full animate-pulse">
+                Nouvelle notification
+              </span>
+            )}
           </div>
 
           {pendingResidences.length === 0 ? (
@@ -127,33 +270,39 @@ const PendingResidences = ({ onBack }) => {
               {pendingResidences.map((residence) => (
                 <div
                   key={residence.id}
+                  data-residence-id={residence.id}
                   className={`p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md ${
                     selectedResidence?.id === residence.id 
                       ? 'border-blue-500 bg-blue-50/50' 
                       : 'border-gray-200/60 bg-white/50'
-                  }`}
-                  onClick={() => setSelectedResidence(residence)}
+                  } ${residence.id === residenceToSelect && !notificationCleared ? 'border-yellow-400 border-2' : ''}`}
+                  onClick={() => handleResidenceClick(residence)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
                         <MapPin size={16} className="text-blue-500" />
                         <h3 className="font-semibold text-gray-800">
-                          {residence.residence_data.lot}
+                          {residence.residence_data?.lot || 'Lot non spécifié'}
                         </h3>
+                        {residence.id === residenceToSelect && !notificationCleared && (
+                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full animate-pulse">
+                            Nouveau!
+                          </span>
+                        )}
                       </div>
                       
                       <div className="flex items-center space-x-2 text-sm text-gray-600 mb-1">
                         <User size={14} />
-                        <span>{residence.submitter_name}</span>
+                        <span>{residence.submitter_name || 'Agent inconnu'}</span>
                       </div>
                       
                       <div className="text-sm text-gray-500 mb-2">
-                        Quartier: {residence.residence_data.quartier}
+                        Quartier: {residence.residence_data?.quartier || 'Non spécifié'}
                       </div>
 
                       <div className="text-xs text-gray-400">
-                        {new Date(residence.created_at).toLocaleDateString()}
+                        {formatDate(residence.created_at)}
                       </div>
                     </div>
                   </div>
@@ -167,13 +316,16 @@ const PendingResidences = ({ onBack }) => {
       {/* Détails de la demande sélectionnée */}
       <div className="w-1/2 p-6 overflow-y-auto">
         {pendingResidences.length === 0 ? (
-          // Partie droite vide quand il n'y a pas de demandes
           <div></div>
         ) : selectedResidence ? (
-          // Afficher les détails d'une résidence sélectionnée
           <div>
             <h3 className="text-xl font-bold text-gray-800 mb-6">
               Détails de la demande
+              {selectedResidence.id === residenceToSelect && !notificationCleared && (
+                <span className="ml-2 text-sm bg-yellow-500 text-white px-2 py-1 rounded-full animate-pulse">
+                  Nouvelle notification
+                </span>
+              )}
             </h3>
 
             <div className="space-y-4 mb-6">
@@ -182,20 +334,20 @@ const PendingResidences = ({ onBack }) => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Numéro de lot:</span>
-                    <span className="font-medium">{selectedResidence.residence_data.lot}</span>
+                    <span className="font-medium">{selectedResidence.residence_data?.lot || 'Non spécifié'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Quartier:</span>
-                    <span className="font-medium">{selectedResidence.residence_data.quartier}</span>
+                    <span className="font-medium">{selectedResidence.residence_data?.quartier || 'Non spécifié'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Ville:</span>
-                    <span className="font-medium">{selectedResidence.residence_data.ville || 'Non spécifié'}</span>
+                    <span className="font-medium">{selectedResidence.residence_data?.ville || 'Non spécifié'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Coordonnées:</span>
                     <span className="font-medium">
-                      {selectedResidence.residence_data.lat?.toFixed(6)}, {selectedResidence.residence_data.lng?.toFixed(6)}
+                      {selectedResidence.residence_data?.lat?.toFixed(6) || 'N/A'}, {selectedResidence.residence_data?.lng?.toFixed(6) || 'N/A'}
                     </span>
                   </div>
                 </div>
@@ -206,15 +358,19 @@ const PendingResidences = ({ onBack }) => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Nom:</span>
-                    <span className="font-medium">{selectedResidence.submitter_name}</span>
+                    <span className="font-medium">{selectedResidence.submitter_name || 'Non spécifié'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Immatricule:</span>
-                    <span className="font-medium">{selectedResidence.submitter_immatricule}</span>
+                    <span className="font-medium">{selectedResidence.submitter_immatricule || 'Non spécifié'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Fokontany:</span>
-                    <span className="font-medium">{selectedResidence.fokontany_nom}</span>
+                    <span className="font-medium">{selectedResidence.fokontany_nom || 'Non spécifié'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Date de soumission:</span>
+                    <span className="font-medium">{formatDate(selectedResidence.created_at)}</span>
                   </div>
                 </div>
               </div>
@@ -252,13 +408,18 @@ const PendingResidences = ({ onBack }) => {
             </div>
           </div>
         ) : (
-          // Message "Sélectionnez une demande" seulement quand il y a des demandes
           <div className="text-center py-12">
             <AlertCircle className="mx-auto text-gray-400 mb-4 mt-16" size={48} />
             <p className="text-black text-lg">Sélectionnez une demande</p>
             <p className="text-black text-sm mt-2">
               Cliquez sur une demande dans la liste pour voir les détails
             </p>
+            {residenceToSelect && !notificationCleared && (
+              <p className="text-blue-600 text-sm mt-4 flex items-center justify-center">
+                <Bell className="mr-2" size={16} />
+                <i>Une notification a été cliquée - sélectionnez la résidence correspondante</i>
+              </p>
+            )}
           </div>
         )}
       </div>

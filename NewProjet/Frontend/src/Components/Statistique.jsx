@@ -17,7 +17,7 @@ import {
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 const Statistique = ({ onBack }) => {
-  const [selectedFokontany, setSelectedFokontany] = useState("Tsimenantsy");
+  const [selectedFokontany, setSelectedFokontany] = useState("Ampasikibo");
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -321,9 +321,11 @@ const Statistique = ({ onBack }) => {
     <div className="h-full flex flex-col">
       {/* Header avec contrôles à droite */}
       <div className="flex-shrink-0 flex items-center justify-between p-8 border-gray-200/60 bg-transparent">
-        <h1 className="font-bold text-3xl text-gray-800 bg-white backdrop-blur-sm py-1.5 px-4 rounded-2xl border border-gray-200/60">
-          Statistiques
-        </h1>
+        <div className="flex flex-col">
+          <h1 className="font-bold text-3xl text-gray-800 bg-white backdrop-blur-sm py-1.5 px-4 rounded-2xl border border-gray-200/60">
+            Statistique 
+          </h1>
+        </div>
         
         {/* Contrôles en haut à droite */}
         <div className="flex items-center space-x-4">
@@ -334,7 +336,7 @@ const Statistique = ({ onBack }) => {
               onChange={(e) => setSelectedFokontany(e.target.value)}
               className="bg-transparent outline-none text-sm focus:ring-0 focus:border-transparent text-gray-800"
             >
-              <option value="Tsimenantsy">Tsimenantsy</option>
+              <option value="Ampasikibo">Ampasikibo</option>
             </select>
           </div>
           <button
@@ -347,83 +349,83 @@ const Statistique = ({ onBack }) => {
         </div>
       </div>
 
-      {/* Statistiques compactes */}
+      {/* Statistiques compactes - alignées avec le titre */}
       <div className="flex-shrink-0 p-4 border-gray-200/60 bg-transparent">
-        <div className="grid grid-cols-4 gap-4 ml-12 mr-12">
+        <div className="grid grid-cols-4 gap-4 ml-2 mr-2">
           
           {/* Résidences */}
-          <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
-            <div className="flex items-center justify-between">
-              <div>
+          <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60 flex flex-col">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+              </div>
+              <div className="text-right">
                 <div className="text-2xl font-bold text-gray-800">
                   {statistics.totalResidences}
                 </div>
-                <div className="text-xs text-gray-600 mt-1">Résidences</div>
-              </div>
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <div className="w-6 h-6 bg-blue-500 rounded-full"></div>
+                <div className="text-xs text-gray-600">Résidences</div>
               </div>
             </div>
-            <div className="mt-2 flex items-center text-xs text-green-600">
+            <div className="mt-auto flex items-center text-xs text-green-600">
               <span>▲ 25%</span>
-              <span className="text-gray-500 ml-1">vs last month</span>
+              <span className="text-gray-500 ml-1">vs mois dernier</span>
             </div>
           </div>
 
           {/* Habitants */}
-          <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
-            <div className="flex items-center justify-between">
-              <div>
+          <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60 flex flex-col">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+              </div>
+              <div className="text-right">
                 <div className="text-2xl font-bold text-gray-800">
                   {statistics.totalResidents}
                 </div>
-                <div className="text-xs text-gray-600 mt-1">Habitants</div>
-              </div>
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                <div className="w-6 h-6 bg-green-500 rounded-full"></div>
+                <div className="text-xs text-gray-600">Habitants</div>
               </div>
             </div>
-            <div className="mt-2 flex items-center text-xs text-green-600">
+            <div className="mt-auto flex items-center text-xs text-green-600">
               <span>▲ 18%</span>
-              <span className="text-gray-500 ml-1">vs last month</span>
+              <span className="text-gray-500 ml-1">vs mois dernier</span>
             </div>
           </div>
 
           {/* Hommes */}
-          <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
-            <div className="flex items-center justify-between">
-              <div>
+          <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60 flex flex-col">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <Users className="w-4 h-4 text-blue-600" />
+              </div>
+              <div className="text-right">
                 <div className="text-2xl font-bold text-gray-800">
                   {statistics.totalHommes}
                 </div>
-                <div className="text-xs text-gray-600 mt-1">Hommes</div>
-              </div>
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <Users className="w-5 h-5 text-blue-600" />
+                <div className="text-xs text-gray-600">Hommes</div>
               </div>
             </div>
-            <div className="mt-2 flex items-center text-xs text-blue-600">
+            <div className="mt-auto flex items-center text-xs text-blue-600">
               <span>{Math.round((statistics.totalHommes / statistics.totalResidents) * 100)}%</span>
-              <span className="text-gray-500 ml-1">of total</span>
+              <span className="text-gray-500 ml-1">du total</span>
             </div>
           </div>
 
           {/* Femmes */}
-          <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60">
-            <div className="flex items-center justify-between">
-              <div>
+          <div className="bg-white backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/60 flex flex-col">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
+                <Users className="w-4 h-4 text-pink-600" />
+              </div>
+              <div className="text-right">
                 <div className="text-2xl font-bold text-gray-800">
                   {statistics.totalFemmes}
                 </div>
-                <div className="text-xs text-gray-600 mt-1">Femmes</div>
-              </div>
-              <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
-                <Users className="w-5 h-5 text-pink-600" />
+                <div className="text-xs text-gray-600">Femmes</div>
               </div>
             </div>
-            <div className="mt-2 flex items-center text-xs text-pink-600">
+            <div className="mt-auto flex items-center text-xs text-pink-600">
               <span>{Math.round((statistics.totalFemmes / statistics.totalResidents) * 100)}%</span>
-              <span className="text-gray-500 ml-1">of total</span>
+              <span className="text-gray-500 ml-1">du total</span>
             </div>
           </div>
         </div>
@@ -504,28 +506,7 @@ const Statistique = ({ onBack }) => {
                 ))}
               </div>
             </div>
-          </div>
-
-          {/* Analyse Spatiale */}
-          <div className="bg-white backdrop-blur-sm border border-gray-200/60 rounded-lg p-4 hover:shadow-md transition-all duration-200">
-            <h3 className="font-semibold text-gray-800 text-sm mb-4">
-              Analyse Spatiale par Zone
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              {statistics.densiteData.map((zone, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50/50 backdrop-blur-sm rounded border border-gray-200/60">
-                  <div>
-                    <p className="font-semibold text-gray-800 text-sm">{zone.zone}</p>
-                    <p className="text-gray-500 text-xs">{zone.residences} résidences</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-green-600">{zone.densite}</p>
-                    <p className="text-green-500 text-xs">+{zone.progression}%</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          </div>          
         </div>
       </div>
     </div>

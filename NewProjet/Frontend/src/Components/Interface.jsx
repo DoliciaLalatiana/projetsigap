@@ -39,7 +39,11 @@ import PendingResidences from "./PendingResidences";
 const ANDABOLY_POLYGON = [
   { lat: -23.3440, lng: 43.6630 },
   { lat: -23.3445, lng: 43.6690 },
-  // ... autres points de coordonnées
+  { lat: -23.3490, lng: 43.6750 },
+  { lat: -23.3550, lng: 43.6730 },
+  { lat: -23.3580, lng: 43.6660 },
+  { lat: -23.3550, lng: 43.6590 },
+  { lat: -23.3480, lng: 43.6580 },
   { lat: -23.3440, lng: 43.6630 }, // Point de fermeture du polygon
 ];
 
@@ -107,6 +111,28 @@ const formatNotificationDate = (dateString) => {
   }
 };
 
+// Fonction utilitaire pour gérer les réponses API
+const handleApiResponse = async (response) => {
+  if (response.status === 401) {
+    // Token invalide
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+    return null;
+  }
+  
+  if (response.status === 404) {
+    console.warn('Route API non trouvée');
+    return null;
+  }
+  
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  
+  return await response.json();
+};
+
 // Composant principal Interface
 export default function Interface({ user }) {
   // Hook de navigation React Router
@@ -168,9 +194,9 @@ export default function Interface({ user }) {
   // état pour la page utilisateur (modal changement mot de passe)
   const [userPageState, setUserPageState] = useState({ showPasswordModal: false });
 
-  // ÉTATS POUR LES NOTIFICATIONS
+  // ÉTATS POUR LES NOTIFICATIONS - MIS À JOUR
   const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [totalNotificationsCount, setTotalNotificationsCount] = useState(0); // Total des notifications
   const [showNotifications, setShowNotifications] = useState(false);
 
   // NOUVEL ÉTAT : pour gérer la résidence cliquée (modal de détail)
@@ -195,6 +221,9 @@ export default function Interface({ user }) {
 
   // NOUVEL ÉTAT : pour la position du modal
   const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
+
+  // NOUVEL ÉTAT : pour stocker l'ID de la résidence à sélectionner dans PendingResidences
+  const [residenceToSelect, setResidenceToSelect] = useState(null);
 
   // Références pour les éléments DOM
   const dropdownRef = useRef(null);
@@ -244,130 +273,195 @@ export default function Interface({ user }) {
     }
   };
 
-  // Fonction pour récupérer les notifications non lues
-  const fetchNotifications = async () => {
+  // FONCTION : Récupérer TOUTES les notifications (pour le comptage total)
+  const fetchAllNotifications = async () => {
     try {
+      console.log('[NOTIF] fetchAllNotifications: starting...');
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE}/api/notifications/unread`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const unreadNotifications = data.filter(notification => !notification.is_read);
-        setNotifications(unreadNotifications);
+      if (!token) {
+        console.error('[NOTIF] No token found');
+        return;
       }
-    } catch (error) {
-      console.error('Erreur chargement notifications:', error);
-    }
-  };
-
-  // Fonction pour récupérer le nombre de notifications non lues
-  const fetchUnreadCount = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE}/api/notifications/unread-count`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setUnreadCount(data.unreadCount);
-      }
-    } catch (error) {
-      console.error('Erreur comptage notifications:', error);
-    }
-  };
-
-  // Fonction pour marquer une notification comme lue
-  const markAsRead = async (notificationId) => {
-    try {
-      const token = localStorage.getItem('token');
-      await fetch(`${API_BASE}/api/notifications/${notificationId}/read`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` }
+      
+      const response = await fetch(`${API_BASE}/api/notifications`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
       
-      // Supprime la notification de la liste locale
+      console.log('[NOTIF] fetchAllNotifications response status:', response.status);
+      
+      const data = await handleApiResponse(response);
+      if (data) {
+        console.log('[NOTIF] Total notifications received:', data.length);
+        
+        // Filtrer les notifications non lues
+        const unreadNotifications = data.filter(notif => !notif.is_read);
+        console.log('[NOTIF] Unread notifications:', unreadNotifications.length);
+        
+        setNotifications(unreadNotifications); // Stocke les non lues pour l'affichage
+        setTotalNotificationsCount(unreadNotifications.length); // Compteur basé sur les non lues
+      }
+    } catch (error) {
+      console.error('[NOTIF] Error loading notifications:', error);
+    }
+  };
+
+  // FONCTION : Marquer une notification comme lue et la supprimer IMMÉDIATEMENT
+  const markAsRead = async (notificationId) => {
+    try {
+      console.log('[NOTIF] markAsRead for notification:', notificationId);
+      const token = localStorage.getItem('token');
+      
+      // Appel API pour marquer comme lue
+      const response = await fetch(`${API_BASE}/api/notifications/${notificationId}/read`, {
+        method: 'PATCH',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        console.log('[NOTIF] Notification marked as read:', notificationId);
+        
+        // SUPPRIME IMMÉDIATEMENT la notification de la liste locale
+        setNotifications(prevNotifications => 
+          prevNotifications.filter(notification => notification.id !== notificationId)
+        );
+        
+        // Met à jour le compteur total
+        setTotalNotificationsCount(prev => Math.max(0, prev - 1));
+        
+      } else if (response.status === 404) {
+        console.warn('[NOTIF] Route not found, notification might be deleted already');
+        // Supprime quand même de la liste locale
+        setNotifications(prevNotifications => 
+          prevNotifications.filter(notification => notification.id !== notificationId)
+        );
+        setTotalNotificationsCount(prev => Math.max(0, prev - 1));
+      } else {
+        console.error('[NOTIF] Failed to mark as read:', response.status);
+      }
+    } catch (error) {
+      console.error('[NOTIF] Error marking as read:', error);
+      // En cas d'erreur, supprime quand même de la liste locale pour l'UI
       setNotifications(prevNotifications => 
         prevNotifications.filter(notification => notification.id !== notificationId)
       );
-      
-      // Met à jour le compteur
-      fetchUnreadCount();
-    } catch (error) {
-      console.error('Erreur marquer comme lu:', error);
+      setTotalNotificationsCount(prev => Math.max(0, prev - 1));
     }
   };
 
   // Fonction pour vérifier et effacer les notifications des résidences approuvées
   const checkAndClearApprovedResidenceNotifications = async () => {
     try {
+      console.log('[NOTIF] checkAndClearApprovedResidenceNotifications: starting...');
       const token = localStorage.getItem('token');
+      if (!token) return;
       
       // Récupère les résidences approuvées
       const residencesResponse = await fetch(`${API_BASE}/api/residences?status=approved`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
       
       if (residencesResponse.ok) {
         const approvedResidences = await residencesResponse.json();
+        console.log('[NOTIF] Approved residences count:', approvedResidences.length);
         
-        // Pour chaque résidence approuvée, marque ses notifications comme lues
-        for (const residence of approvedResidences) {
-          const notificationsResponse = await fetch(`${API_BASE}/api/notifications/residence/${residence.id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+        if (currentUser?.role === 'secretaire' && approvedResidences.length > 0) {
+          console.log('[NOTIF] User is secretaire, refreshing notifications');
           
-          if (notificationsResponse.ok) {
-            const residenceNotifications = await notificationsResponse.json();
-            for (const notification of residenceNotifications) {
-              await markAsRead(notification.id);
-            }
-          }
+          // Rafraîchir les notifications
+          await fetchAllNotifications();
         }
-        
-        // Met à jour les notifications
-        fetchNotifications();
-        fetchUnreadCount();
       }
     } catch (error) {
-      console.error('Erreur suppression notifications approuvées:', error);
+      console.error('[NOTIF] Error clearing approved notifications:', error);
     }
   };
 
-  // Gestionnaire de clic sur une notification
+  // GESTIONNAIRE : Clic sur une notification - VERSION SIMPLIFIÉE
   const handleNotificationClick = async (notification) => {
+    console.log('=== CLIC SUR NOTIFICATION ===');
+    console.log('Notification complète:', notification);
+    console.log('Métadonnées:', notification.metadata);
+    console.log('Message:', notification.message);
+    console.log('Type:', notification.type);
+    
+    // Marque comme lue IMMÉDIATEMENT
     await markAsRead(notification.id);
     
+    // Ferme le panneau de notifications
     setShowNotifications(false);
     
-    // Si l'utilisateur est secrétaire, affiche les résidences en attente
+    // SI L'UTILISATEUR EST SECRÉTAIRE, AFFICHE LES RÉSIDENCES EN ATTENTE
     if (currentUser?.role === 'secretaire') {
+      console.log('[NOTIF] Ouverture page PendingResidences pour secrétaire');
+      
+      // Ouvrir la page PendingResidences
       setShowPendingResidences(true);
       setShowResidence(false);
       setShowStatistique(false);
       setShowUserPage(false);
       setUserPageState({ showPasswordModal: false });
       
-      // Nettoie les notifications après un délai
-      setTimeout(() => {
-        checkAndClearApprovedResidenceNotifications();
-      }, 1000);
+      // Extraire l'ID de résidence du message ou metadata
+      let residenceId = null;
+      
+      // Essayer d'extraire l'ID de différentes manières
+      if (notification.related_entity_id) {
+        residenceId = notification.related_entity_id;
+      } else if (notification.message) {
+        // Essayer d'extraire l'ID du message
+        const idMatch = notification.message.match(/ID[:\s]*(\d+)/i) || 
+                       notification.message.match(/residence[:\s]*(\d+)/i);
+        if (idMatch) {
+          residenceId = idMatch[1];
+        }
+      }
+      
+      console.log('[NOTIF] Extracted residenceId:', residenceId);
+      
+      // Stocker l'ID de la résidence pour la sélection automatique
+      if (residenceId) {
+        setResidenceToSelect(residenceId);
+      }
     }
   };
 
   // Fonction pour récupérer les résidences
   const fetchResidences = async () => {
     try {
+      console.log('[RES] fetchResidences: starting...');
       let url = `${API_BASE}/api/residences`;
-      if (fokontanyName) url += `?fokontany=${encodeURIComponent(fokontanyName)}`;
+      if (fokontanyName) {
+        url += `?fokontany=${encodeURIComponent(fokontanyName)}`;
+        console.log('[RES] Fetching with fokontany:', fokontanyName);
+      }
+      
       const resp = await fetch(url);
-      if (!resp.ok) return;
+      console.log('[RES] Response status:', resp.status);
+      
+      if (!resp.ok) {
+        console.error('[RES] Failed to fetch residences:', resp.status);
+        return;
+      }
+      
       const list = await resp.json();
+      console.log('[RES] Residences received:', list.length);
+      
       setResidences(Array.isArray(list) ? list : []);
-    } catch (e) { console.warn('[RES] fetchResidences error', e); }
+    } catch (e) { 
+      console.error('[RES] fetchResidences error:', e); 
+    }
   };
 
-  // Fonction pour effectuer une recherche
+  // Fonction pour effectuer une recherche - MODIFIÉE POUR DÉSACTIVER LES SUGGESTIONS SUR RÉSIDENCE
   const performSearch = async (query) => {
     if (query.trim() === '') {
       setSearchResults([]);
@@ -375,10 +469,22 @@ export default function Interface({ user }) {
       return;
     }
 
+    // DÉSACTIVER LES SUGGESTIONS QUAND LA PAGE RÉSIDENCE EST OUVERTE
+    if (showResidence) {
+      setShowSearchResults(false);
+      setSearchResults([]);
+      return;
+    }
+
     setSearchLoading(true);
     
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('[SEARCH] No token found');
+        setSearchResults([]);
+        return;
+      }
       
       // Effectuer la recherche via l'API
       const response = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}`, {
@@ -396,10 +502,15 @@ export default function Interface({ user }) {
         // Si on est sur la page Résidence, passer les résultats
         if (showResidence) {
           console.log("Recherche dans les résidences:", data);
+          // DÉSACTIVER LES SUGGESTIONS POPUP SUR LA CARTE
+          setShowSearchResults(false);
         } else if (!isAnyPageOpen) {
           // Si on est sur la carte, on peut traiter les résultats
           console.log("Résultats de recherche sur carte:", data);
         }
+      } else if (response.status === 401) {
+        console.error('[SEARCH] Token invalid');
+        setSearchResults([]);
       }
     } catch (error) {
       console.error('Erreur lors de la recherche:', error);
@@ -409,12 +520,19 @@ export default function Interface({ user }) {
     }
   };
 
-  // Gestionnaire de soumission de recherche
+  // Gestionnaire de soumission de recherche - MODIFIÉ POUR DÉSACTIVER LES SUGGESTIONS SUR RÉSIDENCE
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     
     if (searchQuery.trim() === '') {
       setShowSearchResults(false);
+      return;
+    }
+    
+    // DÉSACTIVER LES SUGGESTIONS QUAND LA PAGE RÉSIDENCE EST OUVERTE
+    if (showResidence) {
+      setShowSearchResults(false);
+      console.log("Recherche dans les résidences:", searchQuery);
       return;
     }
     
@@ -430,44 +548,90 @@ export default function Interface({ user }) {
     }
   };
 
-  // Gestionnaire de clic sur un résultat de recherche
+  // CORRECTION: Gestionnaire de clic sur un résultat de recherche amélioré
   const handleSearchResultClick = (result) => {
-    if (result.type === 'residence') {
-      // Si c'est une résidence, centrez la carte dessus
-      if (map && result.lat && result.lng) {
-        map.panTo({ lat: parseFloat(result.lat), lng: parseFloat(result.lng) });
-        map.setZoom(18);
-        
-        // Mettez à jour la résidence cliquée pour afficher l'info-bulle
-        setClickedResidenceId(result.id);
-        
-        // Ajoutez à la liste des résidences si nécessaire
-        if (!residences.some(r => r.id === result.id)) {
-          setResidences(prev => [result, ...prev]);
-        }
-      }
-      
-      // Si on est sur la page Résidence, vous pouvez naviguer vers cette résidence
-      if (showResidence) {
-        console.log("Résidence sélectionnée:", result);
-      }
-    }
+    console.log('=== CLIC SUR RÉSULTAT DE RECHERCHE ===', result);
     
-    if (result.type === 'person') {
-      // Si c'est une personne, affichez ses informations
-      console.log("Personne sélectionnée:", result);
-      
-      // Vous pouvez ouvrir un modal avec les détails de la personne
-      // ou naviguer vers sa page de profil
-    }
-    
+    // Fermer les résultats de recherche
     setShowSearchResults(false);
     setSearchQuery("");
+    
+    // Gérer différents types de résultats
+    if (result.type === 'residence') {
+      handleResidenceSearchResult(result);
+    } else if (result.type === 'person') {
+      handlePersonSearchResult(result);
+    }
   };
 
-  // Composant pour afficher les résultats de recherche
+  // Nouvelle fonction pour gérer les résultats de type résidence
+  const handleResidenceSearchResult = (result) => {
+    // Vérifier si la résidence a des coordonnées
+    if (result.lat && result.lng) {
+      const lat = parseFloat(result.lat);
+      const lng = parseFloat(result.lng);
+      
+      // Sauvegarder l'état actuel de la carte si disponible
+      if (map) {
+        setPreviousZoom(map.getZoom());
+        setPreviousCenter(map.getCenter());
+      }
+      
+      // Centrer et zoomer sur la résidence
+      if (map) {
+        map.panTo({ lat, lng });
+        map.setZoom(18);
+      }
+      
+      // Mettre à jour l'ID de la résidence cliquée pour afficher l'info-bulle
+      setClickedResidenceId(result.id);
+      
+      // Ajouter à la liste des résidences si nécessaire
+      if (!residences.some(r => r.id === result.id)) {
+        setResidences(prev => [result, ...prev]);
+      }
+      
+      // Fermer toutes les pages pour voir la carte
+      setShowResidence(false);
+      setShowStatistique(false);
+      setShowUserPage(false);
+      setShowPendingResidences(false);
+      setUserPageState({ showPasswordModal: false });
+      
+    } else {
+      alert("Cette résidence n'a pas de coordonnées géographiques enregistrées");
+    }
+    
+    // Si on est sur la page Résidence, fermer la page
+    if (showResidence) {
+      console.log("Résidence sélectionnée:", result);
+      setShowResidence(false);
+    }
+  };
+
+  // Nouvelle fonction pour gérer les résultats de type personne
+  const handlePersonSearchResult = (result) => {
+    console.log("Personne sélectionnée:", result);
+    
+    // Si la personne a des résidences avec coordonnées, prendre la première
+    if (result.residences && result.residences.length > 0) {
+      // Chercher la première résidence avec des coordonnées
+      const residenceWithCoords = result.residences.find(r => r.lat && r.lng);
+      
+      if (residenceWithCoords) {
+        handleResidenceSearchResult(residenceWithCoords);
+      } else {
+        alert(`Personne: ${result.nom} ${result.prenom}\nAucune adresse avec coordonnées trouvée`);
+      }
+    } else {
+      alert(`Personne: ${result.nom} ${result.prenom}\nAucune adresse associée`);
+    }
+  };
+
+  // Composant pour afficher les résultats de recherche - MODIFIÉ POUR DÉSACTIVER SUR RÉSIDENCE
   const SearchResultsModal = () => {
-    if (!showSearchResults || searchResults.length === 0) return null;
+    // NE PAS AFFICHER LES SUGGESTIONS QUAND LA PAGE RÉSIDENCE EST OUVERTE
+    if (showResidence || !showSearchResults || searchResults.length === 0) return null;
     
     return (
       <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-40 w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
@@ -490,17 +654,17 @@ export default function Interface({ user }) {
           {searchResults.map((result, index) => (
             <div
               key={index}
-              className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+              className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-all duration-200"
               onClick={() => handleSearchResultClick(result)}
             >
               {result.type === 'residence' && (
                 <div>
                   <div className="flex items-center mb-2">
-                    <MapPin size={16} className="text-blue-500 mr-2" />
+                    <MapPin size={16} className="text-blue-500 mr-2 flex-shrink-0" />
                     <h4 className="font-medium text-sm text-gray-800">
                       {result.lot || 'Lot non spécifié'}
                     </h4>
-                    <span className="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                    <span className="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full flex-shrink-0">
                       Adresse
                     </span>
                   </div>
@@ -519,17 +683,18 @@ export default function Interface({ user }) {
                       <span className="font-medium">Propriétaire(s):</span> {result.proprietaires.map(p => p.nom).join(', ')}
                     </p>
                   )}
+                  {/* MODIFICATION: Supprimé le bouton "Cliquez pour voir sur la carte" car maintenant le clic sur tout le résultat le fait */}
                 </div>
               )}
               
               {result.type === 'person' && (
                 <div>
                   <div className="flex items-center mb-2">
-                    <User size={16} className="text-green-500 mr-2" />
+                    <User size={16} className="text-green-500 mr-2 flex-shrink-0" />
                     <h4 className="font-medium text-sm text-gray-800">
                       {result.nom} {result.prenom}
                     </h4>
-                    <span className="ml-2 text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                    <span className="ml-2 text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full flex-shrink-0">
                       Personne
                     </span>
                   </div>
@@ -546,6 +711,7 @@ export default function Interface({ user }) {
                           +{result.residences.length - 2} autre(s) adresse(s)
                         </p>
                       )}
+                      {/* MODIFICATION: Supprimé le texte "Cliquez pour voir sur la carte" car maintenant le clic sur tout le résultat le fait */}
                     </div>
                   )}
                 </div>
@@ -559,40 +725,54 @@ export default function Interface({ user }) {
 
   // Effet pour charger les données au montage du composant
   useEffect(() => {
-    fetchNotifications();
-    fetchUnreadCount();
+    console.log('[APP] Component mounted, loading data...');
+    
+    // Charge les notifications et résidences
+    fetchAllNotifications();
     fetchResidences();
 
-    // Intervalle pour actualiser les notifications toutes les 30 secondes
+    // Intervalle pour actualiser les notifications toutes les 60 secondes
     const interval = setInterval(() => {
-      fetchUnreadCount();
-      fetchNotifications();
-      checkAndClearApprovedResidenceNotifications();
-    }, 30000);
+      console.log('[APP] Refreshing notifications...');
+      fetchAllNotifications();
+    }, 60000);
 
     // Nettoyage à la désinstallation
-    return () => clearInterval(interval);
+    return () => {
+      console.log('[APP] Component unmounting...');
+      clearInterval(interval);
+    };
   }, []);
 
   // Effet pour charger les résidences quand le nom du fokontany change
   useEffect(() => {
-    fetchResidences();
+    if (fokontanyName) {
+      console.log('[APP] fokontanyName changed:', fokontanyName);
+      fetchResidences();
+    }
   }, [fokontanyName]);
 
   // Effet pour nettoyer les notifications quand on affiche les résidences en attente
   useEffect(() => {
     if (showPendingResidences && currentUser?.role === 'secretaire') {
+      console.log('[APP] Pending residences page opened, clearing notifications');
       setTimeout(() => {
         checkAndClearApprovedResidenceNotifications();
       }, 500);
     }
   }, [showPendingResidences]);
 
-  // Effet pour effectuer la recherche en temps réel
+  // Effet pour effectuer la recherche en temps réel - MODIFIÉ POUR DÉSACTIVER SUR RÉSIDENCE
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (searchQuery.trim() !== '') {
-        performSearch(searchQuery);
+        // NE PAS EFFECTUER DE RECHERCHE AVEC SUGGESTIONS SUR LA CARTE QUAND LA PAGE RÉSIDENCE EST OUVERTE
+        if (showResidence) {
+          setShowSearchResults(false);
+          setSearchResults([]);
+        } else {
+          performSearch(searchQuery);
+        }
       } else {
         setShowSearchResults(false);
         setSearchResults([]);
@@ -600,7 +780,7 @@ export default function Interface({ user }) {
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery]);
+  }, [searchQuery, showResidence]); // Ajouter showResidence aux dépendances
 
   // Gestionnaires d'événements pour le polygon
   const handlePolygonMouseOver = (e) => {
@@ -762,27 +942,23 @@ export default function Interface({ user }) {
     localStorage.setItem('interfaceState', JSON.stringify(state));
   }, [showResidence, showStatistique, showUserPage, showPendingResidences]);
 
-  // Effet pour gérer les clics en dehors des éléments
+  // MODIFICATION: Supprimer le gestionnaire handleClickOutside pour le modal d'ajout d'adresse
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setOpenDropdown(false);
       }
-      if (addAddressRef.current && !addAddressRef.current.contains(event.target) && showAddAddress) {
-        setShowAddAddress(false);
-        setIsSelectingLocation(false);
-        setSelectedLocation(null);
-        setHasSelectedAddress(false);
-        setIsModalOpen(false);
-      }
-      // Fermer les résultats de recherche si on clique en dehors
+      
+      // MODIFICATION: NE PAS fermer les résultats de recherche quand on clique en dehors
+      // Seulement si on clique spécifiquement sur le bouton X dans le modal
       if (!searchRef.current?.contains(event.target) && showSearchResults) {
         setShowSearchResults(false);
       }
     };
+    
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showAddAddress, showSearchResults]);
+  }, [showSearchResults]);
 
   // Vérifie si une page est ouverte
   const isAnyPageOpen = showResidence || showStatistique || showUserPage || showPendingResidences;
@@ -826,10 +1002,10 @@ export default function Interface({ user }) {
     }
   }, [isAnyPageOpen]);
 
-  // Fonction pour obtenir le placeholder du champ de recherche
+  // Fonction pour obtenir le placeholder du champ de recherche - MODIFIÉ POUR INDIQUER LE CHANGEMENT
   const getSearchPlaceholder = () => {
     if (showResidence) {
-      return "Rechercher une résidence, une adresse ou un propriétaire...";
+      return "Rechercher dans les résidences... (saisissez et appuyez sur Entrée)";
     } else if (showStatistique || showUserPage || showPendingResidences) {
       return "Recherche désactivée";
     } else {
@@ -863,6 +1039,8 @@ export default function Interface({ user }) {
       setShowUserPage(false);
       setShowPendingResidences(false);
       setUserPageState({ showPasswordModal: false });
+      // Réinitialiser la sélection automatique
+      setResidenceToSelect(null);
     }
     // Fermer les résultats de recherche
     setShowSearchResults(false);
@@ -886,10 +1064,12 @@ export default function Interface({ user }) {
       setShowSearchResults(false);
       // NOUVELLE MODIFICATION: Ferme le modal de détail des résidences
       setClickedResidenceId(null);
+      // Réinitialiser la sélection automatique
+      setResidenceToSelect(null);
     }
   };
 
-  // Gestionnaire de clic sur Résidence
+  // Gestionnaire de clic sur Résidence - MODIFIÉ POUR FERMER LES SUGGESTIONS
   const handleResidenceClick = () => {
     if (isModalOpen) return;
     const newShowResidence = !showResidence;
@@ -903,8 +1083,11 @@ export default function Interface({ user }) {
       setShowNotifications(false);
       // MODIFICATION: Ferme les résultats de recherche
       setShowSearchResults(false);
+      setSearchResults([]);
       // NOUVELLE MODIFICATION: Ferme le modal de détail des résidences
       setClickedResidenceId(null);
+      // Réinitialiser la sélection automatique
+      setResidenceToSelect(null);
     }
     if (isSelectingLocation || showAddAddress) {
       setIsSelectingLocation(false);
@@ -937,6 +1120,8 @@ export default function Interface({ user }) {
       setShowSearchResults(false);
       // NOUVELLE MODIFICATION: Ferme le modal de détail des résidences
       setClickedResidenceId(null);
+      // Réinitialiser la sélection automatique
+      setResidenceToSelect(null);
     }
     if (isSelectingLocation || showAddAddress) {
       setIsSelectingLocation(false);
@@ -970,6 +1155,10 @@ export default function Interface({ user }) {
       setShowSearchResults(false);
       // NOUVELLE MODIFICATION: Ferme le modal de détail des résidences
       setClickedResidenceId(null);
+      // Ne pas réinitialiser residenceToSelect ici, on le garde pour la sélection automatique
+    } else {
+      // Quand on ferme la page, réinitialiser la sélection
+      setResidenceToSelect(null);
     }
     
     if (isSelectingLocation || showAddAddress) {
@@ -987,7 +1176,7 @@ export default function Interface({ user }) {
     }
   };
 
-  // Fonction pour convertir des coordonnées LatLng en coordonnées d'écran
+  // MODIFICATION: Mettre à jour la fonction latLngToPixel pour être plus robuste
   const latLngToPixel = (latLng) => {
     if (!map || !latLng) return { x: 0, y: 0 };
     
@@ -998,40 +1187,71 @@ export default function Interface({ user }) {
       );
       
       const bounds = map.getBounds();
-      if (!bounds) return { x: 0, y: 0 };
+      if (!bounds) {
+        // Si pas de bounds, utiliser la vue actuelle
+        const center = map.getCenter();
+        const zoom = map.getZoom();
+        
+        // Approximatif: calcul basé sur le zoom
+        const scale = Math.pow(2, zoom);
+        const worldWidth = 256 * scale;
+        const worldHeight = 256 * scale;
+        
+        const mapContainer = document.querySelector('[data-map-container]');
+        const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
+        
+        // Conversion approximative
+        const x = (point.x * scale * 256) % worldWidth;
+        const y = (point.y * scale * 256) % worldHeight;
+        
+        const pixelX = (x / worldWidth) * mapRect.width;
+        const pixelY = (y / worldHeight) * mapRect.height;
+        
+        return { x: pixelX, y: pixelY };
+      }
       
       const ne = bounds.getNorthEast();
       const sw = bounds.getSouthWest();
       const topRight = projection.fromLatLngToPoint(ne);
       const bottomLeft = projection.fromLatLngToPoint(sw);
       
-      const mapWidth = document.querySelector('[data-map-container]')?.offsetWidth || window.innerWidth;
-      const mapHeight = document.querySelector('[data-map-container]')?.offsetHeight || window.innerHeight;
+      const mapContainer = document.querySelector('[data-map-container]');
+      const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
       
       const worldWidth = topRight.x - bottomLeft.x;
       const worldHeight = bottomLeft.y - topRight.y;
       
-      const x = (point.x - bottomLeft.x) / worldWidth * mapWidth;
-      const y = (point.y - topRight.y) / worldHeight * mapHeight;
+      const x = (point.x - bottomLeft.x) / worldWidth * mapRect.width;
+      const y = (point.y - topRight.y) / worldHeight * mapRect.height;
       
-      return { x, y };
+      return { x: x + mapRect.left, y: y + mapRect.top };
     } catch (error) {
       console.error('Erreur conversion coordonnées:', error);
-      return { x: 0, y: 0 };
+      
+      // Fallback: position au centre de l'écran
+      const mapContainer = document.querySelector('[data-map-container]');
+      const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+      
+      return { 
+        x: mapRect.left + mapRect.width / 2, 
+        y: mapRect.top + mapRect.height / 2 
+      };
     }
   };
 
   // Gestionnaire de clic sur Ajouter une adresse
   const handleAddAddressClick = () => {
-    if (isAnyPageOpen || isSelectingLocation || isModalOpen) return;
+    if (isAnyPageOpen || isSelectingLocation || isModalOpen || showAddAddress) return;
 
     setIsModalOpen(true);
-    setSelectedMarkerColor("yellow"); // Le marqueur sera jaune avant confirmation
+    setSelectedMarkerColor("yellow");
 
-    // Sauvegarde l'état actuel de la carte
+    // Sauvegarde l'état actuel de la carte MAIS NE PAS ZOOMER
     if (map) {
       setPreviousZoom(map.getZoom());
       setPreviousCenter(map.getCenter());
+      // MODIFICATION: On ne change pas le zoom ici
+      // On garde simplement le zoom actuel
     }
 
     // Active le mode sélection de localisation
@@ -1054,10 +1274,8 @@ export default function Interface({ user }) {
     // NOUVELLE MODIFICATION: Ferme le modal de détail des résidences
     setClickedResidenceId(null);
 
-    // Centre sur le polygon après un court délai
-    setTimeout(() => {
-      handleFocusOnPolygon();
-    }, 100);
+    // MODIFICATION: On ne centre plus sur le polygon
+    // On laisse la carte dans son état actuel
   };
 
   // Fonction pour obtenir l'adresse à partir de coordonnées (géocodage)
@@ -1126,6 +1344,99 @@ export default function Interface({ user }) {
     }
   };
 
+  // NOUVELLE FONCTION: Pour repositionner le modal pour un emplacement donné
+  const repositionModalForLocation = (location) => {
+    setTimeout(() => {
+      if (map) {
+        const screenPos = latLngToPixel(location);
+        const modalWidth = 448;
+        const modalHeight = 400;
+        
+        const mapContainer = document.querySelector('[data-map-container]');
+        const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+        
+        // Position à droite de l'adresse
+        let modalX = screenPos.x + 20;
+        let modalY = screenPos.y - (modalHeight / 2);
+        
+        // Vérifier si le modal dépasse de l'écran à droite
+        if (modalX + modalWidth > mapRect.left + mapRect.width - 20) {
+          // Le modal dépasse à droite, on va le positionner à gauche de l'adresse
+          modalX = screenPos.x - modalWidth - 20;
+          
+          // Si même à gauche ça dépasse (trop à gauche), on déplace la carte
+          if (modalX < mapRect.left + 20) {
+            // Calculer le décalage nécessaire pour que le modal soit visible
+            const neededSpace = modalWidth + 40; // Modal + marge
+            const currentSpace = mapRect.width - (screenPos.x - mapRect.left);
+            
+            if (currentSpace < neededSpace) {
+              // Pas assez d'espace à droite, on déplace la carte
+              const offsetPixels = neededSpace - currentSpace;
+              
+              // Convertir le décalage en pixels en décalage géographique
+              try {
+                const projection = map.getProjection();
+                const bounds = map.getBounds();
+                if (bounds) {
+                  const ne = bounds.getNorthEast();
+                  const sw = bounds.getSouthWest();
+                  const topRight = projection.fromLatLngToPoint(ne);
+                  const bottomLeft = projection.fromLatLngToPoint(sw);
+                  
+                  const worldWidth = topRight.x - bottomLeft.x;
+                  const pixelToLngRatio = worldWidth / mapRect.width;
+                  const lngOffset = offsetPixels * pixelToLngRatio;
+                  
+                  // Déplacer la carte vers la droite
+                  const currentCenter = map.getCenter();
+                  const newLng = currentCenter.lng() + lngOffset;
+                  
+                  // Pan la carte vers la nouvelle position
+                  map.panTo({ lat: currentCenter.lat(), lng: newLng });
+                  
+                  // Attendre que la carte se soit déplacée avant de repositionner le modal
+                  setTimeout(() => {
+                    const newScreenPos = latLngToPixel(location);
+                    modalX = newScreenPos.x + 20;
+                    modalY = newScreenPos.y - (modalHeight / 2);
+                    
+                    // Ajustements finaux
+                    if (modalY < mapRect.top + 20) {
+                      modalY = mapRect.top + 20;
+                    }
+                    if (modalY + modalHeight > mapRect.top + mapRect.height - 20) {
+                      modalY = mapRect.top + mapRect.height - modalHeight - 20;
+                    }
+                    
+                    setModalPosition({ x: modalX, y: modalY });
+                    
+                    setShowAddAddress(true);
+                  }, 300);
+                  
+                  return;
+                }
+              } catch (error) {
+                console.error('Erreur déplacement carte:', error);
+              }
+            }
+          }
+        }
+        
+        // Ajustements verticaux
+        if (modalY < mapRect.top + 20) {
+          modalY = mapRect.top + 20;
+        }
+        if (modalY + modalHeight > mapRect.top + mapRect.height - 20) {
+          modalY = mapRect.top + mapRect.height - modalHeight - 20;
+        }
+        
+        setModalPosition({ x: modalX, y: modalY });
+        setShowAddAddress(true);
+      }
+    }, 100);
+  };
+
   // Gestionnaire de clic sur la carte
   const handleMapClick = async (event) => {
     if (isSelectingLocation) {
@@ -1139,36 +1450,14 @@ export default function Interface({ user }) {
       
       if (isInsidePolygon) {
         setSelectedLocation({ lat, lng });
-        setSelectedMarkerColor("yellow"); // Marqueur jaune avant confirmation
+        setSelectedMarkerColor("yellow");
         
-        // Calculer la position du modal par rapport au point cliqué
+        // MODIFICATION: On ne change pas le zoom ici non plus
+        // On garde le zoom actuel de la carte
         if (map) {
-          const screenPos = latLngToPixel({ lat, lng });
-          
-          // Positionner le modal à droite du point
-          const modalWidth = 448; // Largeur approximative du modal (max-w-md = 448px)
-          const modalHeight = 400; // Hauteur approximative du modal
-          
-          const mapWidth = document.querySelector('[data-map-container]')?.offsetWidth || window.innerWidth;
-          const mapHeight = document.querySelector('[data-map-container]')?.offsetHeight || window.innerHeight;
-          
-          let modalX = screenPos.x + 20; // 20px de marge à droite du point
-          let modalY = screenPos.y - (modalHeight / 2); // Centrer verticalement
-          
-          // Ajuster si le modal dépasse de l'écran à droite
-          if (modalX + modalWidth > mapWidth) {
-            modalX = screenPos.x - modalWidth - 20; // Positionner à gauche
-          }
-          
-          // Ajuster verticalement pour que le modal ne dépasse pas
-          if (modalY + modalHeight > mapHeight) {
-            modalY = mapHeight - modalHeight - 20;
-          }
-          if (modalY < 20) {
-            modalY = 20;
-          }
-          
-          setModalPosition({ x: modalX, y: modalY });
+          // Sauvegarde l'état actuel pour pouvoir revenir
+          setPreviousZoom(map.getZoom());
+          setPreviousCenter(map.getCenter());
         }
         
         // Obtient l'adresse pour les coordonnées
@@ -1177,7 +1466,9 @@ export default function Interface({ user }) {
         setMessageStatus("normal");
         setIsSelectingLocation(false);
         setIsModalOpen(true);
-        setTimeout(() => setShowAddAddress(true), 100);
+        
+        // Positionner le modal avec la nouvelle logique
+        repositionModalForLocation({ lat, lng });
       } else {
         setMessageStatus("error");
       }
@@ -1199,17 +1490,10 @@ export default function Interface({ user }) {
 
     setMessageStatus("normal");
     setIsModalOpen(true);
-    setSelectedMarkerColor("yellow"); // Marqueur jaune pendant la sélection
+    setSelectedMarkerColor("yellow");
 
-    // Recalculer la position du modal si un emplacement était déjà sélectionné
-    if (selectedLocation) {
-      const screenPos = latLngToPixel(selectedLocation);
-      setModalPosition(screenPos);
-    }
-
-    setTimeout(() => {
-      handleFocusOnPolygon();
-    }, 100);
+    // MODIFICATION: On ne recentre pas sur le polygon
+    // On laisse la carte dans son état actuel
   };
 
   // Gestionnaire pour fermer complètement l'ajout d'adresse
@@ -1227,7 +1511,10 @@ export default function Interface({ user }) {
 
     setMessageStatus("normal");
     setIsModalOpen(false);
-    setSelectedMarkerColor("yellow"); // Reset à jaune pour la prochaine sélection
+    setSelectedMarkerColor("yellow");
+    
+    // MODIFICATION: On ne restaure pas la vue précédente
+    // On laisse la carte dans son état actuel
   };
 
   // Gestionnaire pour confirmer l'adresse
@@ -1276,11 +1563,7 @@ export default function Interface({ user }) {
         setFormError("");
 
         setIsModalOpen(false);
-        setSelectedMarkerColor("green"); // Le marqueur devient vert après confirmation
-
-        // Recalculer la position pour rester à côté du marqueur
-        const screenPos = latLngToPixel(selectedLocation);
-        setModalPosition(screenPos);
+        setSelectedMarkerColor("green");
 
         alert('Résidence soumise pour approbation. Vous recevrez une notification quand elle sera approuvée.');
       } else {
@@ -1292,11 +1575,7 @@ export default function Interface({ user }) {
         setFormError("");
         
         setIsModalOpen(false);
-        setSelectedMarkerColor("green"); // Le marqueur devient vert après confirmation
-        
-        // Recalculer la position pour rester à côté du marqueur
-        const screenPos = latLngToPixel(selectedLocation);
-        setModalPosition(screenPos);
+        setSelectedMarkerColor("green");
       }
 
       console.log('[RES] created', result);
@@ -1321,15 +1600,10 @@ export default function Interface({ user }) {
     setMessageStatus("normal");
 
     setIsModalOpen(false);
-    setSelectedMarkerColor("yellow"); // Reset à jaune
+    setSelectedMarkerColor("yellow");
 
-    // Restaure la vue précédente de la carte
-    if (map && previousZoom && previousCenter) {
-      setTimeout(() => {
-        map.setCenter(previousCenter);
-        map.setZoom(previousZoom);
-      }, 100);
-    }
+    // MODIFICATION: On ne restaure pas la vue précédente
+    // On laisse la carte dans son état actuel
   };
 
   // Gestionnaire de changement des détails de l'adresse
@@ -1361,6 +1635,8 @@ export default function Interface({ user }) {
 
   const handleClosePendingResidences = () => {
     setShowPendingResidences(false);
+    // Réinitialiser l'ID de résidence à sélectionner
+    setResidenceToSelect(null);
   };
 
   // Gestionnaire pour changer l'état de la page utilisateur
@@ -1381,7 +1657,7 @@ export default function Interface({ user }) {
     }
   };
 
-  // Gestionnaire pour centrer la carte sur le polygon
+  // Fonction pour centrer la carte sur le polygon
   const handleCenterMap = () => {
     if (map) {
       handleFocusOnPolygon();
@@ -1438,7 +1714,7 @@ export default function Interface({ user }) {
       console.log('[INTERFACE] Centrage sur:', { lat, lng });
       
       map.panTo({ lat: parseFloat(lat), lng: parseFloat(lng) });
-      map.setZoom(18); // Zoom sur la résidence
+      map.setZoom(18);
       
       // Mettre à jour l'ID de la résidence cliquée pour afficher l'info-bulle
       setClickedResidenceId(residence.id);
@@ -1542,8 +1818,7 @@ export default function Interface({ user }) {
   useEffect(() => {
     const handleResize = () => {
       if (selectedLocation && showAddAddress) {
-        const screenPos = latLngToPixel(selectedLocation);
-        setModalPosition(screenPos);
+        repositionModalForLocation(selectedLocation);
       }
     };
 
@@ -1758,17 +2033,15 @@ export default function Interface({ user }) {
               </span>
             </button>
 
-            {/* MODIFICATION: Bouton Notification - modifié pour permettre l'ouverture même avec modale */}
+            {/* BOUTON NOTIFICATION */}
             <button
               onClick={() => {
-                // MODIFICATION: Permettre l'ouverture même si isModalOpen est true
-                // Mais seulement si showAddAddress est false (pour éviter les conflits)
                 if (!showAddAddress) {
                   setShowNotifications(!showNotifications);
-                  fetchNotifications();
+                  // Rafraîchir les notifications quand on ouvre le panneau
+                  fetchAllNotifications();
                 }
               }}
-              // MODIFICATION: Désactiver uniquement quand showAddAddress est true
               disabled={showAddAddress}
               className={`relative w-8 h-8 rounded-full flex items-center justify-center ${
                 showAddAddress
@@ -1778,9 +2051,10 @@ export default function Interface({ user }) {
               title={showAddAddress ? "Fermez la modal d'ajout d'adresse pour accéder aux notifications" : "Notifications"}
             >
               <Bell size={20} className={`${showAddAddress ? 'text-gray-400' : 'text-gray-600 hover:text-gray-800 transition-all duration-300'}`} />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {unreadCount > 9 ? '9+' : unreadCount}
+              {/* BADGE AVEC TOTAL DES NOTIFICATIONS NON LUES */}
+              {totalNotificationsCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                  {totalNotificationsCount > 9 ? '9+' : totalNotificationsCount}
                 </span>
               )}
             </button>
@@ -1792,7 +2066,7 @@ export default function Interface({ user }) {
               className={`w-8 h-8 rounded-full flex items-center justify-center ${
                 isModalOpen
                   ? 'bg-gray-100 cursor-not-allowed'
-                  : 'bg-white/30 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
+                  : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
               }`}
               title={isModalOpen ? "Fermez la modal pour accéder au profil" : "Profil"}
             >
@@ -1802,7 +2076,7 @@ export default function Interface({ user }) {
         </div>
       </div>
 
-      {/* Panneau de notifications */}
+      {/* PANEL DE NOTIFICATIONS - AFFICHE SEULEMENT LES NON LUES */}
       {showNotifications && (
         <div className="absolute top-18 right-4 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
           <div className="p-4 border-b border-gray-200">
@@ -1818,14 +2092,21 @@ export default function Interface({ user }) {
               notifications.map(notification => (
                 <div
                   key={notification.id}
-                  className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer bg-blue-50"
+                  className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors duration-200"
                   onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-medium text-sm text-gray-800">{notification.title}</h4>
-                    <span className="text-xs text-gray-500 font-medium">
-                      {notification.sender_name || 'Système'}
-                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        markAsRead(notification.id);
+                      }}
+                      className="text-gray-400 hover:text-red-500 text-xs"
+                      title="Marquer comme lue"
+                    >
+                      <X size={14} />
+                    </button>
                   </div>
                   <p className="text-xs text-gray-600 mb-2">{notification.message}</p>
                   <div className="flex justify-between items-center">
@@ -1833,9 +2114,7 @@ export default function Interface({ user }) {
                       {formatNotificationDate(notification.created_at)}
                     </span>
                     <span className={`w-2 h-2 rounded-full ${
-                      notification.type === 'pending' || notification.title.includes('attente') || notification.message.includes('attente') 
-                        ? 'bg-yellow-500' 
-                        : 'bg-blue-500'
+                      notification.type === 'pending' ? 'bg-yellow-500' : 'bg-blue-500'
                     }`}></span>
                   </div>
                 </div>
@@ -1896,7 +2175,8 @@ export default function Interface({ user }) {
             style={{
               left: `${modalPosition.x}px`,
               top: `${modalPosition.y}px`,
-              transform: 'translate(0, 0)'
+              transform: 'translate(0, 0)',
+              transition: 'left 0.3s ease, top 0.3s ease'
             }}
           >
             <div className="bg-white rounded-2xl overflow-hidden shadow-2xl border border-gray-200 mx-4">
@@ -2082,7 +2362,7 @@ export default function Interface({ user }) {
             onBack={handleCloseResidence}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
-            onViewOnMap={handleViewOnMap} // AJOUT IMPORTANT: Passer la fonction
+            onViewOnMap={handleViewOnMap}
           />
         </div>
       )}
@@ -2108,11 +2388,13 @@ export default function Interface({ user }) {
       )}
 
       {/* Page Demandes en attente */}
-      {showPendingResidences && (
+      {showPendingResidences && currentUser?.role === 'secretaire' && (
         <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[85vh] w-316">
           <PendingResidences 
             onBack={handleClosePendingResidences} 
             onResidenceApproved={checkAndClearApprovedResidenceNotifications}
+            // Passer l'ID de la résidence à sélectionner
+            residenceToSelect={residenceToSelect}
           />
         </div>
       )}
@@ -2121,21 +2403,21 @@ export default function Interface({ user }) {
       <div className="fixed right-6 bottom-24 z-10 flex flex-col items-center space-y-2">
         <button
           onClick={handleZoomIn}
-          className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
+          className="w-10 h-10 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
           title="Zoom avant"
         >
           <Plus size={20} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
         </button>
         <button
           onClick={handleZoomOut}
-          className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
+          className="w-10 h-10 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
           title="Zoom arrière"
         >
           <Minus size={20} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
         </button>
         <button
           onClick={handleCenterMap}
-          className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
+          className="w-10 h-10 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
           title="Voir la zone limite"
         >
           <LocateFixed size={20} className="text-blue-600 hover:text-blue-700 transition-all duration-300" />
@@ -2146,7 +2428,7 @@ export default function Interface({ user }) {
       <div className="fixed right-6 bottom-8 z-10">
         <button
           onClick={handleMapTypeChange}
-          className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 hover:shadow-xl border border-gray-200/60 hover:border-gray-300/80"
+          className="w-10 h-10 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 hover:shadow-xl border border-gray-200/60 hover:border-gray-300/80"
           title={mapType === "satellite" ? "Passer en vue plan" : "Passer en vue satellite"}
         >
           <Layers size={22} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
@@ -2176,7 +2458,7 @@ export default function Interface({ user }) {
               />
             )}
 
-            {/* Marqueur pour l'emplacement sélectionné - MODIFIÉ POUR CHANGEMENT DE COULEUR */}
+            {/* Marqueur pour l'emplacement sélectionné */}
             {selectedLocation && (
               <Marker
                 position={selectedLocation}

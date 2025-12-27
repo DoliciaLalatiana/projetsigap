@@ -27,7 +27,12 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 
-export default function ResidencePage({ onBack, searchQuery, onSearchChange, onViewOnMap }) {
+export default function ResidencePage({
+  onBack,
+  searchQuery,
+  onSearchChange,
+  onViewOnMap,
+}) {
   // residences list - initialiser avec un tableau vide au lieu des mocks
   const [resList, setResList] = useState([]);
   const [selectedResidence, setSelectedResidence] = useState(null);
@@ -59,11 +64,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
   // NOUVEAUX ÉTATS : Pour stocker les résidents de toutes les résidences
   const [allResidents, setAllResidents] = useState([]);
 
-  // ÉTATS POUR LES SUGGESTIONS DE RECHERCHE
-  const [searchSuggestions, setSearchSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-
-  // ÉTAT POUR LES RÉSULTATS DE RECHERCHE
+  // ÉTATS POUR LES RÉSULTATS DE RECHERCHE
   const [searchResults, setSearchResults] = useState([]);
   const [isSearchMode, setIsSearchMode] = useState(false);
 
@@ -81,6 +82,9 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
 
   // Référence pour l'input de photo
   const photoInputRef = useRef(null);
+
+  // Référence pour suivre si le composant est monté
+  const isMountedRef = useRef(true);
 
   // LOAD residences from backend on mount
   useEffect(() => {
@@ -105,12 +109,16 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                   if (typeof photo === "object" && photo.url) {
                     return photo.url.startsWith("http")
                       ? photo.url
-                      : `${API_BASE}${photo.url.startsWith("/") ? "" : "/"}${photo.url}`;
+                      : `${API_BASE}${photo.url.startsWith("/") ? "" : "/"}${
+                          photo.url
+                        }`;
                   }
                   if (typeof photo === "string") {
                     return photo.startsWith("http")
                       ? photo
-                      : `${API_BASE}${photo.startsWith("/") ? "" : "/"}${photo}`;
+                      : `${API_BASE}${
+                          photo.startsWith("/") ? "" : "/"
+                        }${photo}`;
                   }
                   return photo;
                 })
@@ -134,11 +142,15 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
 
         if (mounted) {
           const sortedByDate = normalized.sort((a, b) => {
-            const dateA = a.dateCreation ? new Date(a.dateCreation) : new Date(0);
-            const dateB = b.dateCreation ? new Date(b.dateCreation) : new Date(0);
+            const dateA = a.dateCreation
+              ? new Date(a.dateCreation)
+              : new Date(0);
+            const dateB = b.dateCreation
+              ? new Date(b.dateCreation)
+              : new Date(0);
             return dateB - dateA;
           });
-          
+
           setResList(sortedByDate);
         }
       } catch (e) {
@@ -154,30 +166,43 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
     };
   }, []);
 
+  // Effet pour nettoyer la recherche quand on quitte la page
+  useEffect(() => {
+    return () => {
+      // Réinitialiser la recherche quand le composant est démonté
+      if (onSearchChange) {
+        onSearchChange("");
+      }
+      setIsSearchMode(false);
+      setSearchResults([]);
+    };
+  }, [onSearchChange]);
+
   // Charger tous les résidents
   useEffect(() => {
     const fetchAllResidents = async () => {
       try {
         const resp = await fetch(`${API_BASE}/api/persons`, {
-          headers: getHeaders()
+          headers: getHeaders(),
         });
         if (resp.ok) {
           const persons = await resp.json();
           // Formater les résidents
-          const formattedPersons = (persons || []).map(person => ({
+          const formattedPersons = (persons || []).map((person) => ({
             id: person.id,
             nomComplet: person.nom_complet || "",
-            nom: (person.nom_complet || "").split(' ')[0] || "",
-            prenom: (person.nom_complet || "").split(' ').slice(1).join(' ') || "",
+            nom: (person.nom_complet || "").split(" ")[0] || "",
+            prenom:
+              (person.nom_complet || "").split(" ").slice(1).join(" ") || "",
             dateNaissance: person.date_naissance || "",
             cin: person.cin || "",
             genre: person.genre || "homme",
             telephone: person.telephone || "",
             residence_id: person.residence_id || null,
             is_proprietaire: person.is_proprietaire || false,
-            relation_type: person.relation_type || ""
+            relation_type: person.relation_type || "",
           }));
-          
+
           setAllResidents(formattedPersons);
         }
       } catch (error) {
@@ -188,62 +213,6 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
 
     fetchAllResidents();
   }, []);
-
-  // Effet pour gérer les suggestions de recherche
-  useEffect(() => {
-    if (searchQuery.trim() && allResidents.length > 0) {
-      const query = searchQuery.toLowerCase().trim();
-      
-      // Générer des suggestions à partir des noms et prénoms
-      const suggestions = allResidents
-        .map(resident => {
-          const nomComplet = resident.nomComplet.toLowerCase();
-          const nom = resident.nom.toLowerCase();
-          const prenom = resident.prenom.toLowerCase();
-          
-          if (nomComplet.includes(query)) {
-            return { 
-              type: 'nomComplet', 
-              value: resident.nomComplet,
-              resident: resident
-            };
-          } else if (nom.includes(query)) {
-            return { 
-              type: 'nom', 
-              value: resident.nom,
-              resident: resident
-            };
-          } else if (prenom.includes(query)) {
-            return { 
-              type: 'prenom', 
-              value: resident.prenom,
-              resident: resident
-            };
-          } else if (resident.cin && resident.cin.includes(query)) {
-            return { 
-              type: 'cin', 
-              value: resident.cin,
-              resident: resident
-            };
-          }
-          return null;
-        })
-        .filter(item => item !== null)
-        .slice(0, 8); // Limiter à 8 suggestions
-        
-      setSearchSuggestions(suggestions);
-      
-      // Afficher les suggestions si la recherche est courte (pour éviter de montrer trop de résultats)
-      if (query.length >= 2) {
-        setShowSuggestions(suggestions.length > 0);
-      } else {
-        setShowSuggestions(false);
-      }
-    } else {
-      setSearchSuggestions([]);
-      setShowSuggestions(false);
-    }
-  }, [searchQuery, allResidents]);
 
   // Effet pour rechercher quand la query change
   useEffect(() => {
@@ -267,22 +236,28 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
   // Calculer les statistiques
   const calculateStatistics = () => {
     const totalResidences = resList.length;
-    const residentsInResidences = allResidents.filter(person => 
-      resList.some(residence => residence.id === person.residence_id)
+    const residentsInResidences = allResidents.filter((person) =>
+      resList.some((residence) => residence.id === person.residence_id)
     );
     const totalResidents = residentsInResidences.length;
-    const totalHommes = residentsInResidences.filter(person => 
-      person.genre === 'homme' || person.genre === 'Homme' || person.genre === 'male'
+    const totalHommes = residentsInResidences.filter(
+      (person) =>
+        person.genre === "homme" ||
+        person.genre === "Homme" ||
+        person.genre === "male"
     ).length;
-    const totalFemmes = residentsInResidences.filter(person => 
-      person.genre === 'femme' || person.genre === 'Femme' || person.genre === 'female'
+    const totalFemmes = residentsInResidences.filter(
+      (person) =>
+        person.genre === "femme" ||
+        person.genre === "Femme" ||
+        person.genre === "female"
     ).length;
 
     return {
       totalResidences,
       totalResidents,
       totalHommes,
-      totalFemmes
+      totalFemmes,
     };
   };
 
@@ -296,7 +271,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
       : { "Content-Type": "application/json" };
   };
 
-  // Fonction pour effectuer la recherche
+  // Fonction pour effectuer la recherche - MODIFIÉ
   const performSearch = (query) => {
     if (!query.trim()) {
       setIsSearchMode(false);
@@ -305,64 +280,135 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
     }
 
     const searchTerm = query.toLowerCase().trim();
-    
+    const results = [];
+
     // Recherche dans tous les résidents
-    const results = allResidents.filter(resident => {
+    allResidents.forEach((resident) => {
       const nomComplet = (resident.nomComplet || "").toLowerCase();
       const nom = (resident.nom || "").toLowerCase();
       const prenom = (resident.prenom || "").toLowerCase();
       const cin = (resident.cin || "").toLowerCase();
       const telephone = (resident.telephone || "").toLowerCase();
-      
-      return (
+
+      if (
         nomComplet.includes(searchTerm) ||
         nom.includes(searchTerm) ||
         prenom.includes(searchTerm) ||
         cin.includes(searchTerm) ||
         telephone.includes(searchTerm)
-      );
+      ) {
+        results.push({
+          ...resident,
+          resultType: "resident",
+        });
+      }
+    });
+
+    // Recherche dans les résidences
+    resList.forEach((residence) => {
+      const name = residence.name.toLowerCase();
+      const lot = residence.lot.toLowerCase();
+      const quartier = residence.quartier.toLowerCase();
+      const ville = residence.ville.toLowerCase();
+      const adresse = residence.adresse.toLowerCase();
+      const proprietaire = residence.proprietaire.toLowerCase();
+
+      if (
+        name.includes(searchTerm) ||
+        lot.includes(searchTerm) ||
+        quartier.includes(searchTerm) ||
+        ville.includes(searchTerm) ||
+        adresse.includes(searchTerm) ||
+        proprietaire.includes(searchTerm)
+      ) {
+        results.push({
+          ...residence,
+          resultType: "residence",
+        });
+      }
     });
 
     setSearchResults(results);
     setIsSearchMode(true);
   };
 
-  // Fonction pour gérer la sélection d'une suggestion
-  const handleSuggestionSelect = (suggestion) => {
-    // Mettre à jour la recherche dans le parent (navbar)
-    if (onSearchChange) {
-      onSearchChange(suggestion.value);
-    }
-    setShowSuggestions(false);
-  };
-
-  // Fonction pour afficher les détails d'un résident trouvé
-  const handleViewResidentDetails = (resident) => {
-    // Trouver la résidence du résident
-    const residence = resList.find(r => r.id === resident.residence_id);
-    if (residence) {
-      handleViewDetails(residence);
+  // Fonction pour afficher les détails d'un résultat trouvé
+  const handleViewResultDetails = (result) => {
+    if (result.resultType === "resident") {
+      // Trouver la résidence du résident
+      const residence = resList.find((r) => r.id === result.residence_id);
+      if (residence) {
+        handleViewDetails(residence);
+        // Réinitialiser la recherche
+        if (onSearchChange) {
+          onSearchChange("");
+        }
+        setIsSearchMode(false);
+        setSearchResults([]);
+      }
+    } else if (result.resultType === "residence") {
+      handleViewDetails(result);
       // Réinitialiser la recherche
       if (onSearchChange) {
         onSearchChange("");
       }
       setIsSearchMode(false);
       setSearchResults([]);
-      setShowSuggestions(false);
     }
+  };
+
+  // NOUVELLE FONCTION : Naviguer vers l'adresse sur la carte
+  const handleViewOnMapFromSearch = (result) => {
+    if (result.resultType === "resident") {
+      // Trouver la résidence du résident
+      const residence = resList.find((r) => r.id === result.residence_id);
+      if (residence && onViewOnMap) {
+        onViewOnMap(residence);
+        // Réinitialiser la recherche
+        if (onSearchChange) {
+          onSearchChange("");
+        }
+        setIsSearchMode(false);
+        setSearchResults([]);
+      }
+    } else if (result.resultType === "residence") {
+      // Si c'est une résidence, naviguer directement
+      if (onViewOnMap) {
+        onViewOnMap(result);
+        // Réinitialiser la recherche
+        if (onSearchChange) {
+          onSearchChange("");
+        }
+        setIsSearchMode(false);
+        setSearchResults([]);
+      }
+    }
+  };
+
+  // Fonction pour réinitialiser la recherche
+  const resetSearch = () => {
+    if (onSearchChange) {
+      onSearchChange("");
+    }
+    setIsSearchMode(false);
+    setSearchResults([]);
   };
 
   // Charger les photos d'une résidence
   const loadResidencePhotos = async (residenceId) => {
     try {
-      const resp = await fetch(`${API_BASE}/api/residences/${residenceId}/photos`);
+      const resp = await fetch(
+        `${API_BASE}/api/residences/${residenceId}/photos`
+      );
       if (resp.ok) {
         const photos = await resp.json();
         return photos.map((photo) => {
           if (typeof photo === "object" && photo.url) {
             return photo.url.startsWith("http")
               ? photo.url
-              : `${API_BASE}${photo.url.startsWith("/") ? "" : "/"}${photo.url}`;
+              : `${API_BASE}${photo.url.startsWith("/") ? "" : "/"}${
+                  photo.url
+                }`;
           }
           return photo;
         });
@@ -409,7 +455,9 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
           if (photo.url.startsWith("http")) {
             return photo.url;
           }
-          return `${API_BASE}${photo.url.startsWith("/") ? "" : "/"}${photo.url}`;
+          return `${API_BASE}${photo.url.startsWith("/") ? "" : "/"}${
+            photo.url
+          }`;
         });
 
         setSelectedResidence((prev) => {
@@ -493,23 +541,23 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
   const handleViewDetails = async (residence) => {
     try {
       console.log("Opening details for residence:", residence.id);
-      
+
       const photos = await loadResidencePhotos(residence.id);
       console.log("Loaded photos:", photos.length);
-      
+
       const base = resList.find((r) => r.id === residence.id) || residence;
       const resp = await fetch(
         `${API_BASE}/api/persons?residence_id=${residence.id}`,
         { headers: getHeaders() }
       );
-      
+
       if (!resp.ok) {
         throw new Error(`HTTP error! status: ${resp.status}`);
       }
-      
+
       const persons = await resp.json();
       console.log("Loaded persons:", persons.length);
-      
+
       const normalizedPersons = (persons || []).map((p) => ({
         id: p.id,
         nomComplet: p.nom_complet || p.nomComplet || "",
@@ -526,20 +574,23 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
         photos: photos,
         residents: normalizedPersons,
       });
-      
+
       setIsPhotoExpanded(false);
       setIsFullScreenPhoto(false);
-      
+
       setShowModal(true);
+      // Réinitialiser la recherche quand on ouvre le modal
+      resetSearch();
     } catch (e) {
       console.error("Error loading residence details:", e);
       // Fallback au minimum
       setSelectedResidence({
         ...residence,
         photos: residence.photos || [],
-        residents: []
+        residents: [],
       });
       setShowModal(true);
+      resetSearch();
     }
     setCurrentPhotoIndex(0);
     setIsEditMode(false);
@@ -612,29 +663,32 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
   };
 
   // Nouvelle fonction pour gérer le clic sur l'image
-  const handleImageClick = useCallback((e) => {
-    e.stopPropagation();
-    if (!selectedResidence) return;
-    
-    if (selectedResidence.photos && selectedResidence.photos.length > 0) {
-      setIsPhotoExpanded(!isPhotoExpanded);
-      if (!isPhotoExpanded) {
-        setIsFullScreenPhoto(false);
+  const handleImageClick = useCallback(
+    (e) => {
+      e.stopPropagation();
+      if (!selectedResidence) return;
+
+      if (selectedResidence.photos && selectedResidence.photos.length > 0) {
+        setIsPhotoExpanded(!isPhotoExpanded);
+        if (!isPhotoExpanded) {
+          setIsFullScreenPhoto(false);
+        }
+      } else {
+        // Si pas de photos, ouvrir le sélecteur de fichier
+        photoInputRef.current?.click();
       }
-    } else {
-      // Si pas de photos, ouvrir le sélecteur de fichier
-      photoInputRef.current?.click();
-    }
-  }, [selectedResidence, isPhotoExpanded]);
+    },
+    [selectedResidence, isPhotoExpanded]
+  );
 
   // Fonctions pour la date
   const formatPartialDate = (rawValue) => {
     let result = rawValue;
     if (rawValue.length > 2) {
-      result = rawValue.substring(0, 2) + '/' + rawValue.substring(2);
+      result = rawValue.substring(0, 2) + "/" + rawValue.substring(2);
     }
     if (rawValue.length > 4) {
-      result = result.substring(0, 5) + '/' + result.substring(5);
+      result = result.substring(0, 5) + "/" + result.substring(5);
     }
     return result;
   };
@@ -642,21 +696,21 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
   const validateDate = (dateStr) => {
     setDateError("");
     if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
-      const parts = dateStr.split('/').filter(p => p !== '');
+      const parts = dateStr.split("/").filter((p) => p !== "");
       if (parts.length === 3) {
         let [day, month, year] = parts;
-        day = day.padStart(2, '0');
-        month = month.padStart(2, '0');
-        year = year.padStart(4, '0').substring(0, 4);
-        
+        day = day.padStart(2, "0");
+        month = month.padStart(2, "0");
+        year = year.padStart(4, "0").substring(0, 4);
+
         let dayNum = parseInt(day, 10);
         let monthNum = parseInt(month, 10);
         let yearNum = parseInt(year, 10);
-        
+
         if (monthNum < 1) monthNum = 1;
         if (monthNum > 12) monthNum = 12;
         if (dayNum < 1) dayNum = 1;
-        
+
         const MAX_YEAR = 2025;
         if (yearNum > MAX_YEAR) {
           yearNum = MAX_YEAR;
@@ -664,23 +718,25 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
         if (yearNum < 1900) {
           yearNum = 1900;
         }
-        
+
         const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
         if (dayNum > daysInMonth) {
           dayNum = daysInMonth;
         }
-        
-        const correctedDate = 
-          dayNum.toString().padStart(2, '0') + '/' + 
-          monthNum.toString().padStart(2, '0') + '/' + 
-          yearNum.toString().padStart(4, '0');
-        
+
+        const correctedDate =
+          dayNum.toString().padStart(2, "0") +
+          "/" +
+          monthNum.toString().padStart(2, "0") +
+          "/" +
+          yearNum.toString().padStart(4, "0");
+
         setDateInput(correctedDate);
-        setNewResident(prev => ({
+        setNewResident((prev) => ({
           ...prev,
-          dateNaissance: correctedDate
+          dateNaissance: correctedDate,
         }));
-        
+
         return validateDateComplete(correctedDate);
       } else {
         setDateError("Format de date invalide. Utilisez jj/mm/aaaa");
@@ -691,75 +747,85 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
   };
 
   const validateDateComplete = (dateStr) => {
-    const parts = dateStr.split('/');
+    const parts = dateStr.split("/");
     const day = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10);
     const year = parseInt(parts[2], 10);
-    
-    const date = new Date(`${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`);
+
+    const date = new Date(
+      `${year}-${month.toString().padStart(2, "0")}-${day
+        .toString()
+        .padStart(2, "0")}`
+    );
     if (isNaN(date.getTime())) {
       setDateError("Date invalide");
       return false;
     }
-    
+
     const MAX_YEAR = 2025;
     if (year > MAX_YEAR) {
       setDateError(`L'année maximum est ${MAX_YEAR}`);
       return false;
     }
-    
+
     const MIN_YEAR = 1900;
     if (year < MIN_YEAR) {
       setDateError("L'année semble trop ancienne");
       return false;
     }
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const inputDate = new Date(year, month - 1, day);
-    
+
     if (inputDate > today) {
       setDateError("La date de naissance ne peut pas être dans le futur");
       return false;
     }
-    
+
     return true;
   };
 
   const handleDateChange = (e) => {
     let value = e.target.value;
-    value = value.replace(/[^0-9/]/g, '');
+    value = value.replace(/[^0-9/]/g, "");
     setDateError("");
-    
+
     if (value.length > 0) {
       let formattedValue = value;
-      const rawValue = value.replace(/\//g, '');
-      
-      if (rawValue.length > 2 && !value.includes('/')) {
-        formattedValue = rawValue.substring(0, 2) + '/' + rawValue.substring(2);
+      const rawValue = value.replace(/\//g, "");
+
+      if (rawValue.length > 2 && !value.includes("/")) {
+        formattedValue = rawValue.substring(0, 2) + "/" + rawValue.substring(2);
       }
-      
+
       if (rawValue.length > 4 && formattedValue.match(/\//g)?.length === 1) {
-        formattedValue = rawValue.substring(0, 2) + '/' + rawValue.substring(2, 4) + '/' + rawValue.substring(4);
+        formattedValue =
+          rawValue.substring(0, 2) +
+          "/" +
+          rawValue.substring(2, 4) +
+          "/" +
+          rawValue.substring(4);
       }
-      
+
       if (rawValue.length >= 1) {
         let day = parseInt(rawValue.substring(0, 2)) || 0;
         if (day > 31) {
           day = 31;
-          const correctedRaw = '31' + rawValue.substring(2);
+          const correctedRaw = "31" + rawValue.substring(2);
           formattedValue = formatPartialDate(correctedRaw);
         }
-        
+
         if (rawValue.length >= 3) {
           let month = parseInt(rawValue.substring(2, 4)) || 0;
           if (month > 12) {
             month = 12;
-            const correctedRaw = rawValue.substring(0, 2) + '12' + rawValue.substring(4);
+            const correctedRaw =
+              rawValue.substring(0, 2) + "12" + rawValue.substring(4);
             formattedValue = formatPartialDate(correctedRaw);
           }
         }
-        
+
         if (rawValue.length >= 5) {
           const yearStr = rawValue.substring(4, 8);
           if (yearStr.length === 4) {
@@ -767,31 +833,32 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
             const MAX_YEAR = 2025;
             if (year > MAX_YEAR) {
               year = MAX_YEAR;
-              const correctedRaw = rawValue.substring(0, 4) + MAX_YEAR.toString();
+              const correctedRaw =
+                rawValue.substring(0, 4) + MAX_YEAR.toString();
               formattedValue = formatPartialDate(correctedRaw);
             }
           }
         }
       }
-      
+
       if (formattedValue.length > 10) {
         formattedValue = formattedValue.substring(0, 10);
       }
-      
+
       setDateInput(formattedValue);
       if (formattedValue.length === 10) {
         validateDate(formattedValue);
       }
-      
-      setNewResident(prev => ({
+
+      setNewResident((prev) => ({
         ...prev,
-        dateNaissance: formattedValue
+        dateNaissance: formattedValue,
       }));
     } else {
       setDateInput(value);
-      setNewResident(prev => ({
+      setNewResident((prev) => ({
         ...prev,
-        dateNaissance: ""
+        dateNaissance: "",
       }));
     }
   };
@@ -799,33 +866,33 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
   const handleDateBlur = () => {
     if (dateInput && dateInput.length > 0) {
       if (dateInput.length < 10) {
-        const parts = dateInput.split('/').filter(p => p !== '');
+        const parts = dateInput.split("/").filter((p) => p !== "");
         if (parts.length === 3) {
           let [day, month, year] = parts;
-          day = day.padStart(2, '0');
-          month = month.padStart(2, '0');
-          
+          day = day.padStart(2, "0");
+          month = month.padStart(2, "0");
+
           if (year.length === 2) {
-            year = '20' + year;
+            year = "20" + year;
           } else if (year.length < 4) {
             const currentYear = new Date().getFullYear().toString();
             year = currentYear.substring(0, 4 - year.length) + year;
           }
-          
+
           let yearNum = parseInt(year, 10);
           const MAX_YEAR = 2025;
           if (yearNum > MAX_YEAR) {
             yearNum = MAX_YEAR;
             year = MAX_YEAR.toString();
           }
-          
+
           const correctedDate = `${day}/${month}/${year}`;
           setDateInput(correctedDate);
-          setNewResident(prev => ({
+          setNewResident((prev) => ({
             ...prev,
-            dateNaissance: correctedDate
+            dateNaissance: correctedDate,
           }));
-          
+
           validateDate(correctedDate);
         }
       } else {
@@ -844,7 +911,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
   };
 
   const handleDateKeyDown = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       if (dateInput.length === 10) {
         if (validateDate(dateInput)) {
@@ -859,30 +926,40 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
       }
       return;
     }
-    
-    if (e.key === 'Backspace' && dateInput.length > 0) {
+
+    if (e.key === "Backspace" && dateInput.length > 0) {
       const cursorPos = e.target.selectionStart;
-      if (cursorPos > 0 && dateInput[cursorPos - 1] === '/') {
+      if (cursorPos > 0 && dateInput[cursorPos - 1] === "/") {
         e.preventDefault();
-        const newValue = dateInput.substring(0, cursorPos - 1) + dateInput.substring(cursorPos);
+        const newValue =
+          dateInput.substring(0, cursorPos - 1) +
+          dateInput.substring(cursorPos);
         setDateInput(newValue);
         setTimeout(() => {
           if (dateNaissanceInputRef.current) {
-            dateNaissanceInputRef.current.setSelectionRange(cursorPos - 1, cursorPos - 1);
+            dateNaissanceInputRef.current.setSelectionRange(
+              cursorPos - 1,
+              cursorPos - 1
+            );
           }
         }, 0);
       }
     }
-    
-    if (e.key === 'Delete' && dateInput.length > 0) {
+
+    if (e.key === "Delete" && dateInput.length > 0) {
       const cursorPos = e.target.selectionStart;
-      if (cursorPos < dateInput.length && dateInput[cursorPos] === '/') {
+      if (cursorPos < dateInput.length && dateInput[cursorPos] === "/") {
         e.preventDefault();
-        const newValue = dateInput.substring(0, cursorPos) + dateInput.substring(cursorPos + 1);
+        const newValue =
+          dateInput.substring(0, cursorPos) +
+          dateInput.substring(cursorPos + 1);
         setDateInput(newValue);
         setTimeout(() => {
           if (dateNaissanceInputRef.current) {
-            dateNaissanceInputRef.current.setSelectionRange(cursorPos, cursorPos);
+            dateNaissanceInputRef.current.setSelectionRange(
+              cursorPos,
+              cursorPos
+            );
           }
         }, 0);
       }
@@ -894,27 +971,34 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
     if (!dateStr || dateStr.length < 10) {
       return false;
     }
-    
+
     try {
-      const parts = dateStr.split('/');
+      const parts = dateStr.split("/");
       if (parts.length !== 3) return false;
-      
+
       const [day, month, year] = parts;
-      if (!/^\d{2}$/.test(day) || !/^\d{2}$/.test(month) || !/^\d{4}$/.test(year)) {
+      if (
+        !/^\d{2}$/.test(day) ||
+        !/^\d{2}$/.test(month) ||
+        !/^\d{4}$/.test(year)
+      ) {
         return false;
       }
-      
+
       const birthDate = new Date(`${year}-${month}-${day}`);
       if (isNaN(birthDate.getTime())) return false;
-      
+
       const today = new Date();
       let age = today.getFullYear() - birthDate.getFullYear();
       const monthDiff = today.getMonth() - birthDate.getMonth();
-      
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+
+      if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && today.getDate() < birthDate.getDate())
+      ) {
         age--;
       }
-      
+
       return age >= 18;
     } catch (error) {
       return false;
@@ -925,16 +1009,16 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
     if (!frenchDate || frenchDate.length < 10) {
       return null;
     }
-    
+
     try {
-      const parts = frenchDate.split('/');
+      const parts = frenchDate.split("/");
       if (parts.length !== 3) return null;
-      
+
       const [day, month, year] = parts;
       const date = new Date(`${year}-${month}-${day}`);
       if (isNaN(date.getTime())) return null;
-      
-      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
     } catch (error) {
       return null;
     }
@@ -944,12 +1028,14 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
   const handleSaveEdit = async () => {
     if (!selectedResidence) return;
     try {
-      const nom = (newResident.nom || '').trim().toUpperCase();
-      const prenom = (newResident.prenom || '').trim();
+      const nom = (newResident.nom || "").trim().toUpperCase();
+      const prenom = (newResident.prenom || "").trim();
       const nomComplet = `${nom} ${prenom}`.trim();
-      
+
       if (!nom || !prenom || !dateInput || dateInput.length < 10) {
-        alert("Nom, Prénom et Date de naissance sont requis (format jj/mm/aaaa)");
+        alert(
+          "Nom, Prénom et Date de naissance sont requis (format jj/mm/aaaa)"
+        );
         return;
       }
 
@@ -959,7 +1045,9 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
 
       const dateISO = frenchDateToISO(dateInput);
       if (!dateISO) {
-        setDateError("Format de date invalide. Utilisez jj/mm/aaaa avec une date valide");
+        setDateError(
+          "Format de date invalide. Utilisez jj/mm/aaaa avec une date valide"
+        );
         return;
       }
 
@@ -972,7 +1060,11 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
       const today = new Date();
       let age = today.getFullYear() - birthDate.getFullYear();
       const monthDiff = today.getMonth() - birthDate.getMonth();
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+
+      if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && today.getDate() < birthDate.getDate())
+      ) {
         age--;
       }
 
@@ -980,7 +1072,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
         residence_id: selectedResidence.id,
         nom_complet: nomComplet,
         date_naissance: dateISO,
-        cin: age < 18 ? null : (newResident.cin || null),
+        cin: age < 18 ? null : newResident.cin || null,
         genre: newResident.sexe || "homme",
         telephone: newResident.telephone || null,
       };
@@ -998,33 +1090,39 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
       }
 
       const created = await resp.json();
-      
+
       setSelectedResidence((prev) => ({
         ...prev,
-        residents: [...(prev?.residents || []), {
+        residents: [
+          ...(prev?.residents || []),
+          {
+            id: created.id,
+            nomComplet: created.nom_complet || nomComplet,
+            dateNaissance: created.date_naissance || dateInput,
+            cin: created.cin || newResident.cin || "",
+            genre: created.genre || newResident.sexe || "homme",
+            telephone: created.telephone || newResident.telephone || "",
+          },
+        ],
+      }));
+
+      // Ajouter aux résidents globaux
+      setAllResidents((prev) => [
+        ...prev,
+        {
           id: created.id,
           nomComplet: created.nom_complet || nomComplet,
+          nom: nom,
+          prenom: prenom,
           dateNaissance: created.date_naissance || dateInput,
           cin: created.cin || newResident.cin || "",
           genre: created.genre || newResident.sexe || "homme",
           telephone: created.telephone || newResident.telephone || "",
-        }],
-      }));
+          residence_id: selectedResidence.id,
+          is_proprietaire: false,
+        },
+      ]);
 
-      // Ajouter aux résidents globaux
-      setAllResidents(prev => [...prev, {
-        id: created.id,
-        nomComplet: created.nom_complet || nomComplet,
-        nom: nom,
-        prenom: prenom,
-        dateNaissance: created.date_naissance || dateInput,
-        cin: created.cin || newResident.cin || "",
-        genre: created.genre || newResident.sexe || "homme",
-        telephone: created.telephone || newResident.telephone || "",
-        residence_id: selectedResidence.id,
-        is_proprietaire: false
-      }]);
-      
       setNewResident({
         nom: "",
         prenom: "",
@@ -1047,7 +1145,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
   };
 
   const validatePhoneNumber = (value) => {
-    const numbersOnly = value.replace(/\D/g, '');
+    const numbersOnly = value.replace(/\D/g, "");
     if (numbersOnly.length > 10) {
       return numbersOnly.slice(0, 10);
     }
@@ -1056,7 +1154,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
 
   const handleNewResidentChange = (field, value) => {
     let validatedValue = value;
-    
+
     if (field === "nom" || field === "prenom") {
       if (!validateLettersOnly(value)) {
         return;
@@ -1081,30 +1179,30 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
   };
 
   const handleKeyDown = (e, nextField) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
-      
+
       switch (nextField) {
-        case 'prenom':
+        case "prenom":
           prenomInputRef.current?.focus();
           break;
-        case 'dateNaissance':
+        case "dateNaissance":
           dateNaissanceInputRef.current?.focus();
           break;
-        case 'cin':
+        case "cin":
           if (estMajeurFromInput() && cinInputRef.current) {
             cinInputRef.current.focus();
           } else {
             telephoneInputRef.current?.focus();
           }
           break;
-        case 'telephone':
+        case "telephone":
           telephoneInputRef.current?.focus();
           break;
-        case 'sexe':
+        case "sexe":
           sexeSelectRef.current?.focus();
           break;
-        case 'save':
+        case "save":
           handleSaveEdit();
           break;
         default:
@@ -1148,7 +1246,9 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
       const matchesSearch =
         residence.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         residence.adresse.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        residence.proprietaire.toLowerCase().includes(searchQuery.toLowerCase());
+        residence.proprietaire
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase());
       const matchesStatus =
         statusFilter === "all" || residence.status === statusFilter;
       return matchesSearch && matchesStatus;
@@ -1215,7 +1315,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
   const formatDate = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR');
+    return date.toLocaleDateString("fr-FR");
   };
 
   // Fonction pour formater le genre
@@ -1226,115 +1326,120 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
   // Fonction pour formater l'affichage du nom selon la logique malgache
   const formatNomMalgache = (nomComplet) => {
     if (!nomComplet) return "";
-    const parts = nomComplet.split(' ');
+    const parts = nomComplet.split(" ");
     if (parts.length > 1) {
-      return `${parts[0].toUpperCase()} ${parts.slice(1).join(' ')}`;
+      return `${parts[0].toUpperCase()} ${parts.slice(1).join(" ")}`;
     }
     return nomComplet.toUpperCase();
   };
 
-  // Composant pour afficher un résultat de recherche
-  const ResidentSearchResult = ({ resident }) => {
+  // Fonction pour extraire le nom et prénom du nom complet
+  const extractNomPrenom = (nomComplet) => {
+    if (!nomComplet) return { nom: "", prenom: "" };
+    const parts = nomComplet.split(" ");
+    if (parts.length === 1) return { nom: parts[0], prenom: "" };
+    return {
+      nom: parts[0],
+      prenom: parts.slice(1).join(" "),
+    };
+  };
+
+  // Composant pour afficher un résultat de recherche (résident) - MODIFIÉ
+  const ResidentSearchResult = ({ result }) => {
     // Trouver la résidence associée
-    const residence = resList.find(r => r.id === resident.residence_id);
-    
+    const residence = resList.find((r) => r.id === result.residence_id);
+
+    // Extraire nom et prénom
+    const { nom, prenom } = extractNomPrenom(result.nomComplet);
+
+    // Formater la date
+    const formattedDate = formatDate(result.dateNaissance);
+
+    // Vérifier si majeur
+    const isMineur = result.dateNaissance && !estMajeur(result.dateNaissance);
+
+    // Obtenir le numéro de lot
+    const lotNumber = residence ? residence.lot || "N/A" : "N/A";
+
     return (
-      <div className="bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60 p-4 hover:bg-gray-50 transition-colors">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center space-x-3 mb-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <User className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-800 text-base">
-                  {formatNomMalgache(resident.nomComplet)}
-                </h3>
-                {resident.is_proprietaire && (
-                  <span className="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full mt-1">
-                    Propriétaire
-                  </span>
-                )}
-              </div>
+      <div className="bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60 p-3 hover:bg-gray-50 transition-colors">
+        <div className="flex items-center justify-between">
+          {/* CONTENU PRINCIPAL - lot/nom/prenom/date de naissance/cin/téléphone/féminin ou masculin */}
+          <div className="flex items-center space-x-4 flex-1">
+            {/* Lot */}
+            <div className="w-20">
+              <span className="text-sm font-medium text-gray-700">
+                {lotNumber}
+              </span>
             </div>
-            
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div className="space-y-1">
-                <div className="flex items-center space-x-2">
-                  <Calendar size={14} className="text-gray-500" />
-                  <span className="text-sm text-gray-600">
-                    {formatDate(resident.dateNaissance)}
-                  </span>
-                </div>
-                <div className="pl-6">
-                  <span className="text-xs text-gray-500">
-                    {resident.dateNaissance ? calculerAge(resident.dateNaissance) + " ans" : ""}
-                    {resident.dateNaissance && !estMajeur(resident.dateNaissance) && " (Mineur)"}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="space-y-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-700">CIN:</span>
-                  <span className="text-sm font-mono text-gray-600">
-                    {resident.cin || (resident.dateNaissance && !estMajeur(resident.dateNaissance) ? "Mineur" : "-")}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Phone size={14} className="text-gray-500" />
-                  <span className="text-sm text-gray-600">
-                    {resident.telephone || "-"}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium text-gray-700">Sexe:</span>
-                <span className="text-sm text-gray-600">
-                  {formatGenre(resident.genre)}
-                </span>
-              </div>
-              
-              {residence && (
-                <div className="flex items-center space-x-2">
-                  <Building size={14} className="text-gray-500" />
-                  <span className="text-sm text-gray-600">
-                    {residence.name}
-                  </span>
-                </div>
-              )}
+
+            {/* Nom */}
+            <div className="w-28">
+              <span className="text-sm font-semibold text-gray-800 block truncate">
+                {nom || "-"}
+              </span>
             </div>
-            
-            {residence && (
-              <div className="border-t border-gray-200 pt-3 mt-3">
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <MapPin size={14} className="text-gray-500" />
-                  <span>{residence.adresse}</span>
-                </div>
-              </div>
-            )}
+
+            {/* Prénom */}
+            <div className="w-28">
+              <span className="text-sm text-gray-700 block truncate">
+                {prenom || "-"}
+              </span>
+            </div>
+
+            {/* Date de naissance */}
+            <div className="w-28">
+              <span className="text-sm text-gray-600 block">
+                {formattedDate || "-"}
+              </span>
+            </div>
+
+            {/* CIN */}
+            <div className="w-32">
+              <span className="text-sm font-mono text-gray-600 block truncate">
+                {isMineur ? "Mineur" : result.cin || "-"}
+              </span>
+            </div>
+
+            {/* Téléphone */}
+            <div className="w-28">
+              <span className="text-sm text-gray-600 block truncate">
+                {result.telephone || "-"}
+              </span>
+            </div>
+
+            {/* Sexe */}
+            <div className="w-24">
+              <span
+                className={`text-xs font-medium px-2 py-1 rounded-full block w-fit ${
+                  formatGenre(result.genre) === "Masculin"
+                    ? "bg-blue-100 text-blue-800"
+                    : "bg-pink-100 text-pink-800"
+                }`}
+              >
+                {formatGenre(result.genre)}
+              </span>
+            </div>
           </div>
-          
-          <div className="flex flex-col space-y-2 ml-4">
+
+          {/* BOUTONS D'ACTION - sans icônes */}
+          <div className="flex space-x-2 ml-2">
             {residence && (
               <>
                 <button
-                  onClick={() => handleViewResidentDetails(resident)}
-                  className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                  onClick={() => handleViewResultDetails(result)}
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium"
                   title="Voir détails de la résidence"
                 >
-                  <Eye size={14} />
-                  <span className="text-xs">Détails</span>
+                  Détails
                 </button>
                 {onViewOnMap && (
                   <button
-                    onClick={() => onViewOnMap(residence)}
-                    className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                    onClick={() => handleViewOnMapFromSearch(result)}
+                    className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs font-medium"
                     title="Voir sur la carte"
                   >
-                    <Map size={14} />
-                    <span className="text-xs">Carte</span>
+                    Carte
                   </button>
                 )}
               </>
@@ -1345,6 +1450,171 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
     );
   };
 
+  // Composant pour afficher un résultat de recherche (résidence)
+  const ResidenceSearchResult = ({ result }) => {
+    return (
+      <div className="bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60 p-4 hover:bg-gray-50 transition-colors">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4 flex-1">
+            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Home className="w-5 h-5 text-green-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-800 text-base mb-1">
+                {result.name}
+              </h3>
+              <div className="flex items-center space-x-1">
+                <MapPin size={14} className="text-gray-500" />
+                <span className="text-sm text-gray-600">{result.adresse}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-4 flex-1">
+            <div className="flex items-center space-x-2">
+              <Users size={14} className="text-gray-500" />
+              <span className="text-sm text-gray-600">
+                {result.totalResidents} résident
+                {result.totalResidents > 1 ? "s" : ""}
+              </span>
+            </div>
+            {result.proprietaire && (
+              <div className="flex items-center space-x-2">
+                <User size={14} className="text-gray-500" />
+                <span className="text-sm text-gray-600">
+                  {result.proprietaire}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex space-x-2 ml-2">
+            <button
+              onClick={() => handleViewResultDetails(result)}
+              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium"
+              title="Voir détails de la résidence"
+            >
+              Détails
+            </button>
+            {onViewOnMap && (
+              <button
+                onClick={() => handleViewOnMapFromSearch(result)}
+                className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs font-medium"
+                title="Voir sur la carte"
+              >
+                Carte
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Composant pour afficher un résident dans la liste
+  const ResidentRow = ({ resident }) => {
+    const { nom, prenom } = extractNomPrenom(resident.nomComplet);
+    const isMineur =
+      resident.dateNaissance && !estMajeur(resident.dateNaissance);
+
+    return (
+      <div className="px-6 py-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-8">
+            {/* Nom */}
+            <div className="w-48">
+              <span className="text-sm font-semibold text-gray-800">
+                {nom || "-"}
+              </span>
+            </div>
+
+            {/* Prénom */}
+            <div className="w-48">
+              <span className="text-sm text-gray-700">{prenom || "-"}</span>
+            </div>
+
+            {/* Date de naissance */}
+            <div className="w-40">
+              <span className="text-sm text-gray-600">
+                {resident.dateNaissance
+                  ? formatDate(resident.dateNaissance)
+                  : "-"}
+              </span>
+            </div>
+
+            {/* CIN */}
+            <div className="w-40">
+              <span className="text-sm font-mono text-gray-600">
+                {isMineur ? "Mineur" : resident.cin || "-"}
+              </span>
+            </div>
+
+            {/* Sexe */}
+            <div className="w-40">
+              <span
+                className={`text-sm font-medium px-3 py-1 rounded-full ${
+                  formatGenre(resident.genre) === "Masculin"
+                    ? "bg-blue-100 text-blue-800"
+                    : "bg-pink-100 text-pink-800"
+                }`}
+              >
+                {formatGenre(resident.genre)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            {resident.telephone && (
+              <div className="flex items-center space-x-1 text-sm text-gray-600">
+                <span>{resident.telephone}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Composant pour l'en-tête de la liste des résidents
+  const ResidentListHeader = () => (
+    <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-8">
+          <div className="w-48">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Nom
+            </span>
+          </div>
+          <div className="w-48">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Prénom
+            </span>
+          </div>
+          <div className="w-40">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Date de Naissance
+            </span>
+          </div>
+          <div className="w-40">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              CIN
+            </span>
+          </div>
+          <div className="w-40">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Sexe
+            </span>
+          </div>
+        </div>
+        <div className="w-40">
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Téléphone
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="h-full flex">
       {/* Section principale - cachée quand le modal est ouvert */}
@@ -1352,14 +1622,14 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
         <div className="w-full">
           <div className="h-full flex flex-col mt-3">
             {/* Header SIMPLIFIÉ */}
-            <div className="flex items-center justify-between p-4 border-gray-200/60 bg-transparent">
+            <div className="flex items-center ml-4 justify-between p-4 border-gray-200/60 bg-transparent">
               <h1 className="font-bold text-3xl text-gray-800 bg-white backdrop-blur-sm py-1.5 px-4 rounded-2xl border border-gray-200/60">
                 Résidences
               </h1>
             </div>
 
             {/* Statistiques */}
-            <div className="border-gray-200/60 bg-transparent mt-2">
+            <div className="border-gray-200/60 bg-transparent">
               <div className="grid grid-cols-4 gap-4 mb-3 ml-8 mr-3">
                 <div className="bg-white backdrop-blur-sm rounded-2xl p-4 border border-gray-200/60">
                   <div className="flex items-center justify-between">
@@ -1367,7 +1637,9 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                       <div className="text-2xl font-bold text-gray-800">
                         {statistics.totalResidences}
                       </div>
-                      <div className="text-xs text-gray-600 mt-1">Résidences</div>
+                      <div className="text-xs text-gray-600 mt-1">
+                        Résidences
+                      </div>
                     </div>
                     <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                       <div className="w-6 h-6 bg-blue-500 rounded-full"></div>
@@ -1385,7 +1657,9 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                       <div className="text-2xl font-bold text-gray-800">
                         {statistics.totalResidents}
                       </div>
-                      <div className="text-xs text-gray-600 mt-1">Résidents</div>
+                      <div className="text-xs text-gray-600 mt-1">
+                        Résidents
+                      </div>
                     </div>
                     <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                       <div className="w-6 h-6 bg-green-500 rounded-full"></div>
@@ -1411,9 +1685,14 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                   </div>
                   <div className="mt-2 flex items-center text-xs text-blue-600">
                     <span>
-                      {statistics.totalResidents > 0 
-                        ? Math.round((statistics.totalHommes / statistics.totalResidents) * 100)
-                        : 0}%
+                      {statistics.totalResidents > 0
+                        ? Math.round(
+                            (statistics.totalHommes /
+                              statistics.totalResidents) *
+                              100
+                          )
+                        : 0}
+                      %
                     </span>
                     <span className="text-gray-500 ml-1">of total</span>
                   </div>
@@ -1433,9 +1712,14 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                   </div>
                   <div className="mt-2 flex items-center text-xs text-pink-600">
                     <span>
-                      {statistics.totalResidents > 0 
-                        ? Math.round((statistics.totalFemmes / statistics.totalResidents) * 100)
-                        : 0}%
+                      {statistics.totalResidents > 0
+                        ? Math.round(
+                            (statistics.totalFemmes /
+                              statistics.totalResidents) *
+                              100
+                          )
+                        : 0}
+                      %
                     </span>
                     <span className="text-gray-500 ml-1">of total</span>
                   </div>
@@ -1444,21 +1728,22 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
             </div>
 
             {/* CONTENU PRINCIPAL */}
-            <div className="flex-1 overflow-y-auto mt-5">
+            <div className="flex-1 overflow-y-auto mt-5 mb-4">
               <div className="mr-3 ml-8">
                 {isSearchMode ? (
-                  /* MODE RECHERCHE - AFFICHER LES RÉSULTATS DES RÉSIDENTS */
-                  <div className="space-y-4">
+                  /* MODE RECHERCHE - AFFICHER LES RÉSULTATS DES RÉSIDENTS ET RÉSIDENCES */
+                  <div className="space-y-4 pb-4">
                     {searchResults.length === 0 ? (
                       <div className="text-center py-8 bg-white/30 backdrop-blur-sm rounded-2xl border border-gray-200/80">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                           <Search className="w-8 h-8 text-gray-400" />
                         </div>
                         <h3 className="font-semibold text-black text-lg mb-2">
-                          Aucun résident trouvé
+                          Aucun résultat trouvé
                         </h3>
                         <p className="text-black text-sm">
-                          Aucun résident ne correspond à votre recherche "{searchQuery}"
+                          Aucun résident ou résidence ne correspond à votre
+                          recherche "{searchQuery}"
                         </p>
                       </div>
                     ) : (
@@ -1467,22 +1752,60 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                           <div className="flex items-center justify-between">
                             <div>
                               <span className="font-semibold text-gray-800">
-                                {searchResults.length} résident{searchResults.length > 1 ? 's' : ''} trouvé{searchResults.length > 1 ? 's' : ''}
+                                {searchResults.length} résultat
+                                {searchResults.length > 1 ? "s" : ""} trouvé
+                                {searchResults.length > 1 ? "s" : ""}
                               </span>
                               <span className="text-gray-600 text-sm ml-2">
                                 pour "{searchQuery}"
                               </span>
                             </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm text-gray-600">
+                                {
+                                  searchResults.filter(
+                                    (r) => r.resultType === "resident"
+                                  ).length
+                                }{" "}
+                                résident
+                                {searchResults.filter(
+                                  (r) => r.resultType === "resident"
+                                ).length > 1
+                                  ? "s"
+                                  : ""}
+                              </span>
+                              <span className="text-gray-400">•</span>
+                              <span className="text-sm text-gray-600">
+                                {
+                                  searchResults.filter(
+                                    (r) => r.resultType === "residence"
+                                  ).length
+                                }{" "}
+                                résidence
+                                {searchResults.filter(
+                                    (r) => r.resultType === "residence"
+                                  ).length > 1
+                                  ? "s"
+                                  : ""}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                        
+
                         <div className="space-y-4">
-                          {searchResults.map((resident) => (
-                            <ResidentSearchResult 
-                              key={resident.id} 
-                              resident={resident} 
-                            />
-                          ))}
+                          {searchResults.map((result) =>
+                            result.resultType === "resident" ? (
+                              <ResidentSearchResult
+                                key={`resident-${result.id}`}
+                                result={result}
+                              />
+                            ) : (
+                              <ResidenceSearchResult
+                                key={`residence-${result.id}`}
+                                result={result}
+                              />
+                            )
+                          )}
                         </div>
                       </>
                     )}
@@ -1499,7 +1822,8 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                           Aucune résidence trouvée
                         </h3>
                         <p className="text-black text-sm">
-                          Aucune résidence ne correspond à votre recherche "{searchQuery}"
+                          Aucune résidence ne correspond à votre recherche "
+                          {searchQuery}"
                         </p>
                       </div>
                     ) : (
@@ -1513,7 +1837,8 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                               <div className="flex items-start justify-between">
                                 <div className="flex items-start space-x-3">
                                   <div className="w-12 h-10 rounded-md overflow-hidden flex-shrink-0 bg-gray-200">
-                                    {residence.photos && residence.photos.length > 0 ? (
+                                    {residence.photos &&
+                                    residence.photos.length > 0 ? (
                                       <img
                                         src={residence.photos[0]}
                                         alt={residence.name}
@@ -1528,7 +1853,10 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                                       />
                                     ) : (
                                       <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                                        <Home size={16} className="text-gray-400" />
+                                        <Home
+                                          size={16}
+                                          className="text-gray-400"
+                                        />
                                       </div>
                                     )}
                                   </div>
@@ -1537,7 +1865,10 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                                       {residence.name}
                                     </h3>
                                     <div className="flex items-center space-x-1 mt-1">
-                                      <MapPin size={12} className="text-gray-600" />
+                                      <MapPin
+                                        size={12}
+                                        className="text-gray-600"
+                                      />
                                       <span className="text-xs truncate text-gray-600">
                                         {residence.adresse}
                                       </span>
@@ -1545,7 +1876,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                                   </div>
                                 </div>
 
-                                <div className="flex items-center space-x-2 ml-2">
+                                <div className="flex items-center mt-1.5 space-x-2 ml-2">
                                   <button
                                     onClick={() => handleViewDetails(residence)}
                                     className="p-2 rounded-lg transition-colors flex items-center space-x-1 bg-blue-600 text-white hover:bg-blue-700"
@@ -1578,7 +1909,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
 
             {/* Pagination - UNIQUEMENT EN MODE NORMAL */}
             {!isSearchMode && filteredResidences.length > residencesPerPage && (
-              <div className="border-t border-gray-200/60 bg-white/30 backdrop-blur-sm py-3 px-6 shadow-inner">
+              <div className="border-t border-gray-200/60 bg-white/30 backdrop-blur-sm py-1.5 px-6 shadow-inner mb-2">
                 <div className="flex items-center justify-center">
                   <div className="flex items-center space-x-4">
                     <button
@@ -1640,23 +1971,28 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                   {/* Photo et informations de localisation */}
                   <div className="flex space-x-6 mb-6">
                     <div className="w-1/3">
-                      <div 
+                      <div
                         className={`relative rounded-lg overflow-hidden bg-gray-100 cursor-pointer transition-all duration-300 ease-in-out ${
-                          isPhotoExpanded 
+                          isPhotoExpanded
                             ? isFullScreenPhoto
-                              ? 'fixed inset-0 z-50 m-0 bg-black'
-                              : 'h-96'
-                            : 'h-48'
+                              ? "fixed inset-0 z-50 m-0 bg-black"
+                              : "h-96"
+                            : "h-48"
                         }`}
                         onClick={handleImageClick}
                       >
-                        {selectedResidence.photos && selectedResidence.photos.length > 0 ? (
+                        {selectedResidence.photos &&
+                        selectedResidence.photos.length > 0 ? (
                           <>
                             <img
                               src={selectedResidence.photos[currentPhotoIndex]}
-                              alt={`${selectedResidence.name} - Photo ${currentPhotoIndex + 1}`}
+                              alt={`${selectedResidence.name} - Photo ${
+                                currentPhotoIndex + 1
+                              }`}
                               className={`w-full h-full object-contain ${
-                                isFullScreenPhoto ? 'object-contain' : 'object-cover'
+                                isFullScreenPhoto
+                                  ? "object-contain"
+                                  : "object-cover"
                               }`}
                               onError={(e) => {
                                 console.warn(
@@ -1667,44 +2003,49 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                               }}
                             />
 
-                            {isPhotoExpanded && selectedResidence.photos.length > 1 && (
-                              <>
-                                <button
-                                  onClick={handlePrevPhoto}
-                                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
-                                >
-                                  <ChevronLeft size={20} />
-                                </button>
-                                <button
-                                  onClick={handleNextPhoto}
-                                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
-                                >
-                                  <ChevronRight size={20} />
-                                </button>
+                            {isPhotoExpanded &&
+                              selectedResidence.photos.length > 1 && (
+                                <>
+                                  <button
+                                    onClick={handlePrevPhoto}
+                                    className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                                  >
+                                    <ChevronLeft size={20} />
+                                  </button>
+                                  <button
+                                    onClick={handleNextPhoto}
+                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                                  >
+                                    <ChevronRight size={20} />
+                                  </button>
 
-                                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
-                                  {selectedResidence.photos.map((_, index) => (
-                                    <div
-                                      key={index}
-                                      className={`w-2 h-2 rounded-full ${
-                                        index === currentPhotoIndex
-                                          ? "bg-white"
-                                          : "bg-white/50"
-                                      }`}
-                                    />
-                                  ))}
+                                  <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+                                    {selectedResidence.photos.map(
+                                      (_, index) => (
+                                        <div
+                                          key={index}
+                                          className={`w-2 h-2 rounded-full ${
+                                            index === currentPhotoIndex
+                                              ? "bg-white"
+                                              : "bg-white/50"
+                                          }`}
+                                        />
+                                      )
+                                    )}
+                                  </div>
+                                </>
+                              )}
+
+                            {isPhotoExpanded &&
+                              selectedResidence.photos.length > 1 && (
+                                <div className="absolute bottom-2 right-2 text-xs text-white bg-black/50 px-2 py-1 rounded">
+                                  {currentPhotoIndex + 1} /{" "}
+                                  {selectedResidence.photos.length}
                                 </div>
-                              </>
-                            )}
-                            
-                            {isPhotoExpanded && selectedResidence.photos.length > 1 && (
-                              <div className="absolute bottom-2 right-2 text-xs text-white bg-black/50 px-2 py-1 rounded">
-                                {currentPhotoIndex + 1} / {selectedResidence.photos.length}
-                              </div>
-                            )}
+                              )}
                           </>
                         ) : (
-                          <div 
+                          <div
                             className="w-full h-full flex items-center justify-center bg-gray-200 cursor-pointer"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1712,7 +2053,10 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                             }}
                           >
                             <div className="text-center">
-                              <Camera size={32} className="text-gray-400 mx-auto mb-2" />
+                              <Camera
+                                size={32}
+                                className="text-gray-400 mx-auto mb-2"
+                              />
                               <div className="text-sm text-gray-500">
                                 Cliquer pour ajouter une photo
                               </div>
@@ -1720,82 +2064,62 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                           </div>
                         )}
                       </div>
-                      
-                      {!isPhotoExpanded && selectedResidence.photos && selectedResidence.photos.length > 0 && (
-                        <div className="mt-2 text-xs text-gray-500 text-center">
-                          Cliquez sur la photo pour l'agrandir
-                          {selectedResidence.photos.length > 1 && " et voir le carousel"}
-                        </div>
-                      )}
+
+                      {!isPhotoExpanded &&
+                        selectedResidence.photos &&
+                        selectedResidence.photos.length > 0 && (
+                          <div className="mt-2 text-xs text-gray-500 text-center">
+                            Cliquez sur la photo pour l'agrandir
+                            {selectedResidence.photos.length > 1 &&
+                              " et voir le carousel"}
+                          </div>
+                        )}
                     </div>
 
                     <div className="flex-1">
                       <div className="h-40 flex flex-col justify-center space-y-4">
                         <div className="flex items-center space-x-2">
-                          <div className="text-gray-800 font-medium">{selectedResidence.lot || "-"}</div>
+                          <div className="text-gray-800 font-medium">
+                            Lot: {selectedResidence.lot || "-"}
+                          </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <div className="text-gray-800 font-medium">{selectedResidence.quartier || "-"}</div>
+                          <div className="text-gray-800 font-medium">
+                            Quartier: {selectedResidence.quartier || "-"}
+                          </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <div className="text-gray-800 font-medium">{selectedResidence.ville || "-"}</div>
+                          <div className="text-gray-800 font-medium">
+                            Ville: {selectedResidence.ville || "-"}
+                          </div>
                         </div>
+                        {selectedResidence.proprietaire && (
+                          <div className="flex items-center space-x-2">
+                            <div className="text-gray-800 font-medium">
+                              Propriétaire: {selectedResidence.proprietaire}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Liste des résidents */}
-                  {selectedResidence.residents && selectedResidence.residents.length > 0 ? (
+                  {/* Liste des résidents - FORMAT "lot/nom/prenom/date de naissance/cin/féminin ou masculin" */}
+                  {selectedResidence.residents &&
+                  selectedResidence.residents.length > 0 ? (
                     <div className="flex-1 overflow-hidden flex flex-col mb-4">
                       <div className="bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60 overflow-hidden flex flex-col flex-1">
-                        <div className="flex-1 overflow-y-auto overflow-x-auto">
-                          <table className="w-full min-w-[800px]">
-                            <thead className="bg-gray-50 sticky top-0 z-10">
-                              <tr>
-                                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider min-w-[250px]">
-                                  Nom Complet
-                                </th>
-                                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
-                                  Date de Naissance
-                                </th>
-                                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
-                                  CIN
-                                </th>
-                                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider min-w-[130px]">
-                                  Téléphone
-                                </th>
-                                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
-                                  Sexe
-                                </th>
-                              </tr>
-                            </thead>
+                        {/* En-tête de la liste */}
+                        <ResidentListHeader />
 
-                            <tbody className="divide-y divide-gray-200">
-                              {selectedResidence.residents.map((resident) => (
-                                <tr key={resident.id} className="hover:bg-gray-50">
-                                  <td className="px-6 py-4 text-sm text-gray-800">
-                                    {formatNomMalgache(resident.nomComplet)}
-                                  </td>
-                                  <td className="px-6 py-4 text-sm text-gray-600">
-                                    {resident.dateNaissance
-                                      ? formatDate(resident.dateNaissance)
-                                      : "-"}
-                                  </td>
-                                  <td className="px-6 py-4 text-sm text-gray-600 font-mono">
-                                    {resident.dateNaissance && estMajeur(resident.dateNaissance)
-                                      ? (resident.cin || "-")
-                                      : "Mineur"}
-                                  </td>
-                                  <td className="px-6 py-4 text-sm text-gray-600 font-mono">
-                                    {resident.telephone || "-"}
-                                  </td>
-                                  <td className="px-6 py-4 text-sm text-gray-600">
-                                    {formatGenre(resident.genre)}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                        {/* Liste des résidents */}
+                        <div className="flex-1 overflow-y-auto">
+                          {selectedResidence.residents.map((resident) => (
+                            <ResidentRow
+                              key={resident.id}
+                              resident={resident}
+                            />
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -1803,7 +2127,9 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                     <div className="flex-1 flex items-center justify-center mb-4">
                       <div className="bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60 p-8 text-center">
                         <Users className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                        <div className="text-gray-500 mb-4">Aucun résident enregistré</div>
+                        <div className="text-gray-500 mb-4">
+                          Aucun résident enregistré
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1823,8 +2149,10 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                 <>
                   {/* Formulaire pour ajouter un résident */}
                   <div className="mb-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Nouveau résident</h3>
-                    
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      Nouveau résident
+                    </h3>
+
                     <div className="grid grid-cols-2 gap-4">
                       {/* Nom */}
                       <div>
@@ -1835,18 +2163,20 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                           ref={nomInputRef}
                           type="text"
                           value={newResident.nom}
-                          onChange={(e) => handleNewResidentChange("nom", e.target.value)}
-                          onKeyDown={(e) => handleKeyDown(e, 'prenom')}
+                          onChange={(e) =>
+                            handleNewResidentChange("nom", e.target.value)
+                          }
+                          onKeyDown={(e) => handleKeyDown(e, "prenom")}
                           className={`w-full px-3 py-2 border rounded text-base text-left transition-colors ${
-                            newResident.nom.trim() !== "" 
-                              ? "border-gray-300 bg-white text-gray-800 placeholder-transparent" 
+                            newResident.nom.trim() !== ""
+                              ? "border-gray-300 bg-white text-gray-800 placeholder-transparent"
                               : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                           }`}
                           placeholder="Entrez le nom"
                           maxLength={50}
                         />
                       </div>
-                      
+
                       {/* Prénom */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1856,22 +2186,25 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                           ref={prenomInputRef}
                           type="text"
                           value={newResident.prenom}
-                          onChange={(e) => handleNewResidentChange("prenom", e.target.value)}
-                          onKeyDown={(e) => handleKeyDown(e, 'dateNaissance')}
+                          onChange={(e) =>
+                            handleNewResidentChange("prenom", e.target.value)
+                          }
+                          onKeyDown={(e) => handleKeyDown(e, "dateNaissance")}
                           className={`w-full px-3 py-2 border rounded text-base text-left transition-colors ${
-                            newResident.prenom.trim() !== "" 
-                              ? "border-gray-300 bg-white text-gray-800 placeholder-transparent" 
+                            newResident.prenom.trim() !== ""
+                              ? "border-gray-300 bg-white text-gray-800 placeholder-transparent"
                               : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                           }`}
                           placeholder="Entrez le prénom"
                           maxLength={50}
                         />
                       </div>
-                      
+
                       {/* Date de naissance */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Date de naissance <span className="text-red-500">*</span>
+                          Date de naissance{" "}
+                          <span className="text-red-500">*</span>
                         </label>
                         <input
                           ref={dateNaissanceInputRef}
@@ -1882,18 +2215,18 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                           onKeyDown={handleDateKeyDown}
                           onBlur={handleDateBlur}
                           className={`w-full px-3 py-2 border rounded text-base font-mono text-left tracking-wider transition-colors ${
-                            dateError 
-                              ? "border-red-500 focus:border-red-500 focus:ring-red-500" 
-                              : dateInput.trim() !== "" 
-                                ? "border-gray-300 bg-white text-gray-800 placeholder-transparent" 
-                                : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                            dateError
+                              ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                              : dateInput.trim() !== ""
+                              ? "border-gray-300 bg-white text-gray-800 placeholder-transparent"
+                              : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                           }`}
                           placeholder="jj/mm/aaaa"
                           maxLength={10}
-                          style={{ letterSpacing: '1px' }}
+                          style={{ letterSpacing: "1px" }}
                         />
                       </div>
-                      
+
                       {/* CIN - CONDITIONNEL */}
                       {estMajeurFromInput() && (
                         <div>
@@ -1904,11 +2237,13 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                             ref={cinInputRef}
                             type="text"
                             value={newResident.cin}
-                            onChange={(e) => handleNewResidentChange("cin", e.target.value)}
-                            onKeyDown={(e) => handleKeyDown(e, 'telephone')}
+                            onChange={(e) =>
+                              handleNewResidentChange("cin", e.target.value)
+                            }
+                            onKeyDown={(e) => handleKeyDown(e, "telephone")}
                             className={`w-full px-3 py-2 border rounded text-base font-mono text-left transition-colors ${
-                              newResident.cin.trim() !== "" 
-                                ? "border-gray-300 bg-white text-gray-800 placeholder-transparent" 
+                              newResident.cin.trim() !== ""
+                                ? "border-gray-300 bg-white text-gray-800 placeholder-transparent"
                                 : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                             }`}
                             placeholder="Entrez le CIN"
@@ -1916,7 +2251,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                           />
                         </div>
                       )}
-                      
+
                       {/* Téléphone */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1926,18 +2261,20 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                           ref={telephoneInputRef}
                           type="text"
                           value={newResident.telephone}
-                          onChange={(e) => handleNewResidentChange("telephone", e.target.value)}
-                          onKeyDown={(e) => handleKeyDown(e, 'sexe')}
+                          onChange={(e) =>
+                            handleNewResidentChange("telephone", e.target.value)
+                          }
+                          onKeyDown={(e) => handleKeyDown(e, "sexe")}
                           className={`w-full px-3 py-2 border rounded text-base font-mono text-left transition-colors ${
-                            newResident.telephone.trim() !== "" 
-                              ? "border-gray-300 bg-white text-gray-800 placeholder-transparent" 
+                            newResident.telephone.trim() !== ""
+                              ? "border-gray-300 bg-white text-gray-800 placeholder-transparent"
                               : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                           }`}
                           placeholder="Entrez le téléphone"
                           maxLength={10}
                         />
                       </div>
-                      
+
                       {/* Sexe */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1946,11 +2283,13 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                         <select
                           ref={sexeSelectRef}
                           value={newResident.sexe}
-                          onChange={(e) => handleNewResidentChange("sexe", e.target.value)}
-                          onKeyDown={(e) => handleKeyDown(e, 'save')}
+                          onChange={(e) =>
+                            handleNewResidentChange("sexe", e.target.value)
+                          }
+                          onKeyDown={(e) => handleKeyDown(e, "save")}
                           className={`w-full px-3 py-2 border rounded text-base text-left transition-colors ${
-                            newResident.sexe !== "homme" 
-                              ? "border-gray-300 bg-white text-gray-800" 
+                            newResident.sexe !== "homme"
+                              ? "border-gray-300 bg-white text-gray-800"
                               : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                           }`}
                         >
@@ -1971,7 +2310,7 @@ export default function ResidencePage({ onBack, searchQuery, onSearchChange, onV
                     </button>
                     <button
                       onClick={handleSaveEdit}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
+                      onKeyDown={(e) => e.key === "Enter" && handleSaveEdit()}
                       className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                     >
                       Sauvegarder
