@@ -35,6 +35,9 @@ import UserPage from "./UserPage";
 import ResidencePage from "./ResidencePage";
 import PendingResidences from "./PendingResidences";
 
+// Import i18n
+import { useTranslation } from 'react-i18next';
+
 // Polygon définissant la zone géographique d'Andaboly - AGRANDI
 const ANDABOLY_POLYGON = [
   { lat: -23.3440, lng: 43.6630 },
@@ -58,17 +61,17 @@ const isPointInPolygon = (point, polygon) => {
   // Orientation correcte: x = longitude, y = latitude
   // Vérifications de sécurité des paramètres
   if (!point || !polygon || !Array.isArray(polygon) || polygon.length === 0) return false;
-  
+
   const x = Number(point.lng), y = Number(point.lat);
   if (Number.isNaN(x) || Number.isNaN(y)) return false;
-  
+
   let inside = false;
   // Algorithme du ray casting pour déterminer si un point est dans un polygon
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const xi = Number(polygon[i].lng), yi = Number(polygon[i].lat);
     const xj = Number(polygon[j].lng), yj = Number(polygon[j].lat);
     if ([xi, yi, xj, yj].some(v => Number.isNaN(v))) continue;
-    
+
     const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
     if (intersect) inside = !inside;
   }
@@ -85,13 +88,13 @@ const formatNotificationDate = (dateString) => {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  
+
   const notificationDay = new Date(
     notificationDate.getFullYear(),
     notificationDate.getMonth(),
     notificationDate.getDate()
   );
-  
+
   // Si la notification est d'aujourd'hui, affiche uniquement l'heure
   if (notificationDay.getTime() === today.getTime()) {
     const hours = notificationDate.getHours().toString().padStart(2, '0');
@@ -120,16 +123,16 @@ const handleApiResponse = async (response) => {
     window.location.href = '/login';
     return null;
   }
-  
+
   if (response.status === 404) {
     console.warn('Route API non trouvée');
     return null;
   }
-  
+
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
   }
-  
+
   return await response.json();
 };
 
@@ -137,48 +140,51 @@ const handleApiResponse = async (response) => {
 export default function Interface({ user }) {
   // Hook de navigation React Router
   const navigate = useNavigate();
-  
+
+  // Hook de traduction
+  const { t, i18n } = useTranslation();
+
   // État pour le menu dropdown
   const [openDropdown, setOpenDropdown] = useState(false);
-  
+
   // État pour la requête de recherche
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // NOUVEAUX ÉTATS POUR LA RECHERCHE
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  
+
   // États pour gérer l'affichage des différentes pages
   const [showStatistique, setShowStatistique] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  
+
   // État pour l'utilisateur courant
   const [currentUser, setCurrentUser] = useState(user);
-  
+
   // États pour contrôler l'affichage des différentes sections
   const [showResidence, setShowResidence] = useState(false);
   const [showUserPage, setShowUserPage] = useState(false);
   const [showPendingResidences, setShowPendingResidences] = useState(false);
-  
+
   // États pour la gestion de l'ajout d'adresse
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState("");
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [isSelectingLocation, setIsSelectingLocation] = useState(false);
-  
+
   // États pour la gestion de la carte Google Maps
   const [map, setMap] = useState(null);
   const [mapType, setMapType] = useState("satellite");
   const [mapLoaded, setMapLoaded] = useState(false);
-  
+
   // État pour les détails de l'adresse
   const [addressDetails, setAddressDetails] = useState({
     lot: "",
     quartier: "",
     ville: ""
   });
-  
+
   // État pour indiquer si une adresse a été sélectionnée
   const [hasSelectedAddress, setHasSelectedAddress] = useState(false);
 
@@ -236,10 +242,16 @@ export default function Interface({ user }) {
   const [fokontanyName, setFokontanyName] = useState(null);
   const [residences, setResidences] = useState([]);
 
+  // NOUVEAUX ÉTATS POUR LE MODAL MULTI-ÉTAPES D'AJOUT DE RÉSIDENCE
+  const [addStep, setAddStep] = useState(1); // 1 = lot, 2 = personnes optionnelles
+  const [newResidents, setNewResidents] = useState([]); // liste personnes temporaires
+  const [savingResidence, setSavingResidence] = useState(false);
+  const [modalError, setModalError] = useState('');
+
   // Fonction pour créer une icône SVG personnalisée pour les marqueurs
   const createCustomMarkerIcon = (color) => {
     let svg = '';
-    
+
     if (color === "yellow") {
       svg = `
         <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -264,7 +276,7 @@ export default function Interface({ user }) {
         </svg>
       `;
     }
-    
+
     const url = 'data:image/svg+xml;base64,' + btoa(svg);
     if (typeof window !== 'undefined' && window.google && window.google.maps && typeof window.google.maps.Size === 'function') {
       return { url, scaledSize: new window.google.maps.Size(color === "yellow" ? 40 : 32, color === "yellow" ? 40 : 32) };
@@ -282,24 +294,24 @@ export default function Interface({ user }) {
         console.error('[NOTIF] No token found');
         return;
       }
-      
+
       const response = await fetch(`${API_BASE}/api/notifications`, {
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
+
       console.log('[NOTIF] fetchAllNotifications response status:', response.status);
-      
+
       const data = await handleApiResponse(response);
       if (data) {
         console.log('[NOTIF] Total notifications received:', data.length);
-        
+
         // Filtrer les notifications non lues
         const unreadNotifications = data.filter(notif => !notif.is_read);
         console.log('[NOTIF] Unread notifications:', unreadNotifications.length);
-        
+
         setNotifications(unreadNotifications); // Stocke les non lues pour l'affichage
         setTotalNotificationsCount(unreadNotifications.length); // Compteur basé sur les non lues
       }
@@ -313,31 +325,31 @@ export default function Interface({ user }) {
     try {
       console.log('[NOTIF] markAsRead for notification:', notificationId);
       const token = localStorage.getItem('token');
-      
+
       // Appel API pour marquer comme lue
       const response = await fetch(`${API_BASE}/api/notifications/${notificationId}/read`, {
         method: 'PATCH',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (response.ok) {
         console.log('[NOTIF] Notification marked as read:', notificationId);
-        
+
         // SUPPRIME IMMÉDIATEMENT la notification de la liste locale
-        setNotifications(prevNotifications => 
+        setNotifications(prevNotifications =>
           prevNotifications.filter(notification => notification.id !== notificationId)
         );
-        
+
         // Met à jour le compteur total
         setTotalNotificationsCount(prev => Math.max(0, prev - 1));
-        
+
       } else if (response.status === 404) {
         console.warn('[NOTIF] Route not found, notification might be deleted already');
         // Supprime quand même de la liste locale
-        setNotifications(prevNotifications => 
+        setNotifications(prevNotifications =>
           prevNotifications.filter(notification => notification.id !== notificationId)
         );
         setTotalNotificationsCount(prev => Math.max(0, prev - 1));
@@ -347,7 +359,7 @@ export default function Interface({ user }) {
     } catch (error) {
       console.error('[NOTIF] Error marking as read:', error);
       // En cas d'erreur, supprime quand même de la liste locale pour l'UI
-      setNotifications(prevNotifications => 
+      setNotifications(prevNotifications =>
         prevNotifications.filter(notification => notification.id !== notificationId)
       );
       setTotalNotificationsCount(prev => Math.max(0, prev - 1));
@@ -360,22 +372,22 @@ export default function Interface({ user }) {
       console.log('[NOTIF] checkAndClearApprovedResidenceNotifications: starting...');
       const token = localStorage.getItem('token');
       if (!token) return;
-      
+
       // Récupère les résidences approuvées
       const residencesResponse = await fetch(`${API_BASE}/api/residences?status=approved`, {
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (residencesResponse.ok) {
         const approvedResidences = await residencesResponse.json();
         console.log('[NOTIF] Approved residences count:', approvedResidences.length);
-        
+
         if (currentUser?.role === 'secretaire' && approvedResidences.length > 0) {
           console.log('[NOTIF] User is secretaire, refreshing notifications');
-          
+
           // Rafraîchir les notifications
           await fetchAllNotifications();
         }
@@ -392,41 +404,41 @@ export default function Interface({ user }) {
     console.log('Métadonnées:', notification.metadata);
     console.log('Message:', notification.message);
     console.log('Type:', notification.type);
-    
+
     // Marque comme lue IMMÉDIATEMENT
     await markAsRead(notification.id);
-    
+
     // Ferme le panneau de notifications
     setShowNotifications(false);
-    
+
     // SI L'UTILISATEUR EST SECRÉTAIRE, AFFICHE LES RÉSIDENCES EN ATTENTE
     if (currentUser?.role === 'secretaire') {
       console.log('[NOTIF] Ouverture page PendingResidences pour secrétaire');
-      
+
       // Ouvrir la page PendingResidences
       setShowPendingResidences(true);
       setShowResidence(false);
       setShowStatistique(false);
       setShowUserPage(false);
       setUserPageState({ showPasswordModal: false });
-      
+
       // Extraire l'ID de résidence du message ou metadata
       let residenceId = null;
-      
+
       // Essayer d'extraire l'ID de différentes manières
       if (notification.related_entity_id) {
         residenceId = notification.related_entity_id;
       } else if (notification.message) {
         // Essayer d'extraire l'ID du message
-        const idMatch = notification.message.match(/ID[:\s]*(\d+)/i) || 
-                       notification.message.match(/residence[:\s]*(\d+)/i);
+        const idMatch = notification.message.match(/ID[:\s]*(\d+)/i) ||
+          notification.message.match(/residence[:\s]*(\d+)/i);
         if (idMatch) {
           residenceId = idMatch[1];
         }
       }
-      
+
       console.log('[NOTIF] Extracted residenceId:', residenceId);
-      
+
       // Stocker l'ID de la résidence pour la sélection automatique
       if (residenceId) {
         setResidenceToSelect(residenceId);
@@ -443,21 +455,21 @@ export default function Interface({ user }) {
         url += `?fokontany=${encodeURIComponent(fokontanyName)}`;
         console.log('[RES] Fetching with fokontany:', fokontanyName);
       }
-      
+
       const resp = await fetch(url);
       console.log('[RES] Response status:', resp.status);
-      
+
       if (!resp.ok) {
         console.error('[RES] Failed to fetch residences:', resp.status);
         return;
       }
-      
+
       const list = await resp.json();
       console.log('[RES] Residences received:', list.length);
-      
+
       setResidences(Array.isArray(list) ? list : []);
-    } catch (e) { 
-      console.error('[RES] fetchResidences error:', e); 
+    } catch (e) {
+      console.error('[RES] fetchResidences error:', e);
     }
   };
 
@@ -477,7 +489,7 @@ export default function Interface({ user }) {
     }
 
     setSearchLoading(true);
-    
+
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -485,20 +497,20 @@ export default function Interface({ user }) {
         setSearchResults([]);
         return;
       }
-      
+
       // Effectuer la recherche via l'API
       const response = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}`, {
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setSearchResults(data);
         setShowSearchResults(true);
-        
+
         // Si on est sur la page Résidence, passer les résultats
         if (showResidence) {
           console.log("Recherche dans les résidences:", data);
@@ -523,22 +535,22 @@ export default function Interface({ user }) {
   // Gestionnaire de soumission de recherche - MODIFIÉ POUR DÉSACTIVER LES SUGGESTIONS SUR RÉSIDENCE
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    
+
     if (searchQuery.trim() === '') {
       setShowSearchResults(false);
       return;
     }
-    
+
     // DÉSACTIVER LES SUGGESTIONS QUAND LA PAGE RÉSIDENCE EST OUVERTE
     if (showResidence) {
       setShowSearchResults(false);
       console.log("Recherche dans les résidences:", searchQuery);
       return;
     }
-    
+
     // Effectuer la recherche
     performSearch(searchQuery);
-    
+
     if (showResidence) {
       console.log("Recherche dans les résidences:", searchQuery);
     } else if (showStatistique || showUserPage || showPendingResidences) {
@@ -551,11 +563,11 @@ export default function Interface({ user }) {
   // CORRECTION: Gestionnaire de clic sur un résultat de recherche amélioré
   const handleSearchResultClick = (result) => {
     console.log('=== CLIC SUR RÉSULTAT DE RECHERCHE ===', result);
-    
+
     // Fermer les résultats de recherche
     setShowSearchResults(false);
     setSearchQuery("");
-    
+
     // Gérer différents types de résultats
     if (result.type === 'residence') {
       handleResidenceSearchResult(result);
@@ -570,38 +582,38 @@ export default function Interface({ user }) {
     if (result.lat && result.lng) {
       const lat = parseFloat(result.lat);
       const lng = parseFloat(result.lng);
-      
+
       // Sauvegarder l'état actuel de la carte si disponible
       if (map) {
         setPreviousZoom(map.getZoom());
         setPreviousCenter(map.getCenter());
       }
-      
+
       // Centrer et zoomer sur la résidence
       if (map) {
         map.panTo({ lat, lng });
         map.setZoom(18);
       }
-      
+
       // Mettre à jour l'ID de la résidence cliquée pour afficher l'info-bulle
       setClickedResidenceId(result.id);
-      
+
       // Ajouter à la liste des résidences si nécessaire
       if (!residences.some(r => r.id === result.id)) {
         setResidences(prev => [result, ...prev]);
       }
-      
+
       // Fermer toutes les pages pour voir la carte
       setShowResidence(false);
       setShowStatistique(false);
       setShowUserPage(false);
       setShowPendingResidences(false);
       setUserPageState({ showPasswordModal: false });
-      
+
     } else {
       alert("Cette résidence n'a pas de coordonnées géographiques enregistrées");
     }
-    
+
     // Si on est sur la page Résidence, fermer la page
     if (showResidence) {
       console.log("Résidence sélectionnée:", result);
@@ -612,12 +624,12 @@ export default function Interface({ user }) {
   // Nouvelle fonction pour gérer les résultats de type personne
   const handlePersonSearchResult = (result) => {
     console.log("Personne sélectionnée:", result);
-    
+
     // Si la personne a des résidences avec coordonnées, prendre la première
     if (result.residences && result.residences.length > 0) {
       // Chercher la première résidence avec des coordonnées
       const residenceWithCoords = result.residences.find(r => r.lat && r.lng);
-      
+
       if (residenceWithCoords) {
         handleResidenceSearchResult(residenceWithCoords);
       } else {
@@ -632,7 +644,7 @@ export default function Interface({ user }) {
   const SearchResultsModal = () => {
     // NE PAS AFFICHER LES SUGGESTIONS QUAND LA PAGE RÉSIDENCE EST OUVERTE
     if (showResidence || !showSearchResults || searchResults.length === 0) return null;
-    
+
     return (
       <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-40 w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
         <div className="p-4 border-b border-gray-200">
@@ -649,7 +661,7 @@ export default function Interface({ user }) {
             {searchResults.length} résultat{searchResults.length !== 1 ? 's' : ''} trouvé{searchResults.length !== 1 ? 's' : ''}
           </p>
         </div>
-        
+
         <div className="p-2">
           {searchResults.map((result, index) => (
             <div
@@ -683,10 +695,9 @@ export default function Interface({ user }) {
                       <span className="font-medium">Propriétaire(s):</span> {result.proprietaires.map(p => p.nom).join(', ')}
                     </p>
                   )}
-                  {/* MODIFICATION: Supprimé le bouton "Cliquez pour voir sur la carte" car maintenant le clic sur tout le résultat le fait */}
                 </div>
               )}
-              
+
               {result.type === 'person' && (
                 <div>
                   <div className="flex items-center mb-2">
@@ -711,7 +722,6 @@ export default function Interface({ user }) {
                           +{result.residences.length - 2} autre(s) adresse(s)
                         </p>
                       )}
-                      {/* MODIFICATION: Supprimé le texte "Cliquez pour voir sur la carte" car maintenant le clic sur tout le résultat le fait */}
                     </div>
                   )}
                 </div>
@@ -726,7 +736,7 @@ export default function Interface({ user }) {
   // Effet pour charger les données au montage du composant
   useEffect(() => {
     console.log('[APP] Component mounted, loading data...');
-    
+
     // Charge les notifications et résidences
     fetchAllNotifications();
     fetchResidences();
@@ -780,7 +790,7 @@ export default function Interface({ user }) {
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, showResidence]); // Ajouter showResidence aux dépendances
+  }, [searchQuery, showResidence]);
 
   // Gestionnaires d'événements pour le polygon
   const handlePolygonMouseOver = (e) => {
@@ -819,9 +829,9 @@ export default function Interface({ user }) {
       // Écouteur pour limiter le zoom maximum
       if (window.google && window.google.maps && window.google.maps.event) {
         const listener = window.google.maps.event.addListener(map, 'bounds_changed', function () {
-          try { 
+          try {
             // Limite le zoom maximum à 18
-            if (map.getZoom() > 18) map.setZoom(18); 
+            if (map.getZoom() > 18) map.setZoom(18);
           } catch (e) { }
           try { window.google.maps.event.removeListener(listener); } catch (e) { }
         });
@@ -849,32 +859,32 @@ export default function Interface({ user }) {
     if (!polygon || polygon.length === 0) {
       return { center: ANDABOLY_CENTER, zoom: 15 };
     }
-    
+
     // Calcule le centre du polygon
     const center = {
       lat: polygon.reduce((sum, point) => sum + point.lat, 0) / polygon.length,
       lng: polygon.reduce((sum, point) => sum + point.lng, 0) / polygon.length
     };
-    
+
     const bounds = calculatePolygonBounds(polygon);
     if (bounds) {
       const ne = bounds.getNorthEast();
       const sw = bounds.getSouthWest();
       const latDiff = Math.abs(ne.lat() - sw.lat());
       const lngDiff = Math.abs(ne.lng() - sw.lng());
-      
+
       // Ajuste le zoom selon la taille du polygon
       let zoom = 18;
       const maxDiff = Math.max(latDiff, lngDiff);
-      
+
       if (maxDiff > 0.05) zoom = 16;
       if (maxDiff > 0.1) zoom = 15;
       if (maxDiff > 0.2) zoom = 14;
       if (maxDiff > 0.3) zoom = 13;
-      
+
       return { center, zoom };
     }
-    
+
     return { center, zoom: 17 };
   };
 
@@ -902,6 +912,12 @@ export default function Interface({ user }) {
         const poly = normalizeCoordinates(coordsRaw);
         console.log('[FOK] loadMyFokontany: parsed polygon length', poly ? poly.length : 0);
         setFokontanyPolygon(poly);
+
+        // Récupérer le nom du fokontany
+        if (f.nom) {
+          setFokontanyName(f.nom);
+        }
+
         if (f.centre_lat && f.centre_lng) {
           setFokontanyCenter({ lat: parseFloat(f.centre_lat), lng: parseFloat(f.centre_lng) });
           console.log('[FOK] loadMyFokontany: using centre_lat/centre_lng', f.centre_lat, f.centre_lng);
@@ -942,20 +958,17 @@ export default function Interface({ user }) {
     localStorage.setItem('interfaceState', JSON.stringify(state));
   }, [showResidence, showStatistique, showUserPage, showPendingResidences]);
 
-  // MODIFICATION: Supprimer le gestionnaire handleClickOutside pour le modal d'ajout d'adresse
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setOpenDropdown(false);
       }
-      
-      // MODIFICATION: NE PAS fermer les résultats de recherche quand on clique en dehors
-      // Seulement si on clique spécifiquement sur le bouton X dans le modal
+
       if (!searchRef.current?.contains(event.target) && showSearchResults) {
         setShowSearchResults(false);
       }
     };
-    
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showSearchResults]);
@@ -980,21 +993,18 @@ export default function Interface({ user }) {
     }
   }, [isAnyPageOpen, isSelectingLocation]);
 
-  // MODIFICATION: Effet pour fermer les notifications quand une page s'ouvre
   useEffect(() => {
     if (isAnyPageOpen && showNotifications) {
       setShowNotifications(false);
     }
   }, [isAnyPageOpen]);
 
-  // MODIFICATION: Effet pour fermer les résultats de recherche quand une page s'ouvre
   useEffect(() => {
     if (isAnyPageOpen && showSearchResults) {
       setShowSearchResults(false);
     }
   }, [isAnyPageOpen]);
 
-  // NOUVELLE MODIFICATION: Effet pour fermer le modal de détail des résidences quand une page s'ouvre
   useEffect(() => {
     if (isAnyPageOpen && clickedResidenceId) {
       setClickedResidenceId(null);
@@ -1002,7 +1012,7 @@ export default function Interface({ user }) {
     }
   }, [isAnyPageOpen]);
 
-  // Fonction pour obtenir le placeholder du champ de recherche - MODIFIÉ POUR INDIQUER LE CHANGEMENT
+  // Fonction pour obtenir le placeholder du champ de recherche
   const getSearchPlaceholder = () => {
     if (showResidence) {
       return "Rechercher dans les résidences... (saisissez et appuyez sur Entrée)";
@@ -1039,10 +1049,8 @@ export default function Interface({ user }) {
       setShowUserPage(false);
       setShowPendingResidences(false);
       setUserPageState({ showPasswordModal: false });
-      // Réinitialiser la sélection automatique
       setResidenceToSelect(null);
     }
-    // Fermer les résultats de recherche
     setShowSearchResults(false);
   };
 
@@ -1058,18 +1066,14 @@ export default function Interface({ user }) {
       setShowResidence(false);
       setShowStatistique(false);
       setShowPendingResidences(false);
-      // MODIFICATION: Ferme les notifications quand on ouvre la page utilisateur
       setShowNotifications(false);
-      // MODIFICATION: Ferme les résultats de recherche
       setShowSearchResults(false);
-      // NOUVELLE MODIFICATION: Ferme le modal de détail des résidences
       setClickedResidenceId(null);
-      // Réinitialiser la sélection automatique
       setResidenceToSelect(null);
     }
   };
 
-  // Gestionnaire de clic sur Résidence - MODIFIÉ POUR FERMER LES SUGGESTIONS
+  // Gestionnaire de clic sur Résidence
   const handleResidenceClick = () => {
     if (isModalOpen) return;
     const newShowResidence = !showResidence;
@@ -1079,14 +1083,10 @@ export default function Interface({ user }) {
       setShowUserPage(false);
       setShowPendingResidences(false);
       setUserPageState({ showPasswordModal: false });
-      // MODIFICATION: Ferme les notifications quand on ouvre la page résidence
       setShowNotifications(false);
-      // MODIFICATION: Ferme les résultats de recherche
       setShowSearchResults(false);
       setSearchResults([]);
-      // NOUVELLE MODIFICATION: Ferme le modal de détail des résidences
       setClickedResidenceId(null);
-      // Réinitialiser la sélection automatique
       setResidenceToSelect(null);
     }
     if (isSelectingLocation || showAddAddress) {
@@ -1114,13 +1114,9 @@ export default function Interface({ user }) {
       setShowUserPage(false);
       setShowPendingResidences(false);
       setUserPageState({ showPasswordModal: false });
-      // MODIFICATION: Ferme les notifications quand on ouvre la page statistique
       setShowNotifications(false);
-      // MODIFICATION: Ferme les résultats de recherche
       setShowSearchResults(false);
-      // NOUVELLE MODIFICATION: Ferme le modal de détail des résidences
       setClickedResidenceId(null);
-      // Réinitialiser la sélection automatique
       setResidenceToSelect(null);
     }
     if (isSelectingLocation || showAddAddress) {
@@ -1143,24 +1139,19 @@ export default function Interface({ user }) {
     if (isModalOpen) return;
     const newShowPending = !showPendingResidences;
     setShowPendingResidences(newShowPending);
-    
+
     if (newShowPending) {
       setShowResidence(false);
       setShowStatistique(false);
       setShowUserPage(false);
       setUserPageState({ showPasswordModal: false });
-      // MODIFICATION: Ferme les notifications quand on ouvre la page demandes
       setShowNotifications(false);
-      // MODIFICATION: Ferme les résultats de recherche
       setShowSearchResults(false);
-      // NOUVELLE MODIFICATION: Ferme le modal de détail des résidences
       setClickedResidenceId(null);
-      // Ne pas réinitialiser residenceToSelect ici, on le garde pour la sélection automatique
     } else {
-      // Quand on ferme la page, réinitialiser la sélection
       setResidenceToSelect(null);
     }
-    
+
     if (isSelectingLocation || showAddAddress) {
       setIsSelectingLocation(false);
       setShowAddAddress(false);
@@ -1176,65 +1167,60 @@ export default function Interface({ user }) {
     }
   };
 
-  // MODIFICATION: Mettre à jour la fonction latLngToPixel pour être plus robuste
   const latLngToPixel = (latLng) => {
     if (!map || !latLng) return { x: 0, y: 0 };
-    
+
     try {
       const projection = map.getProjection();
       const point = projection.fromLatLngToPoint(
         new window.google.maps.LatLng(latLng.lat, latLng.lng)
       );
-      
+
       const bounds = map.getBounds();
       if (!bounds) {
-        // Si pas de bounds, utiliser la vue actuelle
         const center = map.getCenter();
         const zoom = map.getZoom();
-        
-        // Approximatif: calcul basé sur le zoom
+
         const scale = Math.pow(2, zoom);
         const worldWidth = 256 * scale;
         const worldHeight = 256 * scale;
-        
+
         const mapContainer = document.querySelector('[data-map-container]');
         const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
-        
-        // Conversion approximative
+
         const x = (point.x * scale * 256) % worldWidth;
         const y = (point.y * scale * 256) % worldHeight;
-        
+
         const pixelX = (x / worldWidth) * mapRect.width;
         const pixelY = (y / worldHeight) * mapRect.height;
-        
+
         return { x: pixelX, y: pixelY };
       }
-      
+
       const ne = bounds.getNorthEast();
       const sw = bounds.getSouthWest();
       const topRight = projection.fromLatLngToPoint(ne);
       const bottomLeft = projection.fromLatLngToPoint(sw);
-      
+
       const mapContainer = document.querySelector('[data-map-container]');
       const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-      
+
       const worldWidth = topRight.x - bottomLeft.x;
       const worldHeight = bottomLeft.y - topRight.y;
-      
+
       const x = (point.x - bottomLeft.x) / worldWidth * mapRect.width;
       const y = (point.y - topRight.y) / worldHeight * mapRect.height;
-      
+
       return { x: x + mapRect.left, y: y + mapRect.top };
     } catch (error) {
       console.error('Erreur conversion coordonnées:', error);
-      
-      // Fallback: position au centre de l'écran
+
       const mapContainer = document.querySelector('[data-map-container]');
       const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-      
-      return { 
-        x: mapRect.left + mapRect.width / 2, 
-        y: mapRect.top + mapRect.height / 2 
+
+      return {
+        x: mapRect.left + mapRect.width / 2,
+        y: mapRect.top + mapRect.height / 2
       };
     }
   };
@@ -1246,15 +1232,11 @@ export default function Interface({ user }) {
     setIsModalOpen(true);
     setSelectedMarkerColor("yellow");
 
-    // Sauvegarde l'état actuel de la carte MAIS NE PAS ZOOMER
     if (map) {
       setPreviousZoom(map.getZoom());
       setPreviousCenter(map.getCenter());
-      // MODIFICATION: On ne change pas le zoom ici
-      // On garde simplement le zoom actuel
     }
 
-    // Active le mode sélection de localisation
     setIsSelectingLocation(true);
     setSelectedLocation(null);
     setShowAddAddress(false);
@@ -1267,22 +1249,16 @@ export default function Interface({ user }) {
 
     setMessageStatus("normal");
 
-    // MODIFICATION: Ferme les notifications quand on ouvre l'ajout d'adresse
     setShowNotifications(false);
-    // MODIFICATION: Ferme les résultats de recherche
     setShowSearchResults(false);
-    // NOUVELLE MODIFICATION: Ferme le modal de détail des résidences
     setClickedResidenceId(null);
-
-    // MODIFICATION: On ne centre plus sur le polygon
-    // On laisse la carte dans son état actuel
   };
 
   // Fonction pour obtenir l'adresse à partir de coordonnées (géocodage)
   const getAddressFromCoordinates = async (lat, lng) => {
     try {
       const geocoder = new window.google.maps.Geocoder();
-      
+
       const result = await new Promise((resolve, reject) => {
         geocoder.geocode({ location: { lat, lng } }, (results, status) => {
           if (status === 'OK' && results[0]) {
@@ -1297,10 +1273,9 @@ export default function Interface({ user }) {
       let ville = "";
       let fullAddress = result.formatted_address;
 
-      // Parse les composants de l'adresse
       result.address_components.forEach(component => {
         const types = component.types;
-        
+
         if (types.includes('sublocality') || types.includes('neighborhood')) {
           quartier = component.long_name;
         } else if (types.includes('locality')) {
@@ -1322,7 +1297,7 @@ export default function Interface({ user }) {
       };
 
       console.log('[GEOCODING] Adresse trouvée:', addressInfo);
-      
+
       setSelectedAddress(fullAddress);
       setAddressDetails({
         lot: "",
@@ -1332,8 +1307,7 @@ export default function Interface({ user }) {
 
     } catch (error) {
       console.error('[GEOCODING] Erreur:', error);
-      
-      // Adresse de secours si le géocodage échoue
+
       const fallbackAddress = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`;
       setSelectedAddress(fallbackAddress);
       setAddressDetails({
@@ -1344,37 +1318,29 @@ export default function Interface({ user }) {
     }
   };
 
-  // NOUVELLE FONCTION: Pour repositionner le modal pour un emplacement donné
   const repositionModalForLocation = (location) => {
     setTimeout(() => {
       if (map) {
         const screenPos = latLngToPixel(location);
         const modalWidth = 448;
         const modalHeight = 400;
-        
+
         const mapContainer = document.querySelector('[data-map-container]');
         const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-        
-        // Position à droite de l'adresse
+
         let modalX = screenPos.x + 20;
         let modalY = screenPos.y - (modalHeight / 2);
-        
-        // Vérifier si le modal dépasse de l'écran à droite
+
         if (modalX + modalWidth > mapRect.left + mapRect.width - 20) {
-          // Le modal dépasse à droite, on va le positionner à gauche de l'adresse
           modalX = screenPos.x - modalWidth - 20;
-          
-          // Si même à gauche ça dépasse (trop à gauche), on déplace la carte
+
           if (modalX < mapRect.left + 20) {
-            // Calculer le décalage nécessaire pour que le modal soit visible
-            const neededSpace = modalWidth + 40; // Modal + marge
+            const neededSpace = modalWidth + 40;
             const currentSpace = mapRect.width - (screenPos.x - mapRect.left);
-            
+
             if (currentSpace < neededSpace) {
-              // Pas assez d'espace à droite, on déplace la carte
               const offsetPixels = neededSpace - currentSpace;
-              
-              // Convertir le décalage en pixels en décalage géographique
+
               try {
                 const projection = map.getProjection();
                 const bounds = map.getBounds();
@@ -1383,37 +1349,33 @@ export default function Interface({ user }) {
                   const sw = bounds.getSouthWest();
                   const topRight = projection.fromLatLngToPoint(ne);
                   const bottomLeft = projection.fromLatLngToPoint(sw);
-                  
+
                   const worldWidth = topRight.x - bottomLeft.x;
                   const pixelToLngRatio = worldWidth / mapRect.width;
                   const lngOffset = offsetPixels * pixelToLngRatio;
-                  
-                  // Déplacer la carte vers la droite
+
                   const currentCenter = map.getCenter();
                   const newLng = currentCenter.lng() + lngOffset;
-                  
-                  // Pan la carte vers la nouvelle position
+
                   map.panTo({ lat: currentCenter.lat(), lng: newLng });
-                  
-                  // Attendre que la carte se soit déplacée avant de repositionner le modal
+
                   setTimeout(() => {
                     const newScreenPos = latLngToPixel(location);
                     modalX = newScreenPos.x + 20;
                     modalY = newScreenPos.y - (modalHeight / 2);
-                    
-                    // Ajustements finaux
+
                     if (modalY < mapRect.top + 20) {
                       modalY = mapRect.top + 20;
                     }
                     if (modalY + modalHeight > mapRect.top + mapRect.height - 20) {
                       modalY = mapRect.top + mapRect.height - modalHeight - 20;
                     }
-                    
+
                     setModalPosition({ x: modalX, y: modalY });
-                    
+
                     setShowAddAddress(true);
                   }, 300);
-                  
+
                   return;
                 }
               } catch (error) {
@@ -1422,15 +1384,14 @@ export default function Interface({ user }) {
             }
           }
         }
-        
-        // Ajustements verticaux
+
         if (modalY < mapRect.top + 20) {
           modalY = mapRect.top + 20;
         }
         if (modalY + modalHeight > mapRect.top + mapRect.height - 20) {
           modalY = mapRect.top + mapRect.height - modalHeight - 20;
         }
-        
+
         setModalPosition({ x: modalX, y: modalY });
         setShowAddAddress(true);
       }
@@ -1447,27 +1408,22 @@ export default function Interface({ user }) {
       const activePoly = (fokontanyPolygon && fokontanyPolygon.length) ? fokontanyPolygon : ANDABOLY_POLYGON;
       const isInsidePolygon = isPointInPolygon(clickedPoint, activePoly);
       console.log('[FOK] handleMapClick: isInsidePolygon?', isInsidePolygon);
-      
+
       if (isInsidePolygon) {
         setSelectedLocation({ lat, lng });
         setSelectedMarkerColor("yellow");
-        
-        // MODIFICATION: On ne change pas le zoom ici non plus
-        // On garde le zoom actuel de la carte
+
         if (map) {
-          // Sauvegarde l'état actuel pour pouvoir revenir
           setPreviousZoom(map.getZoom());
           setPreviousCenter(map.getCenter());
         }
-        
-        // Obtient l'adresse pour les coordonnées
+
         await getAddressFromCoordinates(lat, lng);
-        
+
         setMessageStatus("normal");
         setIsSelectingLocation(false);
         setIsModalOpen(true);
-        
-        // Positionner le modal avec la nouvelle logique
+
         repositionModalForLocation({ lat, lng });
       } else {
         setMessageStatus("error");
@@ -1491,9 +1447,6 @@ export default function Interface({ user }) {
     setMessageStatus("normal");
     setIsModalOpen(true);
     setSelectedMarkerColor("yellow");
-
-    // MODIFICATION: On ne recentre pas sur le polygon
-    // On laisse la carte dans son état actuel
   };
 
   // Gestionnaire pour fermer complètement l'ajout d'adresse
@@ -1512,32 +1465,139 @@ export default function Interface({ user }) {
     setMessageStatus("normal");
     setIsModalOpen(false);
     setSelectedMarkerColor("yellow");
-    
-    // MODIFICATION: On ne restaure pas la vue précédente
-    // On laisse la carte dans son état actuel
   };
 
-  // Gestionnaire pour confirmer l'adresse
-  const handleConfirmAddress = async () => {
-    if (!addressDetails.lot) {
-      setFormError("Veuillez remplir le numéro de lot");
+  /* utilitaire : calcul âge depuis date ISO (YYYY-MM-DD) */
+  const calculateAgeFromDate = (dateStr) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return null;
+    const diff = Date.now() - d.getTime();
+    const ageDt = new Date(diff);
+    return Math.abs(ageDt.getUTCFullYear() - 1970);
+  };
+
+  /* Ajout / suppression personne */
+  const handleAddPerson = () => {
+    setNewResidents(prev => [...prev, { nom: '', prenom: '', birthdate: '', cin: '', sexe: 'masculin', phone: '' }]);
+  };
+
+  const handleRemovePerson = (index) => {
+    setNewResidents(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handlePersonChange = (index, field, value) => {
+    setNewResidents(prev => {
+      const copy = [...prev];
+
+      if (field === 'sexe') {
+        // CORRECTION : Garder "masculin"/"feminin" pour l'UI mais convertir pour l'API
+        copy[index] = { ...copy[index], [field]: value };
+      } else {
+        copy[index] = { ...copy[index], [field]: value };
+      }
+
+      if (field === 'birthdate') {
+        const age = calculateAgeFromDate(value);
+        if (age !== null && age < 18) {
+          copy[index].cin = 'Mineur';
+        } else if (age !== null && age >= 18) {
+          if (copy[index].cin && copy[index].cin !== 'Mineur') {
+            copy[index].cin = String(copy[index].cin).replace(/\D/g, '').slice(0, 12);
+          }
+        }
+      }
+      if (field === 'cin') {
+        const age = calculateAgeFromDate(copy[index].birthdate);
+        if (age === null || age >= 18) {
+          copy[index].cin = String(value).replace(/\D/g, '').slice(0, 12);
+        } else {
+          copy[index].cin = 'Mineur';
+        }
+      }
+      return copy;
+    });
+  };
+
+  /* Navigation étapes */
+  const handleNextFromLot = () => {
+    if (!addressDetails.lot || !addressDetails.lot.trim()) {
+      setFormError('Lot requis');
+      return;
+    }
+    setFormError('');
+    setAddStep(2);
+  };
+
+  const handleBackToLot = () => {
+    setAddStep(1);
+  };
+
+  /* Confirmation finale: envoi résidence + residents si fournis */
+  const handleConfirmSave = async () => {
+    if (!addressDetails.lot || !addressDetails.lot.trim()) {
+      setModalError('Lot requis');
       return;
     }
     if (!selectedLocation) {
-      setFormError("Emplacement invalide");
+      setModalError('Emplacement invalide');
       return;
     }
+
+    setSavingResidence(true);
+    setModalError('');
+
     try {
       const token = localStorage.getItem('token');
+
+      // CORRECTION : Préparer le payload avec les bonnes clés pour le backend
       const payload = {
-        lot: addressDetails.lot,
-        quartier: addressDetails.quartier,
-        ville: addressDetails.ville,
-        fokontany: null,
+        lot: addressDetails.lot.trim(),
+        quartier: addressDetails.quartier || null,
+        ville: addressDetails.ville || null,
+        fokontany: fokontanyName || null,
         lat: selectedLocation.lat,
         lng: selectedLocation.lng,
         created_by: currentUser?.id || null
       };
+
+      // CORRECTION : Transformer les résidents dans le format attendu par le backend
+      const residentsToSend = [];
+      for (const r of newResidents) {
+        if (!r.nom?.trim() && !r.prenom?.trim()) continue;
+
+        // Construire le nom_complet au format attendu par le backend
+        const nomComplet = `${r.nom.trim()}${r.prenom ? ' ' + r.prenom.trim() : ''}`.trim();
+
+        // Gérer l'âge et le CIN
+        const age = calculateAgeFromDate(r.birthdate);
+        let cinVal = null;
+        if (age === null) {
+          cinVal = null;
+        } else if (age < 18) {
+          cinVal = null; // CORRECTION : null pour les mineurs, pas 0
+        } else {
+          cinVal = (r.cin && r.cin !== 'Mineur') ? String(r.cin).replace(/\D/g, '').slice(0, 12) : null;
+        }
+
+        // CORRECTION CRITIQUE : Convertir "masculin"/"feminin" en "homme"/"femme"
+        const genre = r.sexe === 'masculin' ? 'homme' : (r.sexe === 'feminin' ? 'femme' : 'homme');
+
+        residentsToSend.push({
+          nom_complet: nomComplet,
+          date_naissance: r.birthdate || null,
+          cin: cinVal,
+          genre: genre, // CORRECTION ICI
+          telephone: r.phone || null
+        });
+      }
+
+      if (residentsToSend.length > 0) {
+        payload.residents = residentsToSend;
+      }
+
+      console.log('Payload envoyé au backend:', JSON.stringify(payload, null, 2));
+
       const resp = await fetch(`${API_BASE}/api/residences`, {
         method: 'POST',
         headers: {
@@ -1548,41 +1608,69 @@ export default function Interface({ user }) {
       });
 
       if (!resp.ok) {
-        const body = await resp.text();
-        console.warn('[RES] create failed', resp.status, body);
-        setFormError("Erreur lors de l'enregistrement");
-        return;
+        const body = await resp.text().catch(() => null);
+        let errorMessage = 'Erreur de sauvegarde';
+        try {
+          if (body) {
+            const errorJson = JSON.parse(body);
+            errorMessage = errorJson.error || errorJson.message || body;
+          }
+        } catch (e) {
+          errorMessage = body || 'Erreur de sauvegarde';
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await resp.json();
 
+      // Si requires_approval: notification message sinon ajout direct
       if (result.requires_approval) {
-        setHasSelectedAddress(true);
-        setShowAddAddress(false);
-        setIsSelectingLocation(false);
-        setFormError("");
-
-        setIsModalOpen(false);
-        setSelectedMarkerColor("green");
-
-        alert('Résidence soumise pour approbation. Vous recevrez une notification quand elle sera approuvée.');
+        alert('Résidence soumise pour approbation.');
       } else {
-        // Ajoute la nouvelle résidence à la liste
-        setResidences(prev => [result, ...(prev || [])]);
-        setHasSelectedAddress(true);
-        setShowAddAddress(false);
-        setIsSelectingLocation(false);
-        setFormError("");
-        
-        setIsModalOpen(false);
-        setSelectedMarkerColor("green");
+        // Ajouter la résidence à la liste locale
+        const newResidence = {
+          id: result.id,
+          lot: result.lot,
+          quartier: result.quartier,
+          ville: result.ville,
+          fokontany: result.fokontany,
+          lat: result.lat,
+          lng: result.lng,
+          created_by: result.created_by,
+          created_at: result.created_at,
+          is_active: result.is_active
+        };
+
+        setResidences(prev => [newResidence, ...(prev || [])]);
+        alert('Résidence enregistrée avec succès');
       }
 
-      console.log('[RES] created', result);
+      // Reset modal
+      setAddressDetails({ lot: '', quartier: '', ville: '' });
+      setSelectedAddress('');
+      setSelectedLocation(null);
+      setHasSelectedAddress(true);
+      setShowAddAddress(false);
+      setIsSelectingLocation(false);
+      setAddStep(1);
+      setNewResidents([]);
+      setModalError('');
+
+      // Recharger la liste des résidences
+      fetchResidences();
+
     } catch (err) {
-      console.warn('[RES] handleConfirmAddress error', err);
-      setFormError('Erreur réseau');
+      console.error('handleConfirmSave error', err);
+      setModalError(err.message || 'Erreur de sauvegarde');
+    } finally {
+      setSavingResidence(false);
     }
+  };
+
+  /* Toggle langue (FR <-> MG) */
+  const handleToggleLang = () => {
+    const next = i18n.language === 'fr' ? 'mg' : 'fr';
+    i18n.changeLanguage(next);
   };
 
   // Gestionnaire pour annuler la sélection
@@ -1601,9 +1689,6 @@ export default function Interface({ user }) {
 
     setIsModalOpen(false);
     setSelectedMarkerColor("yellow");
-
-    // MODIFICATION: On ne restaure pas la vue précédente
-    // On laisse la carte dans son état actuel
   };
 
   // Gestionnaire de changement des détails de l'adresse
@@ -1635,7 +1720,6 @@ export default function Interface({ user }) {
 
   const handleClosePendingResidences = () => {
     setShowPendingResidences(false);
-    // Réinitialiser l'ID de résidence à sélectionner
     setResidenceToSelect(null);
   };
 
@@ -1676,15 +1760,14 @@ export default function Interface({ user }) {
       setZoomBeforeResidenceClick(map.getZoom());
       setCenterBeforeResidenceClick(map.getCenter());
     }
-    
+
     setClickedResidenceId(residenceId);
   };
 
   // Gestionnaire pour fermer l'info-bulle de résidence
   const handleCloseResidenceInfo = () => {
     setClickedResidenceId(null);
-    
-    // Restaure la vue précédente de la carte
+
     if (map && zoomBeforeResidenceClick && centerBeforeResidenceClick) {
       setTimeout(() => {
         map.setCenter(centerBeforeResidenceClick);
@@ -1696,30 +1779,25 @@ export default function Interface({ user }) {
   // NOUVELLE FONCTION : Pour gérer l'affichage d'une résidence sur la carte
   const handleViewOnMap = (residence) => {
     console.log('[INTERFACE] Affichage résidence sur carte:', residence);
-    
-    // Ferme la page résidence si elle est ouverte
+
     setShowResidence(false);
-    
-    // Sauvegarde l'état actuel de la carte
+
     if (map) {
       setPreviousZoom(map.getZoom());
       setPreviousCenter(map.getCenter());
     }
-    
-    // Centre la carte sur la résidence
+
     if (map && (residence.latitude || residence.lat) && (residence.longitude || residence.lng)) {
       const lat = residence.latitude || residence.lat;
       const lng = residence.longitude || residence.lng;
-      
+
       console.log('[INTERFACE] Centrage sur:', { lat, lng });
-      
+
       map.panTo({ lat: parseFloat(lat), lng: parseFloat(lng) });
       map.setZoom(18);
-      
-      // Mettre à jour l'ID de la résidence cliquée pour afficher l'info-bulle
+
       setClickedResidenceId(residence.id);
-      
-      // Met à jour la liste des résidences si nécessaire
+
       if (!residences.some(r => r.id === residence.id)) {
         setResidences(prev => [residence, ...prev]);
       }
@@ -1756,19 +1834,29 @@ export default function Interface({ user }) {
                 setFokontanyPolygon(poly);
                 const sum = poly.reduce((acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }), { lat: 0, lng: 0 });
                 setFokontanyCenter({ lat: sum.lat / poly.length, lng: sum.lng / poly.length });
+
+                // Récupérer le nom du fokontany
+                if (f.nom) {
+                  setFokontanyName(f.nom);
+                }
+
                 console.log('[FOK] initFokontanyFromUser: set polygon & center from user.fokontany');
                 return;
               }
             }
             if (f.centre_lat && f.centre_lng) {
               setFokontanyCenter({ lat: +f.centre_lat, lng: +f.centre_lng });
+
+              if (f.nom) {
+                setFokontanyName(f.nom);
+              }
+
               console.log('[FOK] initFokontanyFromUser: set center from user.fokontany centre_lat/centre_lng');
               return;
             }
           } catch (e) { console.warn('[FOK] initFokontanyFromUser user fokontany parse error', e); }
         }
 
-        // Fallback: récupère depuis l'API
         const token = localStorage.getItem('token');
         console.log('[FOK] initFokontanyFromUser: fetching /api/fokontany/me fallback, token?', !!token);
         if (!token) return;
@@ -1794,12 +1882,23 @@ export default function Interface({ user }) {
                 setFokontanyPolygon(poly);
                 const sum = poly.reduce((acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }), { lat: 0, lng: 0 });
                 setFokontanyCenter({ lat: sum.lat / poly.length, lng: sum.lng / poly.length });
+
+                // Récupérer le nom du fokontany
+                if (fok.nom) {
+                  setFokontanyName(fok.nom);
+                }
+
                 console.log('[FOK] initFokontanyFromUser: set polygon & center from fallback API');
                 return;
               }
             }
             if (fok.centre_lat && fok.centre_lng) {
               setFokontanyCenter({ lat: +fok.centre_lat, lng: +fok.centre_lng });
+
+              if (fok.nom) {
+                setFokontanyName(fok.nom);
+              }
+
               console.log('[FOK] initFokontanyFromUser: set center from fallback centre_lat/centre_lng');
             }
           } catch (e) { console.warn('[FOK] initFokontanyFromUser parse error', e); }
@@ -1832,12 +1931,11 @@ export default function Interface({ user }) {
       setMap(mapInstance);
       setMapLoaded(true);
       console.log('[MAP] onMapLoad: map ready', !!mapInstance, 'fokontanyCenter=', fokontanyCenter);
-      
-      // Centre sur le polygon après un délai
+
       setTimeout(() => {
         handleFocusOnPolygon();
       }, 500);
-      
+
     } catch (err) {
       console.warn('[MAP] onMapLoad error', err);
     }
@@ -1862,7 +1960,7 @@ export default function Interface({ user }) {
   const getMapOptions = () => {
     const activePolygon = (fokontanyPolygon && fokontanyPolygon.length > 0) ? fokontanyPolygon : ANDABOLY_POLYGON;
     const view = calculateOptimalView(activePolygon);
-    
+
     return {
       mapTypeId: mapType === "satellite" ? "hybrid" : "roadmap",
       styles: [],
@@ -1897,8 +1995,7 @@ export default function Interface({ user }) {
   // Effet pour ajouter des écouteurs d'événements à la carte
   useEffect(() => {
     if (!map) return;
-    
-    // Définition des gestionnaires d'événements
+
     const handleClick = (e) => {
       console.log('[MAP] Click event:', e);
     };
@@ -1923,14 +2020,12 @@ export default function Interface({ user }) {
       setShouldZoomToPolygon(false);
     };
 
-    // Ajout des écouteurs
     map.addListener("click", handleClick);
     map.addListener("dblclick", handleDblClick);
     map.addListener("mousemove", handleMouseMove);
     map.addListener("zoom_changed", handleZoomChanged);
     map.addListener("dragend", handleDragEnd);
 
-    // Nettoyage à la désinstallation
     return () => {
       if (map) {
         map.removeListener("click", handleClick);
@@ -1980,9 +2075,8 @@ export default function Interface({ user }) {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={getSearchPlaceholder()}
                 disabled={isSearchDisabled || isModalOpen}
-                className={`w-full p-1 bg-transparent outline-none text-sm ${
-                  isSearchDisabled || isModalOpen ? 'text-gray-400' : 'text-gray-700'
-                } placeholder-gray-600`}
+                className={`w-full p-1 bg-transparent outline-none text-sm ${isSearchDisabled || isModalOpen ? 'text-gray-400' : 'text-gray-700'
+                  } placeholder-gray-600`}
               />
               {searchLoading && (
                 <div className="ml-2">
@@ -1997,7 +2091,7 @@ export default function Interface({ user }) {
       {/* === RÉSULTATS DE RECHERCHE === */}
       <SearchResultsModal />
 
-      {/* === BOUTONS DROITS (AJOUTER, NOTIFICATIONS, PROFIL) === */}
+      {/* === BOUTONS DROITS (AJOUTER, NOTIFICATIONS, LANGUE, PROFIL) === */}
       <div className="absolute top-6 right-4 z-20">
         <div className="bg-white/30 hover:bg-white/50 rounded-2xl shadow-lg border border-gray-200/60 hover:border-gray-300/80 transition-all duration-300">
           <div className="flex items-center justify-end px-4 py-1 space-x-4">
@@ -2006,21 +2100,20 @@ export default function Interface({ user }) {
             <button
               onClick={handleAddAddressClick}
               disabled={isAnyPageOpen || isSelectingLocation || isModalOpen}
-              className={`flex items-center px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap ${
-                isAnyPageOpen || isSelectingLocation || isModalOpen
-                  ? "bg-green-600 text-gray-200 cursor-not-allowed backdrop-blur-sm"
-                  : isSelectingLocation
+              className={`flex items-center px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap ${isAnyPageOpen || isSelectingLocation || isModalOpen
+                ? "bg-green-600 text-gray-200 cursor-not-allowed backdrop-blur-sm"
+                : isSelectingLocation
                   ? "bg-green-600 text-white hover:bg-green-700 backdrop-blur-sm"
                   : "bg-green-600 text-white hover:bg-green-700 backdrop-blur-sm"
-              }`}
+                }`}
               title={
-                isAnyPageOpen 
-                  ? "Fermez les autres pages pour ajouter une adresse" 
+                isAnyPageOpen
+                  ? "Fermez les autres pages pour ajouter une adresse"
                   : isModalOpen
-                  ? "Une modal est déjà ouverte"
-                  : isSelectingLocation
-                  ? "Sélection en cours - cliquez sur la carte ou annulez"
-                  : "Ajouter une nouvelle adresse"
+                    ? "Une modal est déjà ouverte"
+                    : isSelectingLocation
+                      ? "Sélection en cours - cliquez sur la carte ou annulez"
+                      : "Ajouter une nouvelle adresse"
               }
             >
               {isSelectingLocation ? (
@@ -2038,20 +2131,17 @@ export default function Interface({ user }) {
               onClick={() => {
                 if (!showAddAddress) {
                   setShowNotifications(!showNotifications);
-                  // Rafraîchir les notifications quand on ouvre le panneau
                   fetchAllNotifications();
                 }
               }}
               disabled={showAddAddress}
-              className={`relative w-8 h-8 rounded-full flex items-center justify-center ${
-                showAddAddress
-                  ? 'bg-gray-100 cursor-not-allowed'
-                  : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
-              }`}
+              className={`relative w-8 h-8 rounded-full flex items-center justify-center ${showAddAddress
+                ? 'bg-gray-100 cursor-not-allowed'
+                : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
+                }`}
               title={showAddAddress ? "Fermez la modal d'ajout d'adresse pour accéder aux notifications" : "Notifications"}
             >
               <Bell size={20} className={`${showAddAddress ? 'text-gray-400' : 'text-gray-600 hover:text-gray-800 transition-all duration-300'}`} />
-              {/* BADGE AVEC TOTAL DES NOTIFICATIONS NON LUES */}
               {totalNotificationsCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                   {totalNotificationsCount > 9 ? '9+' : totalNotificationsCount}
@@ -2059,15 +2149,25 @@ export default function Interface({ user }) {
               )}
             </button>
 
+            {/* BOUTON LANGUE (entre notification et profil) */}
+            <button
+              onClick={handleToggleLang}
+              disabled={isModalOpen}
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${isModalOpen ? 'bg-gray-100 cursor-not-allowed' : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
+                }`}
+              title="Changer la langue"
+            >
+              <span className="text-sm text-gray-700 font-medium">{i18n.language === 'fr' ? 'FR' : 'MG'}</span>
+            </button>
+
             {/* Bouton Profil */}
             <button
               onClick={handleUserIconClick}
               disabled={isModalOpen}
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                isModalOpen
-                  ? 'bg-gray-100 cursor-not-allowed'
-                  : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
-              }`}
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${isModalOpen
+                ? 'bg-gray-100 cursor-not-allowed'
+                : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
+                }`}
               title={isModalOpen ? "Fermez la modal pour accéder au profil" : "Profil"}
             >
               <User size={20} className={`${isModalOpen ? 'text-gray-400' : 'text-gray-600 hover:text-gray-800 transition-all duration-300'}`} />
@@ -2076,7 +2176,7 @@ export default function Interface({ user }) {
         </div>
       </div>
 
-      {/* PANEL DE NOTIFICATIONS - AFFICHE SEULEMENT LES NON LUES */}
+      {/* PANEL DE NOTIFICATIONS */}
       {showNotifications && (
         <div className="absolute top-18 right-4 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
           <div className="p-4 border-b border-gray-200">
@@ -2113,9 +2213,8 @@ export default function Interface({ user }) {
                     <span className="text-xs text-gray-400">
                       {formatNotificationDate(notification.created_at)}
                     </span>
-                    <span className={`w-2 h-2 rounded-full ${
-                      notification.type === 'pending' ? 'bg-yellow-500' : 'bg-blue-500'
-                    }`}></span>
+                    <span className={`w-2 h-2 rounded-full ${notification.type === 'pending' ? 'bg-yellow-500' : 'bg-blue-500'
+                      }`}></span>
                   </div>
                 </div>
               ))
@@ -2169,7 +2268,7 @@ export default function Interface({ user }) {
         <>
           <div className="fixed inset-0 bg-black/50 z-40"></div>
 
-          <div 
+          <div
             ref={addAddressRef}
             className="fixed z-50 w-full max-w-md"
             style={{
@@ -2191,57 +2290,118 @@ export default function Interface({ user }) {
               </div>
 
               <div className="p-5">
-                <div className="mb-6">
+                <div className="mb-4">
                   <div className="flex items-start space-x-3 mb-3">
                     <MapPin size={20} className="text-green-600 flex-shrink-0 mt-1" />
                     <div className="flex-1">
-                      <p className="font-medium text-gray-800 text-base mb-1">Emplacement sélectionné :</p>
+                      <p className="font-medium text-gray-800 text-base mb-1">Fokontany sélectionné :</p>
                       <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-200">
-                        {selectedAddress}
+                        {fokontanyName || selectedAddress || '—'}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
-                        <span className="font-medium">Coordonnées :</span> {selectedLocation?.lat?.toFixed(6)}, {selectedLocation?.lng?.toFixed(6)}
+                        <span className="font-medium">Adresse:</span> {selectedAddress || '-'}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-base font-medium text-gray-700 mb-2">
-                      Numéro de lot *
-                    </label>
-                    <input
-                      type="text"
-                      value={addressDetails.lot}
-                      onChange={(e) => handleAddressDetailsChange('lot', e.target.value)}
-                      placeholder="Ex: Lot 123, Lot ABC, Lot 45B"
-                      className={`w-full px-4 py-3 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent ${formError ? "border-red-500" : "border-gray-300"}`}
-                      required
-                    />
-                    {formError && (
-                      <p className="text-red-500 text-sm mt-1 flex items-center">
-                        <Info size={14} className="mr-1" />
-                        {formError}
-                      </p>
-                    )}
-                  </div>
-                </div>
+                {/* Etape 1 : Lot */}
+                {addStep === 1 && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-base font-medium text-gray-700 mb-2">
+                        Numéro de lot
+                      </label>
+                      <input
+                        type="text"
+                        value={addressDetails.lot}
+                        onChange={(e) => handleAddressDetailsChange('lot', e.target.value)}
+                        placeholder="Ex: Lot 123, Lot ABC"
+                        className={`w-full px-4 py-3 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent ${formError ? "border-red-500" : "border-gray-300"}`}
+                      />
+                      {formError && (
+                        <p className="text-red-500 text-sm mt-1 flex items-center">
+                          <Info size={14} className="mr-1" />
+                          {formError}
+                        </p>
+                      )}
+                    </div>
 
-                <div className="flex space-x-4 mt-6 pt-4 border-t border-gray-200">
-                  <button
-                    onClick={handleReturnToSelection}
-                    className="flex-1 px-1 py-3 text-base bg-gray-100 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
-                  >
-                    Changer d'emplacement
-                  </button>
-                  <button
-                    onClick={handleConfirmAddress}
-                    className="flex-1 px-1 py-3 text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 font-medium"
-                  >
-                    Confirmer
-                  </button>
-                </div>
+                    <div className="flex space-x-4 mt-6 pt-4 border-t border-gray-200">
+                      <button
+                        onClick={handleReturnToSelection}
+                        className="flex-1 px-1 py-3 text-base bg-gray-100 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
+                      >
+                        Retour
+                      </button>
+                      <button
+                        onClick={handleNextFromLot}
+                        className="flex-1 px-1 py-3 text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 font-medium"
+                      >
+                        Suivant
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Etape 2 : personnes optionnelles */}
+                {addStep === 2 && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-semibold">Formulaire personnes (optionnel)</h4>
+                      <button onClick={handleAddPerson} className="text-sm bg-green-500 text-white px-3 py-1 rounded">Ajouter une personne</button>
+                    </div>
+
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                      {newResidents.length === 0 && (
+                        <div className="text-sm text-gray-500">Aucune personne ajoutée — vous pouvez confirmer directement.</div>
+                      )}
+
+                      {newResidents.map((p, idx) => (
+                        <div key={idx} className="border p-3 rounded-lg space-y-2">
+                          <div className="flex justify-between">
+                            <strong>{p.nom || p.prenom ? `${p.nom} ${p.prenom}` : `Personne ${idx + 1}`}</strong>
+                            <button onClick={() => handleRemovePerson(idx)} className="text-red-500 text-sm">Supprimer</button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <input type="text" placeholder="Nom" value={p.nom} onChange={(e) => handlePersonChange(idx, 'nom', e.target.value)} className="px-2 py-1 border rounded" />
+                            <input type="text" placeholder="Prénom" value={p.prenom} onChange={(e) => handlePersonChange(idx, 'prenom', e.target.value)} className="px-2 py-1 border rounded" />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <input type="date" placeholder="Date de naissance" value={p.birthdate} onChange={(e) => handlePersonChange(idx, 'birthdate', e.target.value)} className="px-2 py-1 border rounded" />
+                            <select value={p.sexe} onChange={(e) => handlePersonChange(idx, 'sexe', e.target.value)} className="px-2 py-1 border rounded">
+                              <option value="masculin">Masculin</option>
+                              <option value="feminin">Féminin</option>
+                            </select>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 items-center">
+                            <input type="text" placeholder="CIN" value={p.cin} onChange={(e) => handlePersonChange(idx, 'cin', e.target.value)} className="px-2 py-1 border rounded" />
+                            <input type="text" placeholder="Téléphone" value={p.phone} onChange={(e) => handlePersonChange(idx, 'phone', e.target.value)} className="px-2 py-1 border rounded" />
+                          </div>
+
+                          <div className="text-xs text-gray-500">
+                            {p.birthdate ? `Age: ${calculateAgeFromDate(p.birthdate)}` : ''}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-between mt-4">
+                      <button onClick={handleBackToLot} className="px-4 py-2 border rounded-lg">Retour</button>
+                      <div className="flex gap-2">
+                        <button onClick={() => { setShowAddAddress(false); setAddStep(1); }} className="px-4 py-2 border rounded-lg">Annuler</button>
+                        <button onClick={handleConfirmSave} disabled={savingResidence} className="px-4 py-2 bg-blue-600 text-white rounded-lg">
+                          {savingResidence ? 'Enregistrement...' : 'Confirmer'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {modalError && <div className="text-red-600 text-sm mt-2">{modalError}</div>}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -2256,18 +2416,16 @@ export default function Interface({ user }) {
           <button
             onClick={handleLogoClick}
             disabled={isModalOpen}
-            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${
-              isModalOpen
-                ? 'bg-transparent cursor-not-allowed'
-                : 'bg-transparent hover:bg-white'
-            }`}
+            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${isModalOpen
+              ? 'bg-transparent cursor-not-allowed'
+              : 'bg-transparent hover:bg-white'
+              }`}
           >
             <div className="p-2 rounded-full flex-shrink-0 bg-blue-100/70">
               <span className="text-blue-600 font-bold text-sm">SG</span>
             </div>
-            <span className={`text-gray-800 font-medium whitespace-nowrap transition-all duration-300 ${
-              isModalOpen ? 'opacity-50' : ''
-            }`}>
+            <span className={`text-gray-800 font-medium whitespace-nowrap transition-all duration-300 ${isModalOpen ? 'opacity-50' : ''
+              }`}>
               SIGAP
             </span>
           </button>
@@ -2276,24 +2434,20 @@ export default function Interface({ user }) {
           <button
             onClick={handleResidenceClick}
             disabled={isModalOpen}
-            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${
-              showResidence
-                ? "bg-white border border-blue-200/60"
-                : isModalOpen
+            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${showResidence
+              ? "bg-white border border-blue-200/60"
+              : isModalOpen
                 ? "bg-transparent cursor-not-allowed"
                 : "bg-transparent hover:bg-white hover:border-blue-200/60"
-            }`}
+              }`}
           >
-            <div className={`p-2 rounded-full flex-shrink-0 ${
-              showResidence ? "bg-blue-100/70" : isModalOpen ? "bg-blue-100/50" : "bg-blue-100/70"
-            }`}>
-              <MapPin size={18} className={`${
-                showResidence ? "text-blue-600" : isModalOpen ? "text-blue-400" : "text-blue-600"
-              } transition-all duration-300`} />
+            <div className={`p-2 rounded-full flex-shrink-0 ${showResidence ? "bg-blue-100/70" : isModalOpen ? "bg-blue-100/50" : "bg-blue-100/70"
+              }`}>
+              <MapPin size={18} className={`${showResidence ? "text-blue-600" : isModalOpen ? "text-blue-400" : "text-blue-600"
+                } transition-all duration-300`} />
             </div>
-            <span className={`${
-              showResidence ? "text-gray-800" : isModalOpen ? "text-gray-500" : "text-gray-800"
-            }`}>
+            <span className={`${showResidence ? "text-gray-800" : isModalOpen ? "text-gray-500" : "text-gray-800"
+              }`}>
               Résidence
             </span>
           </button>
@@ -2302,24 +2456,20 @@ export default function Interface({ user }) {
           <button
             onClick={handleStatistiqueClick}
             disabled={isModalOpen}
-            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${
-              showStatistique
-                ? "bg-white border border-green-200/60"
-                : isModalOpen
+            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${showStatistique
+              ? "bg-white border border-green-200/60"
+              : isModalOpen
                 ? "bg-transparent cursor-not-allowed"
                 : "bg-transparent hover:bg-white hover:border-green-200/60"
-            }`}
+              }`}
           >
-            <div className={`p-2 rounded-full flex-shrink-0 ${
-              showStatistique ? "bg-green-100/70" : isModalOpen ? "bg-green-100/50" : "bg-green-100/70"
-            }`}>
-              <BarChart3 size={18} className={`${
-                showStatistique ? "text-green-600" : isModalOpen ? "text-green-400" : "text-green-600"
-              } transition-all duration-300`} />
+            <div className={`p-2 rounded-full flex-shrink-0 ${showStatistique ? "bg-green-100/70" : isModalOpen ? "bg-green-100/50" : "bg-green-100/70"
+              }`}>
+              <BarChart3 size={18} className={`${showStatistique ? "text-green-600" : isModalOpen ? "text-green-400" : "text-green-600"
+                } transition-all duration-300`} />
             </div>
-            <span className={`${
-              showStatistique ? "text-gray-800" : isModalOpen ? "text-gray-500" : "text-gray-800"
-            } font-medium whitespace-nowrap transition-all duration-300`}>
+            <span className={`${showStatistique ? "text-gray-800" : isModalOpen ? "text-gray-500" : "text-gray-800"
+              } font-medium whitespace-nowrap transition-all duration-300`}>
               Statistique
             </span>
           </button>
@@ -2329,24 +2479,20 @@ export default function Interface({ user }) {
             <button
               onClick={handlePendingResidencesClick}
               disabled={isModalOpen}
-              className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${
-                showPendingResidences
-                  ? "bg-white border border-purple-200/60"
-                  : isModalOpen
+              className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${showPendingResidences
+                ? "bg-white border border-purple-200/60"
+                : isModalOpen
                   ? "bg-transparent cursor-not-allowed"
                   : "bg-transparent hover:bg-white hover:border-purple-200/60"
-              }`}
+                }`}
             >
-              <div className={`p-2 rounded-full flex-shrink-0 ${
-                showPendingResidences ? "bg-purple-100/70" : isModalOpen ? "bg-purple-100/50" : "bg-purple-100/70"
-              }`}>
-                <ClipboardList size={18} className={`${
-                  showPendingResidences ? "text-purple-600" : isModalOpen ? "text-purple-400" : "text-purple-600"
-                } transition-all duration-300`} />
+              <div className={`p-2 rounded-full flex-shrink-0 ${showPendingResidences ? "bg-purple-100/70" : isModalOpen ? "bg-purple-100/50" : "bg-purple-100/70"
+                }`}>
+                <ClipboardList size={18} className={`${showPendingResidences ? "text-purple-600" : isModalOpen ? "text-purple-400" : "text-purple-600"
+                  } transition-all duration-300`} />
               </div>
-              <span className={`${
-                showPendingResidences ? "text-gray-800" : isModalOpen ? "text-gray-500" : "text-gray-800"
-              } font-medium whitespace-nowrap transition-all duration-300`}>
+              <span className={`${showPendingResidences ? "text-gray-800" : isModalOpen ? "text-gray-500" : "text-gray-800"
+                } font-medium whitespace-nowrap transition-all duration-300`}>
                 Demandes
               </span>
             </button>
@@ -2390,10 +2536,9 @@ export default function Interface({ user }) {
       {/* Page Demandes en attente */}
       {showPendingResidences && currentUser?.role === 'secretaire' && (
         <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[85vh] w-316">
-          <PendingResidences 
-            onBack={handleClosePendingResidences} 
+          <PendingResidences
+            onBack={handleClosePendingResidences}
             onResidenceApproved={checkAndClearApprovedResidenceNotifications}
-            // Passer l'ID de la résidence à sélectionner
             residenceToSelect={residenceToSelect}
           />
         </div>
@@ -2486,9 +2631,9 @@ export default function Interface({ user }) {
               const lat = Number(r.lat);
               const lng = Number(r.lng);
               if (!isFinite(lat) || !isFinite(lng)) return null;
-              
+
               return (
-                <InfoWindow 
+                <InfoWindow
                   position={{ lat, lng }}
                   onCloseClick={handleCloseResidenceInfo}
                   options={{
