@@ -4,25 +4,19 @@ import {
   Users,
   Eye,
   MapPin,
-  Phone,
-  Mail,
   User,
-  Edit,
-  Trash2,
   Map,
   Search,
-  Filter,
   Plus,
-  ChevronDown,
-  ChevronUp,
-  X,
   ChevronLeft,
   ChevronRight,
   Camera,
-  Maximize2,
-  Minimize2,
+  Mars,
+  Venus,
+  Phone,
   Calendar,
   Building,
+  X,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";
@@ -71,6 +65,9 @@ export default function ResidencePage({
   // NOUVEAUX ÉTATS POUR LA GESTION DES PHOTOS
   const [isPhotoExpanded, setIsPhotoExpanded] = useState(false);
   const [isFullScreenPhoto, setIsFullScreenPhoto] = useState(false);
+
+  // ÉTAT POUR LE MODAL D'AJOUT DE RÉSIDENT
+  const [showAddResidentModal, setShowAddResidentModal] = useState(false);
 
   // Références pour les inputs du formulaire
   const nomInputRef = useRef(null);
@@ -226,12 +223,12 @@ export default function ResidencePage({
 
   // Focus sur le premier champ en mode édition
   useEffect(() => {
-    if (isEditMode && nomInputRef.current) {
+    if (showAddResidentModal && nomInputRef.current) {
       setTimeout(() => {
         nomInputRef.current.focus();
       }, 100);
     }
-  }, [isEditMode]);
+  }, [showAddResidentModal]);
 
   // Calculer les statistiques
   const calculateStatistics = () => {
@@ -1133,7 +1130,7 @@ export default function ResidencePage({
       });
       setDateInput("");
       setDateError("");
-      setIsEditMode(false);
+      setShowAddResidentModal(false);
     } catch (err) {
       console.warn("handleSaveEdit error", err);
       alert("Erreur lors de la sauvegarde du résident");
@@ -1211,8 +1208,22 @@ export default function ResidencePage({
     }
   };
 
-  const handleEditResidents = () => {
-    setIsEditMode(true);
+  const handleOpenAddResidentModal = () => {
+    setShowAddResidentModal(true);
+    setNewResident({
+      nom: "",
+      prenom: "",
+      dateNaissance: "",
+      cin: "",
+      telephone: "",
+      sexe: "homme",
+    });
+    setDateInput("");
+    setDateError("");
+  };
+
+  const handleCloseAddResidentModal = () => {
+    setShowAddResidentModal(false);
     setNewResident({
       nom: "",
       prenom: "",
@@ -1226,7 +1237,7 @@ export default function ResidencePage({
   };
 
   const handleCancelEdit = () => {
-    setIsEditMode(false);
+    setShowAddResidentModal(false);
     setNewResident({
       nom: "",
       prenom: "",
@@ -1277,6 +1288,18 @@ export default function ResidencePage({
   );
   const totalPages = Math.ceil(filteredResidences.length / residencesPerPage);
 
+  // Pagination pour les résidents dans le modal
+  const [residentPage, setResidentPage] = useState(1);
+  const residentsPerPage = 10;
+  const indexOfLastResident = residentPage * residentsPerPage;
+  const indexOfFirstResident = indexOfLastResident - residentsPerPage;
+  const currentResidentsInModal = selectedResidence?.residents
+    ? selectedResidence.residents.slice(indexOfFirstResident, indexOfLastResident)
+    : [];
+  const totalResidentPages = selectedResidence?.residents
+    ? Math.ceil(selectedResidence.residents.length / residentsPerPage)
+    : 0;
+
   // Fonctions de pagination
   const nextPage = () => {
     if (currentPage < totalPages) {
@@ -1286,6 +1309,18 @@ export default function ResidencePage({
   const prevPage = () => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const nextResidentPage = () => {
+    if (residentPage < totalResidentPages) {
+      setResidentPage(residentPage + 1);
+    }
+  };
+
+  const prevResidentPage = () => {
+    if (residentPage > 1) {
+      setResidentPage(residentPage - 1);
     }
   };
 
@@ -1315,7 +1350,21 @@ export default function ResidencePage({
   const formatDate = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleDateString("fr-FR");
+    return date.toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  // Fonction pour formater la date en format "jj-mm-aaaa"
+  const formatDateHyphen = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
   };
 
   // Fonction pour formater le genre
@@ -1511,108 +1560,78 @@ export default function ResidencePage({
     );
   };
 
-  // Composant pour afficher un résident dans la liste
+  // Composant pour afficher un résident dans la liste - MODIFIÉ POUR CORRESPONDRE À LA PHOTO
   const ResidentRow = ({ resident }) => {
     const { nom, prenom } = extractNomPrenom(resident.nomComplet);
-    const isMineur =
-      resident.dateNaissance && !estMajeur(resident.dateNaissance);
+    const isMineur = resident.dateNaissance && !estMajeur(resident.dateNaissance);
+    const displayNom = nom ? nom.toUpperCase() : "-";
 
     return (
-      <div className="px-6 py-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-8">
-            {/* Nom */}
-            <div className="w-48">
-              <span className="text-sm font-semibold text-gray-800">
-                {nom || "-"}
-              </span>
-            </div>
-
-            {/* Prénom */}
-            <div className="w-48">
-              <span className="text-sm text-gray-700">{prenom || "-"}</span>
-            </div>
-
-            {/* Date de naissance */}
-            <div className="w-40">
-              <span className="text-sm text-gray-600">
-                {resident.dateNaissance
-                  ? formatDate(resident.dateNaissance)
-                  : "-"}
-              </span>
-            </div>
-
-            {/* CIN */}
-            <div className="w-40">
-              <span className="text-sm font-mono text-gray-600">
-                {isMineur ? "Mineur" : resident.cin || "-"}
-              </span>
-            </div>
-
-            {/* Sexe */}
-            <div className="w-40">
-              <span
-                className={`text-sm font-medium px-3 py-1 rounded-full ${
-                  formatGenre(resident.genre) === "Masculin"
-                    ? "bg-blue-100 text-blue-800"
-                    : "bg-pink-100 text-pink-800"
-                }`}
-              >
-                {formatGenre(resident.genre)}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            {resident.telephone && (
-              <div className="flex items-center space-x-1 text-sm text-gray-600">
-                <span>{resident.telephone}</span>
-              </div>
+      <tr className="border-b border-gray-200 hover:bg-gray-50">
+        <td className="px-4 py-3">
+          <div className="font-semibold text-gray-800">{displayNom}</div>
+          <div className="text-sm text-gray-600">{prenom || ""}</div>
+        </td>
+        <td className="px-4 py-3">
+          <div className="flex items-center">
+            {formatGenre(resident.genre) === "Masculin" ? (
+              <Mars className="w-4 h-4 text-blue-600 mr-2" />
+            ) : (
+              <Venus className="w-4 h-4 text-pink-600 mr-2" />
             )}
+            <span className={`text-sm font-medium ${
+              formatGenre(resident.genre) === "Masculin" 
+                ? "text-blue-600" 
+                : "text-pink-600"
+            }`}>
+              {formatGenre(resident.genre)}
+            </span>
           </div>
-        </div>
-      </div>
+        </td>
+        <td className="px-4 py-3">
+          <div className="text-sm text-gray-600">
+            {resident.dateNaissance 
+              ? formatDateHyphen(resident.dateNaissance) 
+              : "-"}
+          </div>
+        </td>
+        <td className="px-4 py-3">
+          <div className={`text-sm font-mono ${
+            isMineur ? "text-gray-500 italic" : "text-gray-600"
+          }`}>
+            {isMineur ? "-- Mineur --" : resident.cin || "-"}
+          </div>
+        </td>
+        <td className="px-4 py-3">
+          <div className="text-sm text-gray-600">
+            {resident.telephone ? `+261 ${resident.telephone}` : "-"}
+          </div>
+        </td>
+      </tr>
     );
   };
 
-  // Composant pour l'en-tête de la liste des résidents
+  // Composant pour l'en-tête de la liste des résidents - MODIFIÉ POUR CORRESPONDRE À LA PHOTO
   const ResidentListHeader = () => (
-    <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-8">
-          <div className="w-48">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Nom
-            </span>
-          </div>
-          <div className="w-48">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Prénom
-            </span>
-          </div>
-          <div className="w-40">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Date de Naissance
-            </span>
-          </div>
-          <div className="w-40">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              CIN
-            </span>
-          </div>
-          <div className="w-40">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Sexe
-            </span>
-          </div>
-        </div>
-        <div className="w-40">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Téléphone
-          </span>
-        </div>
-      </div>
-    </div>
+    <thead className="bg-gray-50">
+      <tr>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          NOM
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          SEXE
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          DATE DE NAISSANCE
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          CIN
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          TEL.
+        </th>
+      </tr>
+    </thead>
   );
 
   return (
@@ -1620,298 +1639,265 @@ export default function ResidencePage({
       {/* Section principale - cachée quand le modal est ouvert */}
       {!showModal && (
         <div className="w-full">
-          <div className="h-full flex flex-col mt-3">
-            {/* Header SIMPLIFIÉ */}
-            <div className="flex items-center ml-4 justify-between p-4 border-gray-200/60 bg-transparent">
-              <h1 className="font-bold text-3xl text-gray-800 bg-white backdrop-blur-sm py-1.5 px-4 rounded-2xl border border-gray-200/60">
-                Résidences
+          <div className="h-full flex flex-col">
+            {/* Header avec titre et filtre */}
+            <div className="flex items-center justify-between p-4">
+              <h1 className="font-bold text-2xl text-gray-800">
+                Liste des Résidences
               </h1>
             </div>
 
-            {/* Statistiques */}
-            <div className="border-gray-200/60 bg-transparent">
-              <div className="grid grid-cols-4 gap-4 mb-3 ml-8 mr-3">
-                <div className="bg-white backdrop-blur-sm rounded-2xl p-4 border border-gray-200/60">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-2xl font-bold text-gray-800">
+            {/* Statistiques - AVEC ICÔNES COMME DANS L'IMAGE */}
+            <div className="p-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Statistique 1 - Adresses */}
+                <div className="bg-white backdrop-blur-sm rounded-xl p-4 border border-gray-200 shadow-sm">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Home className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div className="text-center flex-1">
+                      <div className="text-3xl font-bold text-gray-800 mb-1">
                         {statistics.totalResidences}
                       </div>
-                      <div className="text-xs text-gray-600 mt-1">
-                        Résidences
+                      <div className="text-xs text-gray-600 font-medium">
+                        Adresses
                       </div>
                     </div>
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <div className="w-6 h-6 bg-blue-500 rounded-full"></div>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center text-xs text-green-600">
-                    <span>▲ 12%</span>
-                    <span className="text-gray-500 ml-1">vs last month</span>
                   </div>
                 </div>
 
-                <div className="bg-white backdrop-blur-sm rounded-2xl p-4 border border-gray-200/60">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-2xl font-bold text-gray-800">
+                {/* Statistique 2 - Résidents */}
+                <div className="bg-white backdrop-blur-sm rounded-xl p-4 border border-gray-200 shadow-sm">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Users className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div className="text-center flex-1">
+                      <div className="text-3xl font-bold text-gray-800 mb-1">
                         {statistics.totalResidents}
                       </div>
-                      <div className="text-xs text-gray-600 mt-1">
+                      <div className="text-xs text-gray-600 font-medium">
                         Résidents
                       </div>
                     </div>
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <div className="w-6 h-6 bg-green-500 rounded-full"></div>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center text-xs text-green-600">
-                    <span>▲ 8%</span>
-                    <span className="text-gray-500 ml-1">vs last month</span>
                   </div>
                 </div>
 
-                <div className="bg-white backdrop-blur-sm rounded-2xl p-4 border border-gray-200/60">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-2xl font-bold text-gray-800">
+                {/* Statistique 3 - Hommes */}
+                <div className="bg-white backdrop-blur-sm rounded-xl p-4 border border-gray-200 shadow-sm">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Mars className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div className="text-center flex-1">
+                      <div className="text-3xl font-bold text-gray-800 mb-1">
                         {statistics.totalHommes}
                       </div>
-                      <div className="text-xs text-gray-600 mt-1">Hommes</div>
+                      <div className="text-xs text-gray-600 font-medium">
+                        Hommes
+                      </div>
                     </div>
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Users className="w-5 h-5 text-blue-600" />
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center text-xs text-blue-600">
-                    <span>
-                      {statistics.totalResidents > 0
-                        ? Math.round(
-                            (statistics.totalHommes /
-                              statistics.totalResidents) *
-                              100
-                          )
-                        : 0}
-                      %
-                    </span>
-                    <span className="text-gray-500 ml-1">of total</span>
                   </div>
                 </div>
 
-                <div className="bg-white backdrop-blur-sm rounded-2xl p-4 border border-gray-200/60">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-2xl font-bold text-gray-800">
+                {/* Statistique 4 - Femmes */}
+                <div className="bg-white backdrop-blur-sm rounded-xl p-4 border border-gray-200 shadow-sm">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Venus className="w-6 h-6 text-pink-600" />
+                    </div>
+                    <div className="text-center flex-1">
+                      <div className="text-3xl font-bold text-gray-800 mb-1">
                         {statistics.totalFemmes}
                       </div>
-                      <div className="text-xs text-gray-600 mt-1">Femmes</div>
+                      <div className="text-xs text-gray-600 font-medium">
+                        Femmes
+                      </div>
                     </div>
-                    <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
-                      <Users className="w-5 h-5 text-pink-600" />
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center text-xs text-pink-600">
-                    <span>
-                      {statistics.totalResidents > 0
-                        ? Math.round(
-                            (statistics.totalFemmes /
-                              statistics.totalResidents) *
-                              100
-                          )
-                        : 0}
-                      %
-                    </span>
-                    <span className="text-gray-500 ml-1">of total</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* CONTENU PRINCIPAL */}
-            <div className="flex-1 overflow-y-auto mt-5 mb-4">
-              <div className="mr-3 ml-8">
-                {isSearchMode ? (
-                  /* MODE RECHERCHE - AFFICHER LES RÉSULTATS DES RÉSIDENTS ET RÉSIDENCES */
-                  <div className="space-y-4 pb-4">
-                    {searchResults.length === 0 ? (
-                      <div className="text-center py-8 bg-white/30 backdrop-blur-sm rounded-2xl border border-gray-200/80">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Search className="w-8 h-8 text-gray-400" />
-                        </div>
-                        <h3 className="font-semibold text-black text-lg mb-2">
-                          Aucun résultat trouvé
-                        </h3>
-                        <p className="text-black text-sm">
-                          Aucun résident ou résidence ne correspond à votre
-                          recherche "{searchQuery}"
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="mb-4 px-4 py-2 bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <span className="font-semibold text-gray-800">
-                                {searchResults.length} résultat
-                                {searchResults.length > 1 ? "s" : ""} trouvé
-                                {searchResults.length > 1 ? "s" : ""}
-                              </span>
-                              <span className="text-gray-600 text-sm ml-2">
-                                pour "{searchQuery}"
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm text-gray-600">
-                                {
-                                  searchResults.filter(
-                                    (r) => r.resultType === "resident"
-                                  ).length
-                                }{" "}
-                                résident
-                                {searchResults.filter(
-                                  (r) => r.resultType === "resident"
-                                ).length > 1
-                                  ? "s"
-                                  : ""}
-                              </span>
-                              <span className="text-gray-400">•</span>
-                              <span className="text-sm text-gray-600">
-                                {
-                                  searchResults.filter(
-                                    (r) => r.resultType === "residence"
-                                  ).length
-                                }{" "}
-                                résidence
-                                {searchResults.filter(
-                                    (r) => r.resultType === "residence"
-                                  ).length > 1
-                                  ? "s"
-                                  : ""}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          {searchResults.map((result) =>
-                            result.resultType === "resident" ? (
-                              <ResidentSearchResult
-                                key={`resident-${result.id}`}
-                                result={result}
-                              />
-                            ) : (
-                              <ResidenceSearchResult
-                                key={`residence-${result.id}`}
-                                result={result}
-                              />
-                            )
-                          )}
-                        </div>
-                      </>
-                    )}
+            {/* CONTENU PRINCIPAL - LISTE DES RÉSIDENCES AVEC NUMÉROTATION ET EN-TÊTES */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="border rounded-xl border-gray-200 bg-white shadow-sm">
+                {currentResidences.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Search className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="font-semibold text-gray-800 text-lg mb-2">
+                      Aucune résidence trouvée
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      Aucune résidence ne correspond à votre recherche "
+                      {searchQuery}"
+                    </p>
                   </div>
                 ) : (
-                  /* MODE NORMAL - LISTE DES RÉSIDENCES */
-                  <div className="border rounded-2xl border-gray-200/80">
-                    {currentResidences.length === 0 ? (
-                      <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Search className="w-8 h-8 text-gray-400" />
+                  <div>
+                    {/* En-têtes de la liste - MODIFIÉ POUR ÉLIMINER LES ESPACES INUTILES */}
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                      <div className="flex items-center">
+                        {/* N° */}
+                        <div className="w-16 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          N°
                         </div>
-                        <h3 className="font-semibold text-black text-lg mb-2">
-                          Aucune résidence trouvée
-                        </h3>
-                        <p className="text-black text-sm">
-                          Aucune résidence ne correspond à votre recherche "
-                          {searchQuery}"
-                        </p>
+                        {/* Photo */}
+                        <div className="w-24 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Photo
+                        </div>
+                        {/* Adresse */}
+                        <div className="flex-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Adresse
+                        </div>
+                        {/* Résidents */}
+                        <div className="w-48 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Résidents
+                        </div>
+                        {/* Actions */}
+                        <div className="w-40 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </div>
                       </div>
-                    ) : (
-                      <div className="divide-y divide-gray-200/30 rounded-2xl">
-                        {currentResidences.map((residence) => (
-                          <div
-                            key={residence.id}
-                            className="transition-all duration-200 hover:bg-gray-50 bg-white/30 backdrop-blur-sm first:rounded-t-2xl last:rounded-b-2xl"
-                          >
-                            <div className="p-4">
-                              <div className="flex items-start justify-between">
-                                <div className="flex items-start space-x-3">
-                                  <div className="w-12 h-10 rounded-md overflow-hidden flex-shrink-0 bg-gray-200">
-                                    {residence.photos &&
-                                    residence.photos.length > 0 ? (
-                                      <img
-                                        src={residence.photos[0]}
-                                        alt={residence.name}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                          console.warn(
-                                            "Image failed to load in list:",
-                                            residence.photos[0]
-                                          );
-                                          e.target.style.display = "none";
-                                        }}
+                    </div>
+
+                    {/* Liste des résidences */}
+                    <div className="divide-y divide-gray-200">
+                      {currentResidences.map((residence, index) => (
+                        <div
+                          key={residence.id}
+                          className="transition-all duration-200 hover:bg-gray-50"
+                        >
+                          <div className="px-6 py-4">
+                            <div className="flex items-center">
+                              {/* Numéro */}
+                              <div className="w-16">
+                                <span className="text-sm font-medium text-gray-700">
+                                  {(currentPage - 1) * residencesPerPage + index + 1}
+                                </span>
+                              </div>
+
+                              {/* Photo */}
+                              <div className="w-24">
+                                <div className="w-20 h-16 rounded overflow-hidden flex-shrink-0 bg-gray-200">
+                                  {residence.photos &&
+                                  residence.photos.length > 0 ? (
+                                    <img
+                                      src={residence.photos[0]}
+                                      alt={residence.name}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        console.warn(
+                                          "Image failed to load in list:",
+                                          residence.photos[0]
+                                        );
+                                        e.target.style.display = "none";
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                      <Home
+                                        size={16}
+                                        className="text-gray-400"
                                       />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                                        <Home
-                                          size={16}
-                                          className="text-gray-400"
-                                        />
-                                      </div>
-                                    )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Adresse */}
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-gray-800 text-base mb-1">
+                                  {residence.name}
+                                </h3>
+                                <div className="flex items-center space-x-1">
+                                  <MapPin
+                                    size={12}
+                                    className="text-gray-500"
+                                  />
+                                  <span className="text-sm text-gray-600">
+                                    {residence.adresse}
+                                  </span>
+                                </div>
+                                {residence.proprietaire && (
+                                  <div className="flex items-center space-x-1 mt-1">
+                                    <User size={12} className="text-gray-500" />
+                                    <span className="text-xs text-gray-500">
+                                      {residence.proprietaire}
+                                    </span>
                                   </div>
-                                  <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-sm truncate text-gray-800">
-                                      {residence.name}
-                                    </h3>
-                                    <div className="flex items-center space-x-1 mt-1">
-                                      <MapPin
-                                        size={12}
-                                        className="text-gray-600"
-                                      />
-                                      <span className="text-xs truncate text-gray-600">
-                                        {residence.adresse}
-                                      </span>
+                                )}
+                              </div>
+
+                              {/* Résidents - Total et détail hommes/femmes */}
+                              <div className="w-48">
+                                <div className="flex flex-col items-center">
+                                  <div className="text-xl font-bold text-gray-800 mb-1">
+                                    {residence.totalResidents || 0}
+                                  </div>
+                                  <div className="flex justify-center space-x-4">
+                                    <div className="text-center">
+                                      <div className="text-sm font-semibold text-blue-600">
+                                        {residence.hommes || 0}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        Hommes
+                                      </div>
+                                    </div>
+                                    <div className="text-gray-300">|</div>
+                                    <div className="text-center">
+                                      <div className="text-sm font-semibold text-pink-600">
+                                        {residence.femmes || 0}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        Femmes
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
+                              </div>
 
-                                <div className="flex items-center mt-1.5 space-x-2 ml-2">
-                                  <button
-                                    onClick={() => handleViewDetails(residence)}
-                                    className="p-2 rounded-lg transition-colors flex items-center space-x-1 bg-blue-600 text-white hover:bg-blue-700"
-                                    title="Détails"
-                                  >
-                                    <Eye size={14} />
-                                    <span className="text-xs">Details</span>
-                                  </button>
+                              {/* Actions */}
+                              <div className="w-40">
+                                <div className="flex items-center space-x-2">
                                   {onViewOnMap && (
                                     <button
                                       onClick={() => onViewOnMap(residence)}
-                                      className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1"
+                                      className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center flex-1 text-xs font-medium"
                                       title="Carte"
                                     >
-                                      <Map size={14} />
-                                      <span className="text-xs">Carte</span>
+                                      <Map size={14} className="mr-1" />
+                                      <span>Carte</span>
                                     </button>
                                   )}
+                                  <button
+                                    onClick={() => handleViewDetails(residence)}
+                                    className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center flex-1 text-xs font-medium"
+                                    title="Détails"
+                                  >
+                                    <Eye size={14} className="mr-1" />
+                                    <span>Détails</span>
+                                  </button>
                                 </div>
                               </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Pagination - UNIQUEMENT EN MODE NORMAL */}
+            {/* Pagination */}
             {!isSearchMode && filteredResidences.length > residencesPerPage && (
-              <div className="border-t border-gray-200/60 bg-white/30 backdrop-blur-sm py-1.5 px-6 shadow-inner mb-2">
+              <div className="border-t border-gray-200 bg-white py-3 px-6">
                 <div className="flex items-center justify-center">
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
                     <button
                       onClick={prevPage}
                       disabled={currentPage === 1}
@@ -1924,9 +1910,42 @@ export default function ResidencePage({
                       <ChevronLeft size={20} />
                     </button>
 
-                    <span className="text-sm font-medium text-gray-600">
-                      Page {currentPage} sur {totalPages}
-                    </span>
+                    {/* Affichage des numéros de page */}
+                    <div className="flex items-center space-x-1">
+                      {[...Array(totalPages)].map((_, i) => {
+                        const pageNum = i + 1;
+                        // Afficher seulement 5 pages maximum autour de la page courante
+                        if (
+                          pageNum === 1 ||
+                          pageNum === totalPages ||
+                          (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                        ) {
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                currentPage === pageNum
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300 hover:border-gray-400"
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        } else if (
+                          pageNum === currentPage - 2 ||
+                          pageNum === currentPage + 2
+                        ) {
+                          return (
+                            <span key={pageNum} className="px-1 text-gray-400">
+                              ...
+                            </span>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
 
                     <button
                       onClick={nextPage}
@@ -1947,377 +1966,433 @@ export default function ResidencePage({
         </div>
       )}
 
-      {/* Modal de détails/édition */}
+      {/* Modal de détails - MODIFIÉ SELON VOS NOUVELLES SPÉCIFICATIONS */}
       {showModal && selectedResidence && (
         <div className="w-full">
           <div className="h-full flex flex-col">
-            <div className="flex justify-between items-center p-4 border-gray-200/60">
+            {/* Header avec bouton retour et titre */}
+            <div className="flex items-center p-4 border-b border-gray-200">
               <button
-                onClick={isEditMode ? handleBackFromEdit : handleCloseModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex items-center space-x-2"
+                onClick={handleCloseModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex items-center space-x-2 mr-4"
               >
                 <ChevronLeft size={20} className="text-gray-600" />
-                <span className="text-gray-600">Retour</span>
               </button>
-              <h2 className="text-xl font-bold text-gray-800">
-                {isEditMode ? "Ajouter un résident" : "Détails de la résidence"}
-              </h2>
-              <div className="w-10"></div>
+              <h1 className="text-xl font-bold text-gray-800">
+                {selectedResidence.lot || selectedResidence.name}
+              </h1>
             </div>
 
-            <div className="flex-1 p-6 overflow-hidden flex flex-col">
-              {!isEditMode ? (
-                <>
-                  {/* Photo et informations de localisation */}
-                  <div className="flex space-x-6 mb-6">
-                    <div className="w-1/3">
-                      <div
-                        className={`relative rounded-lg overflow-hidden bg-gray-100 cursor-pointer transition-all duration-300 ease-in-out ${
-                          isPhotoExpanded
-                            ? isFullScreenPhoto
-                              ? "fixed inset-0 z-50 m-0 bg-black"
-                              : "h-96"
-                            : "h-48"
-                        }`}
-                        onClick={handleImageClick}
-                      >
-                        {selectedResidence.photos &&
-                        selectedResidence.photos.length > 0 ? (
-                          <>
-                            <img
-                              src={selectedResidence.photos[currentPhotoIndex]}
-                              alt={`${selectedResidence.name} - Photo ${
-                                currentPhotoIndex + 1
-                              }`}
-                              className={`w-full h-full object-contain ${
-                                isFullScreenPhoto
-                                  ? "object-contain"
-                                  : "object-cover"
-                              }`}
-                              onError={(e) => {
-                                console.warn(
-                                  "Image failed to load in carousel:",
-                                  selectedResidence.photos[currentPhotoIndex]
-                                );
-                                e.target.style.display = "none";
-                              }}
-                            />
-
-                            {isPhotoExpanded &&
-                              selectedResidence.photos.length > 1 && (
-                                <>
-                                  <button
-                                    onClick={handlePrevPhoto}
-                                    className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
-                                  >
-                                    <ChevronLeft size={20} />
-                                  </button>
-                                  <button
-                                    onClick={handleNextPhoto}
-                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
-                                  >
-                                    <ChevronRight size={20} />
-                                  </button>
-
-                                  <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
-                                    {selectedResidence.photos.map(
-                                      (_, index) => (
-                                        <div
-                                          key={index}
-                                          className={`w-2 h-2 rounded-full ${
-                                            index === currentPhotoIndex
-                                              ? "bg-white"
-                                              : "bg-white/50"
-                                          }`}
-                                        />
-                                      )
-                                    )}
-                                  </div>
-                                </>
-                              )}
-
-                            {isPhotoExpanded &&
-                              selectedResidence.photos.length > 1 && (
-                                <div className="absolute bottom-2 right-2 text-xs text-white bg-black/50 px-2 py-1 rounded">
-                                  {currentPhotoIndex + 1} /{" "}
-                                  {selectedResidence.photos.length}
-                                </div>
-                              )}
-                          </>
-                        ) : (
-                          <div
-                            className="w-full h-full flex items-center justify-center bg-gray-200 cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              photoInputRef.current?.click();
-                            }}
-                          >
-                            <div className="text-center">
-                              <Camera
-                                size={32}
-                                className="text-gray-400 mx-auto mb-2"
-                              />
-                              <div className="text-sm text-gray-500">
-                                Cliquer pour ajouter une photo
-                              </div>
-                            </div>
-                          </div>
-                        )}
+            <div className="flex-1 overflow-y-auto">
+              {/* Section photo et informations */}
+              <div className="p-6">
+                <div className="grid grid-cols-3 gap-6 mb-8">
+                  {/* Photo à gauche */}
+                  <div className="bg-gray-100 rounded-lg overflow-hidden h-64">
+                    {selectedResidence.photos && selectedResidence.photos.length > 0 ? (
+                      <img
+                        src={selectedResidence.photos[0]}
+                        alt={selectedResidence.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.warn(
+                            "Image failed to load in details:",
+                            selectedResidence.photos[0]
+                          );
+                          e.target.style.display = "none";
+                          e.target.parentElement.classList.add("flex", "items-center", "justify-center");
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                        <Home size={48} className="text-gray-400" />
                       </div>
+                    )}
+                  </div>
 
-                      {!isPhotoExpanded &&
-                        selectedResidence.photos &&
-                        selectedResidence.photos.length > 0 && (
-                          <div className="mt-2 text-xs text-gray-500 text-center">
-                            Cliquez sur la photo pour l'agrandir
-                            {selectedResidence.photos.length > 1 &&
-                              " et voir le carousel"}
-                          </div>
-                        )}
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="h-40 flex flex-col justify-center space-y-4">
+                  {/* Informations de la résidence au centre */}
+                  <div className="space-y-4">
+                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                      Informations de la résidence
+                    </h2>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <MapPin size={18} className="text-gray-500" />
+                        <span className="text-gray-700">
+                          {selectedResidence.adresse}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Users size={18} className="text-gray-500" />
+                        <span className="text-gray-700 font-medium">
+                          {selectedResidence.totalResidents || 0} résidents
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-4 pt-2">
                         <div className="flex items-center space-x-2">
-                          <div className="text-gray-800 font-medium">
-                            Lot: {selectedResidence.lot || "-"}
-                          </div>
+                          <Mars size={18} className="text-blue-600" />
+                          <span className="font-medium text-gray-700">
+                            {selectedResidence.hommes || 0} Hommes
+                          </span>
                         </div>
+                        <div className="text-gray-400">•</div>
                         <div className="flex items-center space-x-2">
-                          <div className="text-gray-800 font-medium">
-                            Quartier: {selectedResidence.quartier || "-"}
-                          </div>
+                          <Venus size={18} className="text-pink-600" />
+                          <span className="font-medium text-gray-700">
+                            {selectedResidence.femmes || 0} Femmes
+                          </span>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <div className="text-gray-800 font-medium">
-                            Ville: {selectedResidence.ville || "-"}
-                          </div>
-                        </div>
-                        {selectedResidence.proprietaire && (
-                          <div className="flex items-center space-x-2">
-                            <div className="text-gray-800 font-medium">
-                              Propriétaire: {selectedResidence.proprietaire}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Liste des résidents - FORMAT "lot/nom/prenom/date de naissance/cin/féminin ou masculin" */}
-                  {selectedResidence.residents &&
-                  selectedResidence.residents.length > 0 ? (
-                    <div className="flex-1 overflow-hidden flex flex-col mb-4">
-                      <div className="bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60 overflow-hidden flex flex-col flex-1">
-                        {/* En-tête de la liste */}
-                        <ResidentListHeader />
-
-                        {/* Liste des résidents */}
-                        <div className="flex-1 overflow-y-auto">
-                          {selectedResidence.residents.map((resident) => (
-                            <ResidentRow
-                              key={resident.id}
-                              resident={resident}
-                            />
-                          ))}
-                        </div>
+                  {/* Informations du propriétaire à droite */}
+                  <div className="space-y-4">
+                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                      Propriétaire
+                    </h2>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <User size={18} className="text-gray-500" />
+                        <span className="text-gray-700">
+                          {selectedResidence.proprietaire || "Non spécifié"}
+                        </span>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center mb-4">
-                      <div className="bg-white/30 backdrop-blur-sm rounded-lg border border-gray-200/60 p-8 text-center">
-                        <Users className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                        <div className="text-gray-500 mb-4">
-                          Aucun résident enregistré
+                      {selectedResidence.telephone && (
+                        <div className="flex items-center space-x-2">
+                          <Phone size={18} className="text-gray-500" />
+                          <span className="text-gray-700">
+                            {selectedResidence.telephone}
+                          </span>
                         </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section liste des résidents */}
+                <div className="bg-white rounded-lg border border-gray-200">
+                  <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-800">
+                      Liste des résidents
+                    </h3>
+                    <button
+                      onClick={handleOpenAddResidentModal}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center space-x-2"
+                    >
+                      <Plus size={16} />
+                      <span>Ajouter un résident</span>
+                    </button>
+                  </div>
+
+                  {selectedResidence.residents && selectedResidence.residents.length > 0 ? (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <ResidentListHeader />
+                          <tbody>
+                            {currentResidentsInModal.map((resident) => (
+                              <ResidentRow
+                                key={resident.id}
+                                resident={resident}
+                              />
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination pour les résidents */}
+                      {totalResidentPages > 1 && (
+                        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-center">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={prevResidentPage}
+                              disabled={residentPage === 1}
+                              className={`p-2 rounded-lg border transition-colors ${
+                                residentPage === 1
+                                  ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200"
+                                  : "bg-white text-gray-600 hover:bg-gray-50 border-gray-300 hover:border-gray-400"
+                              }`}
+                            >
+                              <ChevronLeft size={20} />
+                            </button>
+
+                            {/* Affichage des numéros de page */}
+                            <div className="flex items-center space-x-1">
+                              {[...Array(totalResidentPages)].map((_, i) => {
+                                const pageNum = i + 1;
+                                // Afficher seulement 5 pages maximum autour de la page courante
+                                if (
+                                  pageNum === 1 ||
+                                  pageNum === totalResidentPages ||
+                                  (pageNum >= residentPage - 1 && pageNum <= residentPage + 1)
+                                ) {
+                                  return (
+                                    <button
+                                      key={pageNum}
+                                      onClick={() => setResidentPage(pageNum)}
+                                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                        residentPage === pageNum
+                                          ? "bg-blue-600 text-white"
+                                          : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300 hover:border-gray-400"
+                                      }`}
+                                    >
+                                      {pageNum}
+                                    </button>
+                                  );
+                                } else if (
+                                  pageNum === residentPage - 2 ||
+                                  pageNum === residentPage + 2
+                                ) {
+                                  return (
+                                    <span key={pageNum} className="px-1 text-gray-400">
+                                      ...
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })}
+                            </div>
+
+                            <button
+                              onClick={nextResidentPage}
+                              disabled={residentPage === totalResidentPages}
+                              className={`p-2 rounded-lg border transition-colors ${
+                                residentPage === totalResidentPages
+                                  ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200"
+                                  : "bg-white text-gray-600 hover:bg-gray-50 border-gray-300 hover:border-gray-400"
+                              }`}
+                            >
+                              <ChevronRight size={20} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="p-8 text-center">
+                      <Users className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                      <div className="text-gray-500 mb-4">
+                        Aucun résident enregistré
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-                  {/* BOUTON AJOUTER */}
-                  <div className="flex-shrink-0 mt-auto pt-4 border-t border-gray-200">
-                    <button
-                      onClick={handleEditResidents}
-                      className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center space-x-2"
-                    >
-                      <Plus size={16} />
-                      <span>Ajouter des résidents</span>
-                    </button>
+      {/* Modal pour ajouter un résident - FORME RECTANGULAIRE VERTICALE, 600x640px */}
+      {showAddResidentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Overlay sombre */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={handleCloseAddResidentModal}
+          />
+          
+          {/* Modal - Dimensions fixes et centré */}
+          <div className="relative bg-white rounded-2xl shadow-2xl w-[600px] h-[640px] overflow-hidden flex flex-col">
+            {/* Header du modal avec titre et bouton fermer */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-800">
+                Ajouter un résident
+              </h2>
+              <button
+                onClick={handleCloseAddResidentModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-600" />
+              </button>
+            </div>
+
+            {/* Contenu du modal - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* Structure du formulaire inspirée de l'image */}
+              <div className="space-y-6">
+                {/* Champ Nom */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nom
+                  </label>
+                  <input
+                    ref={nomInputRef}
+                    type="text"
+                    value={newResident.nom}
+                    onChange={(e) =>
+                      handleNewResidentChange("nom", e.target.value)
+                    }
+                    onKeyDown={(e) => handleKeyDown(e, "prenom")}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors text-base"
+                    placeholder="Entrez le nom"
+                    maxLength={50}
+                  />
+                </div>
+
+                {/* Champ Prénom */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Prénom
+                  </label>
+                  <input
+                    ref={prenomInputRef}
+                    type="text"
+                    value={newResident.prenom}
+                    onChange={(e) =>
+                      handleNewResidentChange("prenom", e.target.value)
+                    }
+                    onKeyDown={(e) => handleKeyDown(e, "dateNaissance")}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors text-base"
+                    placeholder="Entrez le prénom"
+                    maxLength={50}
+                  />
+                </div>
+
+                {/* Sélection Sexe - Style similaire à l'image */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Sexe
+                  </label>
+                  <div className="flex space-x-8">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="sexe"
+                        value="homme"
+                        checked={newResident.sexe === "homme"}
+                        onChange={(e) =>
+                          handleNewResidentChange("sexe", e.target.value)
+                        }
+                        className="w-5 h-5 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-gray-700">Masculin</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="sexe"
+                        value="femme"
+                        checked={newResident.sexe === "femme"}
+                        onChange={(e) =>
+                          handleNewResidentChange("sexe", e.target.value)
+                        }
+                        className="w-5 h-5 text-pink-600 focus:ring-pink-500"
+                      />
+                      <span className="text-gray-700">Féminin</span>
+                    </label>
                   </div>
-                </>
-              ) : (
-                <>
-                  {/* Formulaire pour ajouter un résident */}
-                  <div className="mb-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                      Nouveau résident
-                    </h3>
+                </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Nom */}
+                {/* Champ Date de naissance */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date de naissance
+                  </label>
+                  <input
+                    ref={dateNaissanceInputRef}
+                    type="text"
+                    value={dateInput}
+                    onChange={handleDateChange}
+                    onFocus={handleDateFocus}
+                    onKeyDown={handleDateKeyDown}
+                    onBlur={handleDateBlur}
+                    className={`w-full px-4 py-3 border rounded-lg text-base font-mono text-left transition-colors ${
+                      dateError
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+                        : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                    }`}
+                    placeholder="jj/mm/aaaa"
+                    maxLength={10}
+                  />
+                  {dateError && (
+                    <p className="mt-2 text-sm text-red-600">{dateError}</p>
+                  )}
+                </div>
+
+                {/* Champ Téléphone */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Téléphone
+                  </label>
+                  <input
+                    ref={telephoneInputRef}
+                    type="text"
+                    value={newResident.telephone}
+                    onChange={(e) =>
+                      handleNewResidentChange("telephone", e.target.value)
+                    }
+                    onKeyDown={(e) => handleKeyDown(e, "save")}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors text-base font-mono"
+                    placeholder="Ex: 34 00 000 00"
+                    maxLength={10}
+                  />
+                </div>
+
+                {/* Section CIN (conditionnelle pour majeurs) */}
+                {estMajeurFromInput() && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      CIN
+                    </label>
+                    <input
+                      ref={cinInputRef}
+                      type="text"
+                      value={newResident.cin}
+                      onChange={(e) =>
+                        handleNewResidentChange("cin", e.target.value)
+                      }
+                      onKeyDown={(e) => handleKeyDown(e, "telephone")}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors text-base font-mono"
+                      placeholder="Numéro CIN (12 chiffres)"
+                      maxLength={12}
+                    />
+                    <p className="mt-2 text-xs text-gray-500">
+                      Champ réservé aux personnes majeures uniquement
+                    </p>
+                  </div>
+                )}
+
+                {/* Informations de la résidence (lecture seule) */}
+                <div className="pt-6 border-t border-gray-200">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                    Résidence concernée
+                  </h3>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex justify-between items-start">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Nom <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          ref={nomInputRef}
-                          type="text"
-                          value={newResident.nom}
-                          onChange={(e) =>
-                            handleNewResidentChange("nom", e.target.value)
-                          }
-                          onKeyDown={(e) => handleKeyDown(e, "prenom")}
-                          className={`w-full px-3 py-2 border rounded text-base text-left transition-colors ${
-                            newResident.nom.trim() !== ""
-                              ? "border-gray-300 bg-white text-gray-800 placeholder-transparent"
-                              : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                          }`}
-                          placeholder="Entrez le nom"
-                          maxLength={50}
-                        />
-                      </div>
-
-                      {/* Prénom */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Prénom <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          ref={prenomInputRef}
-                          type="text"
-                          value={newResident.prenom}
-                          onChange={(e) =>
-                            handleNewResidentChange("prenom", e.target.value)
-                          }
-                          onKeyDown={(e) => handleKeyDown(e, "dateNaissance")}
-                          className={`w-full px-3 py-2 border rounded text-base text-left transition-colors ${
-                            newResident.prenom.trim() !== ""
-                              ? "border-gray-300 bg-white text-gray-800 placeholder-transparent"
-                              : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                          }`}
-                          placeholder="Entrez le prénom"
-                          maxLength={50}
-                        />
-                      </div>
-
-                      {/* Date de naissance */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Date de naissance{" "}
-                          <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          ref={dateNaissanceInputRef}
-                          type="text"
-                          value={dateInput}
-                          onChange={handleDateChange}
-                          onFocus={handleDateFocus}
-                          onKeyDown={handleDateKeyDown}
-                          onBlur={handleDateBlur}
-                          className={`w-full px-3 py-2 border rounded text-base font-mono text-left tracking-wider transition-colors ${
-                            dateError
-                              ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                              : dateInput.trim() !== ""
-                              ? "border-gray-300 bg-white text-gray-800 placeholder-transparent"
-                              : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                          }`}
-                          placeholder="jj/mm/aaaa"
-                          maxLength={10}
-                          style={{ letterSpacing: "1px" }}
-                        />
-                      </div>
-
-                      {/* CIN - CONDITIONNEL */}
-                      {estMajeurFromInput() && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            CIN
-                          </label>
-                          <input
-                            ref={cinInputRef}
-                            type="text"
-                            value={newResident.cin}
-                            onChange={(e) =>
-                              handleNewResidentChange("cin", e.target.value)
-                            }
-                            onKeyDown={(e) => handleKeyDown(e, "telephone")}
-                            className={`w-full px-3 py-2 border rounded text-base font-mono text-left transition-colors ${
-                              newResident.cin.trim() !== ""
-                                ? "border-gray-300 bg-white text-gray-800 placeholder-transparent"
-                                : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                            }`}
-                            placeholder="Entrez le CIN"
-                            maxLength={12}
-                          />
+                        <div className="font-medium text-gray-800">
+                          {selectedResidence?.lot || selectedResidence?.name || "N/A"}
                         </div>
-                      )}
-
-                      {/* Téléphone */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Téléphone
-                        </label>
-                        <input
-                          ref={telephoneInputRef}
-                          type="text"
-                          value={newResident.telephone}
-                          onChange={(e) =>
-                            handleNewResidentChange("telephone", e.target.value)
-                          }
-                          onKeyDown={(e) => handleKeyDown(e, "sexe")}
-                          className={`w-full px-3 py-2 border rounded text-base font-mono text-left transition-colors ${
-                            newResident.telephone.trim() !== ""
-                              ? "border-gray-300 bg-white text-gray-800 placeholder-transparent"
-                              : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                          }`}
-                          placeholder="Entrez le téléphone"
-                          maxLength={10}
-                        />
+                        <div className="text-sm text-gray-600 mt-1">
+                          {selectedResidence?.adresse || "Adresse non spécifiée"}
+                        </div>
                       </div>
-
-                      {/* Sexe */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Sexe
-                        </label>
-                        <select
-                          ref={sexeSelectRef}
-                          value={newResident.sexe}
-                          onChange={(e) =>
-                            handleNewResidentChange("sexe", e.target.value)
-                          }
-                          onKeyDown={(e) => handleKeyDown(e, "save")}
-                          className={`w-full px-3 py-2 border rounded text-base text-left transition-colors ${
-                            newResident.sexe !== "homme"
-                              ? "border-gray-300 bg-white text-gray-800"
-                              : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                          }`}
-                        >
-                          <option value="homme">Masculin</option>
-                          <option value="femme">Féminin</option>
-                        </select>
+                      <div className="text-sm text-gray-500">
+                        {selectedResidence?.totalResidents || 0} résidents
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
 
-                  {/* Boutons de sauvegarde/annulation */}
-                  <div className="flex-shrink-0 flex space-x-4 pt-4 border-t border-gray-200">
-                    <button
-                      onClick={handleCancelEdit}
-                      className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-                    >
-                      Annuler
-                    </button>
-                    <button
-                      onClick={handleSaveEdit}
-                      onKeyDown={(e) => e.key === "Enter" && handleSaveEdit()}
-                      className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                    >
-                      Sauvegarder
-                    </button>
-                  </div>
-                </>
-              )}
+            {/* Boutons d'action en bas */}
+            <div className="flex space-x-4 p-6 border-t border-gray-200">
+              <button
+                onClick={handleCancelEdit}
+                className="flex-1 px-4 py-3 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveEdit()}
+                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Enregistrer
+              </button>
             </div>
           </div>
         </div>

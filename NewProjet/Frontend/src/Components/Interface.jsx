@@ -23,6 +23,8 @@ import {
   X,
   Navigation,
   ClipboardList,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 // Import des composants Google Maps
@@ -144,8 +146,11 @@ export default function Interface({ user }) {
   // Hook de traduction
   const { t, i18n } = useTranslation();
 
-  // État pour le menu dropdown
+  // État pour le menu dropdown (notifications, etc.)
   const [openDropdown, setOpenDropdown] = useState(false);
+
+  // NOUVEAU ÉTAT : menu déroulant "MENU" en bas de SIGAP
+  const [menuDropdownOpen, setMenuDropdownOpen] = useState(false);
 
   // État pour la requête de recherche
   const [searchQuery, setSearchQuery] = useState("");
@@ -235,6 +240,7 @@ export default function Interface({ user }) {
   const dropdownRef = useRef(null);
   const searchRef = useRef(null);
   const addAddressRef = useRef(null);
+  const menuDropdownRef = useRef(null); // NOUVELLE RÉFÉRENCE : pour le menu déroulant "MENU"
 
   // --- NOUVEAUX ÉTATS : fokontany récupéré depuis le backend ---
   const [fokontanyPolygon, setFokontanyPolygon] = useState(null);
@@ -967,6 +973,11 @@ export default function Interface({ user }) {
       if (!searchRef.current?.contains(event.target) && showSearchResults) {
         setShowSearchResults(false);
       }
+
+      // NOUVEAU : Fermer le menu déroulant "MENU" si on clique à l'extérieur
+      if (menuDropdownRef.current && !menuDropdownRef.current.contains(event.target)) {
+        setMenuDropdownOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -1034,7 +1045,7 @@ export default function Interface({ user }) {
     window.location.href = "/login";
   };
 
-  // Gestionnaire de clic sur le logo
+  // Gestionnaire de clic sur le logo SIGAP
   const handleLogoClick = () => {
     if (showUserPage && userPageState.showPasswordModal) {
       setUserPageState(prev => ({ ...prev, showPasswordModal: false }));
@@ -1052,6 +1063,13 @@ export default function Interface({ user }) {
       setResidenceToSelect(null);
     }
     setShowSearchResults(false);
+    setMenuDropdownOpen(false); // Fermer le menu déroulant
+  };
+
+  // NOUVEAU : Gestionnaire de clic sur le bouton "MENU"
+  const handleMenuButtonClick = () => {
+    if (isModalOpen) return;
+    setMenuDropdownOpen(!menuDropdownOpen);
   };
 
   // Gestionnaire de clic sur l'icône utilisateur
@@ -1070,6 +1088,7 @@ export default function Interface({ user }) {
       setShowSearchResults(false);
       setClickedResidenceId(null);
       setResidenceToSelect(null);
+      setMenuDropdownOpen(false); // Fermer le menu déroulant
     }
   };
 
@@ -1088,6 +1107,7 @@ export default function Interface({ user }) {
       setSearchResults([]);
       setClickedResidenceId(null);
       setResidenceToSelect(null);
+      setMenuDropdownOpen(false); // Fermer le menu déroulant
     }
     if (isSelectingLocation || showAddAddress) {
       setIsSelectingLocation(false);
@@ -1118,6 +1138,7 @@ export default function Interface({ user }) {
       setShowSearchResults(false);
       setClickedResidenceId(null);
       setResidenceToSelect(null);
+      setMenuDropdownOpen(false); // Fermer le menu déroulant
     }
     if (isSelectingLocation || showAddAddress) {
       setIsSelectingLocation(false);
@@ -1148,6 +1169,7 @@ export default function Interface({ user }) {
       setShowNotifications(false);
       setShowSearchResults(false);
       setClickedResidenceId(null);
+      setMenuDropdownOpen(false); // Fermer le menu déroulant
     } else {
       setResidenceToSelect(null);
     }
@@ -1252,6 +1274,7 @@ export default function Interface({ user }) {
     setShowNotifications(false);
     setShowSearchResults(false);
     setClickedResidenceId(null);
+    setMenuDropdownOpen(false); // Fermer le menu déroulant
   };
 
   // Fonction pour obtenir l'adresse à partir de coordonnées (géocodage)
@@ -2412,7 +2435,7 @@ export default function Interface({ user }) {
       <div className="absolute top-1 left-6 z-20">
         <div className="bg-white/30 hover:bg-white/50 rounded-2xl shadow-lg py-4 flex flex-col items-center space-y-6 transition-all duration-300 ease-out w-55 border border-gray-200/60 hover:border-gray-300/80">
 
-          {/* Logo / Accueil */}
+          {/* Logo / Accueil - SIGAP garde sa fonctionnalité originale */}
           <button
             onClick={handleLogoClick}
             disabled={isModalOpen}
@@ -2430,73 +2453,89 @@ export default function Interface({ user }) {
             </span>
           </button>
 
-          {/* Bouton Résidence */}
-          <button
-            onClick={handleResidenceClick}
-            disabled={isModalOpen}
-            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${showResidence
-              ? "bg-white border border-blue-200/60"
-              : isModalOpen
-                ? "bg-transparent cursor-not-allowed"
-                : "bg-transparent hover:bg-white hover:border-blue-200/60"
-              }`}
-          >
-            <div className={`p-2 rounded-full flex-shrink-0 ${showResidence ? "bg-blue-100/70" : isModalOpen ? "bg-blue-100/50" : "bg-blue-100/70"
-              }`}>
-              <MapPin size={18} className={`${showResidence ? "text-blue-600" : isModalOpen ? "text-blue-400" : "text-blue-600"
-                } transition-all duration-300`} />
-            </div>
-            <span className={`${showResidence ? "text-gray-800" : isModalOpen ? "text-gray-500" : "text-gray-800"
-              }`}>
-              Résidence
-            </span>
-          </button>
-
-          {/* Bouton Statistique */}
-          <button
-            onClick={handleStatistiqueClick}
-            disabled={isModalOpen}
-            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${showStatistique
-              ? "bg-white border border-green-200/60"
-              : isModalOpen
-                ? "bg-transparent cursor-not-allowed"
-                : "bg-transparent hover:bg-white hover:border-green-200/60"
-              }`}
-          >
-            <div className={`p-2 rounded-full flex-shrink-0 ${showStatistique ? "bg-green-100/70" : isModalOpen ? "bg-green-100/50" : "bg-green-100/70"
-              }`}>
-              <BarChart3 size={18} className={`${showStatistique ? "text-green-600" : isModalOpen ? "text-green-400" : "text-green-600"
-                } transition-all duration-300`} />
-            </div>
-            <span className={`${showStatistique ? "text-gray-800" : isModalOpen ? "text-gray-500" : "text-gray-800"
-              } font-medium whitespace-nowrap transition-all duration-300`}>
-              Statistique
-            </span>
-          </button>
-
-          {/* Bouton Demandes (visible uniquement pour les secrétaires) */}
-          {currentUser?.role === 'secretaire' && (
+          {/* SEULEMENT LE BOUTON "MENU" EN BAS DE SIGAP - LES AUTRES BOUTONS ONT ÉTÉ SUPPRIMÉS */}
+          <div ref={menuDropdownRef} className="relative w-full">
             <button
-              onClick={handlePendingResidencesClick}
+              onClick={handleMenuButtonClick}
               disabled={isModalOpen}
-              className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${showPendingResidences
-                ? "bg-white border border-purple-200/60"
+              className={`w-full flex items-center justify-between rounded-xl transition-all duration-300 py-3 px-4 ${menuDropdownOpen
+                ? "bg-white border border-gray-200/60"
                 : isModalOpen
                   ? "bg-transparent cursor-not-allowed"
-                  : "bg-transparent hover:bg-white hover:border-purple-200/60"
+                  : "bg-transparent hover:bg-white hover:border-gray-200/60"
                 }`}
             >
-              <div className={`p-2 rounded-full flex-shrink-0 ${showPendingResidences ? "bg-purple-100/70" : isModalOpen ? "bg-purple-100/50" : "bg-purple-100/70"
-                }`}>
-                <ClipboardList size={18} className={`${showPendingResidences ? "text-purple-600" : isModalOpen ? "text-purple-400" : "text-purple-600"
-                  } transition-all duration-300`} />
+              <div className="flex items-center space-x-3">
+                <div className={`p-2 rounded-full flex-shrink-0 ${menuDropdownOpen ? "bg-gray-100/70" : isModalOpen ? "bg-gray-100/50" : "bg-gray-100/70"
+                  }`}>
+                  <span className="text-gray-700 font-medium text-sm">M</span>
+                </div>
+                <span className={`${menuDropdownOpen ? "text-gray-800" : isModalOpen ? "text-gray-500" : "text-gray-800"
+                  } font-medium whitespace-nowrap transition-all duration-300`}>
+                  MENU
+                </span>
               </div>
-              <span className={`${showPendingResidences ? "text-gray-800" : isModalOpen ? "text-gray-500" : "text-gray-800"
-                } font-medium whitespace-nowrap transition-all duration-300`}>
-                Demandes
-              </span>
+              <div className="flex-shrink-0">
+                {menuDropdownOpen ? (
+                  <ChevronUp size={18} className={`text-gray-600 ${isModalOpen ? 'opacity-50' : ''}`} />
+                ) : (
+                  <ChevronDown size={18} className={`text-gray-600 ${isModalOpen ? 'opacity-50' : ''}`} />
+                )}
+              </div>
             </button>
-          )}
+
+            {/* Menu déroulant "MENU" qui s'ouvre VERS LE BAS */}
+            {menuDropdownOpen && (
+              <div className="absolute top-full left-0 mt-2 w-full bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50">
+                {/* Option Résidence */}
+                <button
+                  onClick={() => {
+                    handleResidenceClick();
+                    setMenuDropdownOpen(false);
+                  }}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 transition-all duration-200 ${showResidence
+                    ? "bg-blue-50 text-blue-700"
+                    : "hover:bg-gray-50 text-gray-700"
+                    }`}
+                >
+                  <MapPin size={18} className={showResidence ? "text-blue-600" : "text-gray-600"} />
+                  <span className="font-medium whitespace-nowrap">Résidence</span>
+                </button>
+
+                {/* Option Statistiques */}
+                <button
+                  onClick={() => {
+                    handleStatistiqueClick();
+                    setMenuDropdownOpen(false);
+                  }}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 transition-all duration-200 ${showStatistique
+                    ? "bg-green-50 text-green-700"
+                    : "hover:bg-gray-50 text-gray-700"
+                    }`}
+                >
+                  <BarChart3 size={18} className={showStatistique ? "text-green-600" : "text-gray-600"} />
+                  <span className="font-medium whitespace-nowrap">Statistiques</span>
+                </button>
+
+                {/* Option Demande (visible uniquement pour les secrétaires) */}
+                {currentUser?.role === 'secretaire' && (
+                  <button
+                    onClick={() => {
+                      handlePendingResidencesClick();
+                      setMenuDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 transition-all duration-200 ${showPendingResidences
+                      ? "bg-purple-50 text-purple-700"
+                      : "hover:bg-gray-50 text-gray-700"
+                      }`}
+                  >
+                    <ClipboardList size={18} className={showPendingResidences ? "text-purple-600" : "text-gray-600"} />
+                    <span className="font-medium whitespace-nowrap">Demande</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
