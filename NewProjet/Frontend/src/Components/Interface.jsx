@@ -974,15 +974,17 @@ export default function Interface({ user }) {
         setShowSearchResults(false);
       }
 
-      // NOUVEAU : Fermer le menu déroulant "MENU" si on clique à l'extérieur
-      if (menuDropdownRef.current && !menuDropdownRef.current.contains(event.target)) {
+      // MODIFICATION : Ne fermer le menu déroulant que si on clique sur le bouton "MENU" lui-même
+      // OU si on clique en dehors de toute la sidebar
+      const sidebar = document.querySelector('.sidebar-container');
+      if (menuDropdownOpen && sidebar && !sidebar.contains(event.target)) {
         setMenuDropdownOpen(false);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showSearchResults]);
+  }, [showSearchResults, menuDropdownOpen]);
 
   // Vérifie si une page est ouverte
   const isAnyPageOpen = showResidence || showStatistique || showUserPage || showPendingResidences;
@@ -1063,16 +1065,83 @@ export default function Interface({ user }) {
       setResidenceToSelect(null);
     }
     setShowSearchResults(false);
-    setMenuDropdownOpen(false); // Fermer le menu déroulant
+    // MODIFICATION : Ne pas fermer le menu déroulant quand on clique sur le logo
+    // setMenuDropdownOpen(false);
   };
 
   // NOUVEAU : Gestionnaire de clic sur le bouton "MENU"
   const handleMenuButtonClick = () => {
     if (isModalOpen) return;
+    // MODIFICATION : Basculer uniquement l'état du menu
     setMenuDropdownOpen(!menuDropdownOpen);
   };
 
-  // Gestionnaire de clic sur l'icône utilisateur
+  // MODIFICATION : Gestionnaires de clic sur les items du menu
+  const handleResidenceClick = () => {
+    if (isModalOpen) return;
+    const newShowResidence = !showResidence;
+    setShowResidence(newShowResidence);
+    if (newShowResidence) {
+      setShowStatistique(false);
+      setShowUserPage(false);
+      setShowPendingResidences(false);
+      setUserPageState({ showPasswordModal: false });
+      setShowNotifications(false);
+      setShowSearchResults(false);
+      setSearchResults([]);
+      setClickedResidenceId(null);
+      setResidenceToSelect(null);
+    }
+    if (isSelectingLocation || showAddAddress) {
+      setIsSelectingLocation(false);
+      setShowAddAddress(false);
+      setSelectedLocation(null);
+      setSelectedAddress("");
+      setHasSelectedAddress(false);
+      setAddressDetails({
+        lot: "",
+        quartier: "",
+        ville: ""
+      });
+      setIsModalOpen(false);
+    }
+    // MODIFICATION : Ne pas fermer le menu déroulant
+    // setMenuDropdownOpen(false);
+  };
+
+  // MODIFICATION : Gestionnaire de clic sur Statistique
+  const handleStatistiqueClick = () => {
+    if (isModalOpen) return;
+    const newShowStatistique = !showStatistique;
+    setShowStatistique(newShowStatistique);
+    if (newShowStatistique) {
+      setShowResidence(false);
+      setShowUserPage(false);
+      setShowPendingResidences(false);
+      setUserPageState({ showPasswordModal: false });
+      setShowNotifications(false);
+      setShowSearchResults(false);
+      setClickedResidenceId(null);
+      setResidenceToSelect(null);
+    }
+    if (isSelectingLocation || showAddAddress) {
+      setIsSelectingLocation(false);
+      setShowAddAddress(false);
+      setSelectedLocation(null);
+      setSelectedAddress("");
+      setHasSelectedAddress(false);
+      setAddressDetails({
+        lot: "",
+        quartier: "",
+        ville: ""
+      });
+      setIsModalOpen(false);
+    }
+    // MODIFICATION : Ne pas fermer le menu déroulant
+    // setMenuDropdownOpen(false);
+  };
+
+  // MODIFICATION : Gestionnaire de clic sur l'icône utilisateur
   const handleUserIconClick = () => {
     if (isModalOpen) return;
     const newShowUserPage = !showUserPage;
@@ -1088,74 +1157,12 @@ export default function Interface({ user }) {
       setShowSearchResults(false);
       setClickedResidenceId(null);
       setResidenceToSelect(null);
-      setMenuDropdownOpen(false); // Fermer le menu déroulant
     }
+    // MODIFICATION : Ne pas fermer le menu déroulant
+    // setMenuDropdownOpen(false);
   };
 
-  // Gestionnaire de clic sur Résidence
-  const handleResidenceClick = () => {
-    if (isModalOpen) return;
-    const newShowResidence = !showResidence;
-    setShowResidence(newShowResidence);
-    if (newShowResidence) {
-      setShowStatistique(false);
-      setShowUserPage(false);
-      setShowPendingResidences(false);
-      setUserPageState({ showPasswordModal: false });
-      setShowNotifications(false);
-      setShowSearchResults(false);
-      setSearchResults([]);
-      setClickedResidenceId(null);
-      setResidenceToSelect(null);
-      setMenuDropdownOpen(false); // Fermer le menu déroulant
-    }
-    if (isSelectingLocation || showAddAddress) {
-      setIsSelectingLocation(false);
-      setShowAddAddress(false);
-      setSelectedLocation(null);
-      setSelectedAddress("");
-      setHasSelectedAddress(false);
-      setAddressDetails({
-        lot: "",
-        quartier: "",
-        ville: ""
-      });
-      setIsModalOpen(false);
-    }
-  };
-
-  // Gestionnaire de clic sur Statistique
-  const handleStatistiqueClick = () => {
-    if (isModalOpen) return;
-    const newShowStatistique = !showStatistique;
-    setShowStatistique(newShowStatistique);
-    if (newShowStatistique) {
-      setShowResidence(false);
-      setShowUserPage(false);
-      setShowPendingResidences(false);
-      setUserPageState({ showPasswordModal: false });
-      setShowNotifications(false);
-      setShowSearchResults(false);
-      setClickedResidenceId(null);
-      setResidenceToSelect(null);
-      setMenuDropdownOpen(false); // Fermer le menu déroulant
-    }
-    if (isSelectingLocation || showAddAddress) {
-      setIsSelectingLocation(false);
-      setShowAddAddress(false);
-      setSelectedLocation(null);
-      setSelectedAddress("");
-      setHasSelectedAddress(false);
-      setAddressDetails({
-        lot: "",
-        quartier: "",
-        ville: ""
-      });
-      setIsModalOpen(false);
-    }
-  };
-
-  // Gestionnaire de clic sur Demandes (pour secrétaire)
+  // MODIFICATION : Gestionnaire de clic sur Demandes (pour secrétaire)
   const handlePendingResidencesClick = () => {
     if (isModalOpen) return;
     const newShowPending = !showPendingResidences;
@@ -1169,7 +1176,6 @@ export default function Interface({ user }) {
       setShowNotifications(false);
       setShowSearchResults(false);
       setClickedResidenceId(null);
-      setMenuDropdownOpen(false); // Fermer le menu déroulant
     } else {
       setResidenceToSelect(null);
     }
@@ -1187,6 +1193,8 @@ export default function Interface({ user }) {
       });
       setIsModalOpen(false);
     }
+    // MODIFICATION : Ne pas fermer le menu déroulant
+    // setMenuDropdownOpen(false);
   };
 
   const latLngToPixel = (latLng) => {
@@ -1274,7 +1282,8 @@ export default function Interface({ user }) {
     setShowNotifications(false);
     setShowSearchResults(false);
     setClickedResidenceId(null);
-    setMenuDropdownOpen(false); // Fermer le menu déroulant
+    // MODIFICATION : Fermer le menu déroulant seulement quand on ajoute une adresse
+    setMenuDropdownOpen(false);
   };
 
   // Fonction pour obtenir l'adresse à partir de coordonnées (géocodage)
@@ -1701,6 +1710,7 @@ export default function Interface({ user }) {
     setIsSelectingLocation(false);
     setSelectedLocation(null);
     setSelectedAddress("");
+;
     setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
@@ -2084,10 +2094,10 @@ export default function Interface({ user }) {
         <div className="absolute inset-0 z-20 bg-gray-500/30 backdrop-blur-sm transition-all duration-300 ease-in-out"></div>
       )}
 
-      {/* Barre de recherche centrale */}
-      <div className="absolute top-5 left-1/2 transform -translate-x-1/2 z-30">
-        <div className="px-7 py-2 rounded-3xl bg-white/30 hover:bg-white/50 duration-300 ease-out opacity-100">
-          <div className="rounded-full flex items-center px-6 py-1 w-96 border bg-white backdrop-blur-sm border-gray-200/60 hover:border-gray-300/80 transition-all duration-300">
+      {/* Barre de recherche fixe à gauche */}
+      <div className="absolute top-6 left-[320px] z-30">
+        
+          <div className="rounded-full flex items-center px-6 py-1.5 w-100 border bg-white backdrop-blur-sm border-gray-200/60 hover:border-gray-300/80 transition-all duration-300">
             <Search className="mr-3 flex-shrink-0 text-gray-600" size={20} />
 
             <form onSubmit={handleSearchSubmit} className="flex-1 flex items-center">
@@ -2108,7 +2118,7 @@ export default function Interface({ user }) {
               )}
             </form>
           </div>
-        </div>
+        
       </div>
 
       {/* === RÉSULTATS DE RECHERCHE === */}
@@ -2432,117 +2442,194 @@ export default function Interface({ user }) {
       )}
 
       {/* === SIDEBAR GAUCHE === */}
-      <div className="absolute top-1 left-6 z-20">
-        <div className="bg-white/30 hover:bg-white/50 rounded-2xl shadow-lg py-4 flex flex-col items-center space-y-6 transition-all duration-300 ease-out w-55 border border-gray-200/60 hover:border-gray-300/80">
-
-          {/* Logo / Accueil - SIGAP garde sa fonctionnalité originale */}
+      <div className="absolute top-6 left-6 z-20 sidebar-container">
+        <div className="bg-white/30 hover:bg-white/50 rounded-2xl shadow-lg border border-gray-200/60 hover:border-gray-300/80 transition-all duration-300 ease-out overflow-hidden"
+          style={{
+            width: "260px",
+            minHeight: "400px",
+            maxHeight: "85vh"
+          }}>
+          
+          {/* En-tête SIGAP - Bouton retour */}
           <button
             onClick={handleLogoClick}
             disabled={isModalOpen}
-            className={`w-full flex items-center space-x-3 rounded-xl transition-all duration-300 py-3 px-4 ${isModalOpen
-              ? 'bg-transparent cursor-not-allowed'
-              : 'bg-transparent hover:bg-white'
+            className={`w-full flex items-center px-4 py-3 transition-all duration-200 ${isModalOpen
+              ? 'cursor-not-allowed opacity-70'
+              : 'hover:bg-white/50'
               }`}
+            style={{ height: "44px" }}
           >
-            <div className="p-2 rounded-full flex-shrink-0 bg-blue-100/70">
-              <span className="text-blue-600 font-bold text-sm">SG</span>
+            <div style={{
+              width: "32px",
+              height: "32px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "rgba(59, 130, 246, 0.1)",
+              borderRadius: "8px",
+              marginRight: "12px"
+            }}>
+              <span style={{
+                fontSize: "14px",
+                fontWeight: "bold",
+                color: "#3b82f6"
+              }}>SG</span>
             </div>
-            <span className={`text-gray-800 font-medium whitespace-nowrap transition-all duration-300 ${isModalOpen ? 'opacity-50' : ''
-              }`}>
-              SIGAP
-            </span>
+            <span style={{
+              fontSize: "16px",
+              fontWeight: 600,
+              color: isModalOpen ? "#6b7280" : "#1f2937"
+            }}>SIGAP</span>
           </button>
 
-          {/* SEULEMENT LE BOUTON "MENU" EN BAS DE SIGAP - LES AUTRES BOUTONS ONT ÉTÉ SUPPRIMÉS */}
-          <div ref={menuDropdownRef} className="relative w-full">
-            <button
-              onClick={handleMenuButtonClick}
-              disabled={isModalOpen}
-              className={`w-full flex items-center justify-between rounded-xl transition-all duration-300 py-3 px-4 ${menuDropdownOpen
-                ? "bg-white border border-gray-200/60"
-                : isModalOpen
-                  ? "bg-transparent cursor-not-allowed"
-                  : "bg-transparent hover:bg-white hover:border-gray-200/60"
-                }`}
-            >
-              <div className="flex items-center space-x-3">
-                <div className={`p-2 rounded-full flex-shrink-0 ${menuDropdownOpen ? "bg-gray-100/70" : isModalOpen ? "bg-gray-100/50" : "bg-gray-100/70"
-                  }`}>
-                  <span className="text-gray-700 font-medium text-sm">M</span>
+          {/* Section Menu déroulant */}
+          <div className="p-4">
+            <div ref={menuDropdownRef} className="mb-4">
+              <button
+                onClick={handleMenuButtonClick}
+                disabled={isModalOpen}
+                className={`w-full flex items-center justify-between rounded-xl transition-all duration-200 mb-2 ${isModalOpen
+                  ? 'cursor-not-allowed opacity-70'
+                  : menuDropdownOpen
+                  ? "bg-white/50"
+                  : "hover:bg-white/50"
+                  }`}
+                style={{
+                  padding: "8px 12px"
+                }}
+              >
+                <div className="flex items-center">
+                  <div style={{
+                    width: "28px",
+                    height: "28px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: menuDropdownOpen ? "rgba(156, 163, 175, 0.1)" : "rgba(156, 163, 175, 0.1)",
+                    borderRadius: "6px",
+                    marginRight: "10px"
+                  }}>
+                    <span style={{
+                      fontSize: "12px",
+                      fontWeight: 500,
+                      color: "#6b7280"
+                    }}>M</span>
+                  </div>
+                  <span style={{
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    color: isModalOpen ? "#9ca3af" : "#4b5563",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em"
+                  }}>Menu</span>
                 </div>
-                <span className={`${menuDropdownOpen ? "text-gray-800" : isModalOpen ? "text-gray-500" : "text-gray-800"
-                  } font-medium whitespace-nowrap transition-all duration-300`}>
-                  MENU
-                </span>
-              </div>
-              <div className="flex-shrink-0">
-                {menuDropdownOpen ? (
-                  <ChevronUp size={18} className={`text-gray-600 ${isModalOpen ? 'opacity-50' : ''}`} />
-                ) : (
-                  <ChevronDown size={18} className={`text-gray-600 ${isModalOpen ? 'opacity-50' : ''}`} />
-                )}
-              </div>
-            </button>
+                <ChevronDown 
+                  size={16} 
+                  className={`transition-transform duration-200 ${menuDropdownOpen ? 'rotate-180' : ''}`}
+                  style={{ color: isModalOpen ? "#9ca3af" : "#6b7280" }}
+                />
+              </button>
 
-            {/* Menu déroulant "MENU" qui s'ouvre VERS LE BAS */}
-            {menuDropdownOpen && (
-              <div className="absolute top-full left-0 mt-2 w-full bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50">
-                {/* Option Résidence */}
-                <button
-                  onClick={() => {
-                    handleResidenceClick();
-                    setMenuDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 transition-all duration-200 ${showResidence
-                    ? "bg-blue-50 text-blue-700"
-                    : "hover:bg-gray-50 text-gray-700"
-                    }`}
-                >
-                  <MapPin size={18} className={showResidence ? "text-blue-600" : "text-gray-600"} />
-                  <span className="font-medium whitespace-nowrap">Résidence</span>
-                </button>
-
-                {/* Option Statistiques */}
-                <button
-                  onClick={() => {
-                    handleStatistiqueClick();
-                    setMenuDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 transition-all duration-200 ${showStatistique
-                    ? "bg-green-50 text-green-700"
-                    : "hover:bg-gray-50 text-gray-700"
-                    }`}
-                >
-                  <BarChart3 size={18} className={showStatistique ? "text-green-600" : "text-gray-600"} />
-                  <span className="font-medium whitespace-nowrap">Statistiques</span>
-                </button>
-
-                {/* Option Demande (visible uniquement pour les secrétaires) */}
-                {currentUser?.role === 'secretaire' && (
+              {/* Menu déroulant "MENU" - version dropdown */}
+              {menuDropdownOpen && !isModalOpen && (
+                <div className="ml-8 mt-2 space-y-1 animate-fadeIn">
+                  {/* Option Résidence */}
                   <button
-                    onClick={() => {
-                      handlePendingResidencesClick();
-                      setMenuDropdownOpen(false);
-                    }}
-                    className={`w-full flex items-center space-x-3 px-4 py-3 transition-all duration-200 ${showPendingResidences
-                      ? "bg-purple-50 text-purple-700"
-                      : "hover:bg-gray-50 text-gray-700"
+                    onClick={handleResidenceClick}
+                    className={`w-full flex items-center rounded-xl transition-all duration-200 ${showResidence
+                      ? "bg-blue-50 border border-blue-100"
+                      : "hover:bg-gray-50"
                       }`}
+                    style={{
+                      height: "44px",
+                      padding: "0 12px"
+                    }}
                   >
-                    <ClipboardList size={18} className={showPendingResidences ? "text-purple-600" : "text-gray-600"} />
-                    <span className="font-medium whitespace-nowrap">Demande</span>
+                    <div style={{
+                      width: "36px",
+                      display: "flex",
+                      justifyContent: "center",
+                      marginRight: "10px"
+                    }}>
+                      <MapPin size={20} className={showResidence ? "text-blue-600" : "text-gray-600"} />
+                    </div>
+                    <span style={{
+                      fontSize: "14px",
+                      fontWeight: 500,
+                      color: showResidence ? "#2563eb" : "#4b5563"
+                    }}>Résidence</span>
                   </button>
-                )}
-              </div>
-            )}
+
+                  {/* Option Statistiques */}
+                  <button
+                    onClick={handleStatistiqueClick}
+                    className={`w-full flex items-center rounded-xl transition-all duration-200 ${showStatistique
+                      ? "bg-green-50 border border-green-100"
+                      : "hover:bg-gray-50"
+                      }`}
+                    style={{
+                      height: "44px",
+                      padding: "0 12px"
+                    }}
+                  >
+                    <div style={{
+                      width: "36px",
+                      display: "flex",
+                      justifyContent: "center",
+                      marginRight: "10px"
+                    }}>
+                      <BarChart3 size={20} className={showStatistique ? "text-green-600" : "text-gray-600"} />
+                    </div>
+                    <span style={{
+                      fontSize: "14px",
+                      fontWeight: 500,
+                      color: showStatistique ? "#059669" : "#4b5563"
+                    }}>Statistiques</span>
+                  </button>
+
+                  {/* Option Demandes (visible uniquement pour les secrétaires) */}
+                  {currentUser?.role === 'secretaire' && (
+                    <button
+                      onClick={handlePendingResidencesClick}
+                      className={`w-full flex items-center rounded-xl transition-all duration-200 ${showPendingResidences
+                        ? "bg-purple-50 border border-purple-100"
+                        : "hover:bg-gray-50"
+                        }`}
+                      style={{
+                        height: "44px",
+                        padding: "0 12px"
+                      }}
+                    >
+                      <div style={{
+                        width: "36px",
+                        display: "flex",
+                        justifyContent: "center",
+                        marginRight: "10px"
+                      }}>
+                        <ClipboardList size={20} className={showPendingResidences ? "text-purple-600" : "text-gray-600"} />
+                      </div>
+                      <span style={{
+                        fontSize: "14px",
+                        fontWeight: 500,
+                        color: showPendingResidences ? "#7c3aed" : "#4b5563"
+                      }}>Demande</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* === PAGES === */}
+      {/* === PAGES ÉLARGIES (positionnées parallèlement à la barre de recherche) === */}
       {/* Page Résidence */}
       {showResidence && (
-        <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[85vh] w-316">
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+          style={{
+            height: "calc(100vh - 110px)"
+          }}>
           <ResidencePage
             onBack={handleCloseResidence}
             searchQuery={searchQuery}
@@ -2554,14 +2641,20 @@ export default function Interface({ user }) {
 
       {/* Page Statistique */}
       {showStatistique && (
-        <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[85vh] w-316">
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+          style={{
+            height: "calc(100vh - 110px)"
+          }}>
           <Statistique onBack={handleCloseStatistique} />
         </div>
       )}
 
       {/* Page Utilisateur */}
       {showUserPage && (
-        <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[85vh] w-316">
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+          style={{
+            height: "calc(100vh - 110px)"
+          }}>
           <UserPage
             user={currentUser}
             onBack={handleCloseUserPage}
@@ -2574,7 +2667,10 @@ export default function Interface({ user }) {
 
       {/* Page Demandes en attente */}
       {showPendingResidences && currentUser?.role === 'secretaire' && (
-        <div className="absolute top-22 left-65 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60 h-[85vh] w-316">
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+          style={{
+            height: "calc(100vh - 110px)"
+          }}>
           <PendingResidences
             onBack={handleClosePendingResidences}
             onResidenceApproved={checkAndClearApprovedResidenceNotifications}
