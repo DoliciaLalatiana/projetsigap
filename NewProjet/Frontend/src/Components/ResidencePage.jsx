@@ -18,9 +18,105 @@ import {
   Calendar,
   Building,
   X,
+  ArrowLeft,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";
+
+// Composant modal pour l'agrandissement d'image
+const ImageModal = ({ 
+  isOpen, 
+  onClose, 
+  images, 
+  currentIndex, 
+  onNext, 
+  onPrev 
+}) => {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
+  if (!isMounted || !isOpen || !images || images.length === 0) return null;
+
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      {/* Overlay avec assombrissement */}
+      <div 
+        className="absolute inset-0 bg-black/50"
+        onClick={handleOverlayClick}
+      />
+      
+      {/* Modal d'image */}
+      <div 
+        className="relative bg-white rounded-lg overflow-hidden w-[80vw] max-w-4xl h-auto max-h-[85vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header du modal */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
+          <div className="text-sm text-gray-600">
+            Image {currentIndex + 1} sur {images.length}
+          </div>
+          <button
+            onClick={onClose}
+            className="flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors"
+            style={{ 
+              width: '32px', 
+              height: '32px',
+              color: '#374151'
+            }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Contenu de l'image */}
+        <div className="flex-1 relative flex items-center justify-center p-4 bg-gray-900">
+          <img
+            src={images[currentIndex]}
+            alt={`Image ${currentIndex + 1}`}
+            className="max-w-full max-h-[calc(85vh-80px)] object-contain"
+          />
+
+          {/* Flèches de navigation */}
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={onPrev}
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm"
+                style={{ 
+                  width: '40px', 
+                  height: '40px'
+                }}
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <button
+                onClick={onNext}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm"
+                style={{ 
+                  width: '40px', 
+                  height: '40px'
+                }}
+              >
+                <ChevronRight size={24} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
 
 // Composant modal séparé pour l'ajout de résident
 const AddResidentModal = ({ 
@@ -460,32 +556,32 @@ const AddResidentModal = ({
         onClick={handleCancel}
       />
       
-      {/* Modal - Agrandi et décalé vers la droite */}
+      {/* Modal - Décalé vers la gauche et taille ajustée */}
       <div 
-        className="relative bg-white rounded-2xl shadow-2xl w-[520px] h-auto max-h-[600px] overflow-hidden flex flex-col transform transition-all ml-20"
+        className="relative bg-white rounded-2xl shadow-2xl w-[480px] h-auto max-h-[600px] overflow-hidden flex flex-col transform transition-all mr-20"
         style={{
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header du modal avec titre plus grand */}
-        <div className="flex items-center justify-between px-8 py-6">
+        {/* Header du modal déplacé vers le haut */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
           <h2 className="text-xl font-bold text-gray-800">
             Ajouter un résident
           </h2>
           <button
             onClick={handleCancel}
             className="flex items-center justify-center hover:bg-gray-100 rounded-lg transition-colors"
-            style={{ width: '36px', height: '36px' }}
+            style={{ width: '32px', height: '32px' }}
           >
-            <X size={24} className="text-gray-600" />
+            <X size={20} className="text-gray-600" />
           </button>
         </div>
 
-        {/* Contenu du modal - Décalé vers la droite */}
-        <div className="flex-1 overflow-y-auto px-10 py-4">
-          {/* Formulaire avec champs décalés vers la droite */}
-          <div className="space-y-5">
+        {/* Contenu du modal - Contenu déplacé vers le haut */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {/* Formulaire avec champs plus petits */}
+          <div className="space-y-4">
             {/* Champ Nom */}
             <div>
               <input
@@ -496,7 +592,7 @@ const AddResidentModal = ({
                   handleNewResidentChange("nom", e.target.value)
                 }
                 onKeyDown={(e) => handleKeyDown(e, "prenom")}
-                className="w-full px-4 py-3.5 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors text-base placeholder-gray-500"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors text-sm placeholder-gray-500"
                 placeholder="Nom"
                 maxLength={50}
               />
@@ -512,19 +608,19 @@ const AddResidentModal = ({
                   handleNewResidentChange("prenom", e.target.value)
                 }
                 onKeyDown={(e) => handleKeyDown(e, "dateNaissance")}
-                className="w-full px-4 py-3.5 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors text-base placeholder-gray-500"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors text-sm placeholder-gray-500"
                 placeholder="Prénom"
                 maxLength={50}
               />
             </div>
 
-            {/* Sélection Sexe - Avec titre au-dessus et boutons radio horizontaux */}
+            {/* Sélection Sexe - Déplacé vers le haut avec boutons radio bleus */}
             <div>
-              <div className="mb-3 text-sm font-medium text-gray-700">
+              <div className="mb-2 text-sm font-medium text-gray-700">
                 Sexe
               </div>
-              <div className="flex space-x-6">
-                <label className="flex items-center space-x-3 cursor-pointer">
+              <div className="flex space-x-4">
+                <label className="flex items-center space-x-2 cursor-pointer">
                   <input
                     type="radio"
                     name="sexe"
@@ -533,11 +629,11 @@ const AddResidentModal = ({
                     onChange={(e) =>
                       handleNewResidentChange("sexe", e.target.value)
                     }
-                    className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                   />
-                  <span className="text-gray-700">Masculin</span>
+                  <span className="text-gray-700 text-sm">Masculin</span>
                 </label>
-                <label className="flex items-center space-x-3 cursor-pointer">
+                <label className="flex items-center space-x-2 cursor-pointer">
                   <input
                     type="radio"
                     name="sexe"
@@ -546,9 +642,9 @@ const AddResidentModal = ({
                     onChange={(e) =>
                       handleNewResidentChange("sexe", e.target.value)
                     }
-                    className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                   />
-                  <span className="text-gray-700">Féminin</span>
+                  <span className="text-gray-700 text-sm">Féminin</span>
                 </label>
               </div>
             </div>
@@ -563,7 +659,7 @@ const AddResidentModal = ({
                 onFocus={handleDateFocus}
                 onKeyDown={handleDateKeyDown}
                 onBlur={handleDateBlur}
-                className={`w-full px-4 py-3.5 border rounded-lg text-base font-mono text-left transition-colors placeholder-gray-500 ${
+                className={`w-full px-3 py-2.5 border rounded-lg text-sm font-mono text-left transition-colors placeholder-gray-500 ${
                   dateError
                     ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                     : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
@@ -572,7 +668,7 @@ const AddResidentModal = ({
                 maxLength={10}
               />
               {dateError && (
-                <p className="mt-2 text-sm text-red-600">{dateError}</p>
+                <p className="mt-1 text-xs text-red-600">{dateError}</p>
               )}
             </div>
 
@@ -587,11 +683,11 @@ const AddResidentModal = ({
                     handleNewResidentChange("cin", e.target.value)
                   }
                   onKeyDown={(e) => handleKeyDown(e, "telephone")}
-                  className="w-full px-4 py-3.5 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors text-base font-mono placeholder-gray-500"
-                  placeholder="CIN (12 chiffres)"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors text-sm font-mono placeholder-gray-500"
+                  placeholder="CIN"
                   maxLength={12}
                 />
-                <p className="mt-2 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500">
                   Champ réservé aux personnes majeures uniquement
                 </p>
               </div>
@@ -607,7 +703,7 @@ const AddResidentModal = ({
                   handleNewResidentChange("telephone", e.target.value)
                 }
                 onKeyDown={(e) => handleKeyDown(e, "save")}
-                className="w-full px-4 py-3.5 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors text-base font-mono placeholder-gray-500"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors text-sm font-mono placeholder-gray-500"
                 placeholder="Téléphone"
                 maxLength={10}
               />
@@ -616,16 +712,16 @@ const AddResidentModal = ({
         </div>
 
         {/* Footer */}
-        <div className="flex space-x-4 px-8 py-6 border-t border-gray-200 bg-gray-50">
+        <div className="flex space-x-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
           <button
             onClick={handleCancel}
-            className="flex-1 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm py-3.5"
+            className="flex-1 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-xs py-2.5"
           >
             Annuler
           </button>
           <button
             onClick={onSave}
-            className="flex-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm py-3.5"
+            className="flex-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-xs py-2.5"
           >
             Enregistrer
           </button>
@@ -683,6 +779,10 @@ export default function ResidencePage({
 
   // ÉTAT POUR LE MODAL D'AJOUT DE RÉSIDENT
   const [showAddResidentModal, setShowAddResidentModal] = useState(false);
+
+  // ÉTAT POUR LE MODAL D'IMAGE
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Références pour les inputs du formulaire
   const nomInputRef = useRef(null);
@@ -1234,55 +1334,31 @@ export default function ResidencePage({
     setDateError("");
   };
 
-  const handleNextPhoto = (e) => {
-    e.stopPropagation();
-    if (
-      selectedResidence &&
-      selectedResidence.photos &&
-      selectedResidence.photos.length > 0
-    ) {
-      setCurrentPhotoIndex((prev) =>
+  // Fonctions pour le carrousel d'images
+  const handleNextImage = useCallback(() => {
+    if (selectedResidence?.photos && selectedResidence.photos.length > 0) {
+      setCurrentImageIndex((prev) =>
         prev === selectedResidence.photos.length - 1 ? 0 : prev + 1
       );
     }
-  };
+  }, [selectedResidence]);
 
-  const handlePrevPhoto = (e) => {
-    e.stopPropagation();
-    if (
-      selectedResidence &&
-      selectedResidence.photos &&
-      selectedResidence.photos.length > 0
-    ) {
-      setCurrentPhotoIndex((prev) =>
+  const handlePrevImage = useCallback(() => {
+    if (selectedResidence?.photos && selectedResidence.photos.length > 0) {
+      setCurrentImageIndex((prev) =>
         prev === 0 ? selectedResidence.photos.length - 1 : prev - 1
       );
     }
+  }, [selectedResidence]);
+
+  const handleOpenImageModal = (index = 0) => {
+    setCurrentImageIndex(index);
+    setShowImageModal(true);
   };
 
-  const handleToggleFullScreen = (e) => {
-    e.stopPropagation();
-    setIsFullScreenPhoto(!isFullScreenPhoto);
+  const handleCloseImageModal = () => {
+    setShowImageModal(false);
   };
-
-  // Nouvelle fonction pour gérer le clic sur l'image
-  const handleImageClick = useCallback(
-    (e) => {
-      e.stopPropagation();
-      if (!selectedResidence) return;
-
-      if (selectedResidence.photos && selectedResidence.photos.length > 0) {
-        setIsPhotoExpanded(!isPhotoExpanded);
-        if (!isPhotoExpanded) {
-          setIsFullScreenPhoto(false);
-        }
-      } else {
-        // Si pas de photos, ouvrir le sélecteur de fichier
-        photoInputRef.current?.click();
-      }
-    },
-    [selectedResidence, isPhotoExpanded]
-  );
 
   const frenchDateToISO = (frenchDate) => {
     if (!frenchDate || frenchDate.length < 10) {
@@ -1823,79 +1899,205 @@ export default function ResidencePage({
         {/* Section principale - cachée quand le modal est ouvert */}
         {!showModal && (
           <div className="w-full">
-            <div className="h-full flex flex-col">
-              {/* Header avec titre et filtre */}
-              <div className="flex items-center justify-between p-4">
-                <h1 className="font-bold text-2xl text-gray-800">
+            {/* Conteneur principal avec fond semi-transparent */}
+            <div 
+              className="h-full flex flex-col p-6 space-y-6 min-h-screen bg-white/30 backdrop-blur-sm"
+              style={{ 
+                padding: '24px 32px'
+              }}
+            >
+              {/* Titre principal */}
+              <div>
+                <h1 
+                  className="text-black mb-4"
+                  style={{
+                    fontSize: '32px',
+                    fontWeight: '700',
+                    color: '#000000',
+                    marginBottom: '16px'
+                  }}
+                >
                   Liste des Résidences
                 </h1>
               </div>
 
-              {/* Statistiques - AVEC ICÔNES COMME DANS L'IMAGE */}
-              <div className="p-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {/* Statistique 1 - Adresses */}
-                  <div className="bg-white backdrop-blur-sm rounded-xl p-4 border border-gray-200 shadow-sm">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Home className="w-6 h-6 text-blue-600" />
+              {/* Section des cartes statistiques */}
+              <div>
+                <div className="grid grid-cols-4 gap-5">
+                  {/* Carte 1: Nombre total de résidences */}
+                  <div 
+                    className="flex items-center p-4"
+                    style={{
+                      height: '92px',
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: '16px',
+                      padding: '16px',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+                    }}
+                  >
+                    <div className="flex items-center w-full">
+                      <div 
+                        className="flex items-center justify-center mr-4"
+                        style={{ width: '48px', height: '48px' }}
+                      >
+                        <Home 
+                          size={24} 
+                          style={{ color: '#000000' }}
+                        />
                       </div>
-                      <div className="text-center flex-1">
-                        <div className="text-3xl font-bold text-gray-800 mb-1">
+                      <div>
+                        <div 
+                          className="font-semibold text-black"
+                          style={{ 
+                            fontSize: '20px',
+                            fontWeight: '600',
+                            color: '#000000'
+                          }}
+                        >
                           {statistics.totalResidences}
                         </div>
-                        <div className="text-xs text-gray-600 font-medium">
-                          Adresses
+                        <div 
+                          className="text-gray-600"
+                          style={{ 
+                            fontSize: '12.5px',
+                            color: '#6B7280'
+                          }}
+                        >
+                          Résidences
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Statistique 2 - Résidents */}
-                  <div className="bg-white backdrop-blur-sm rounded-xl p-4 border border-gray-200 shadow-sm">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Users className="w-6 h-6 text-green-600" />
+                  {/* Carte 2: Nombre total de résidents */}
+                  <div 
+                    className="flex items-center p-4"
+                    style={{
+                      height: '92px',
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: '16px',
+                      padding: '16px',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+                    }}
+                  >
+                    <div className="flex items-center w-full">
+                      <div 
+                        className="flex items-center justify-center mr-4"
+                        style={{ width: '48px', height: '48px' }}
+                      >
+                        <Users 
+                          size={24} 
+                          style={{ color: '#000000' }}
+                        />
                       </div>
-                      <div className="text-center flex-1">
-                        <div className="text-3xl font-bold text-gray-800 mb-1">
+                      <div>
+                        <div 
+                          className="font-semibold text-black"
+                          style={{ 
+                            fontSize: '20px',
+                            fontWeight: '600',
+                            color: '#000000'
+                          }}
+                        >
                           {statistics.totalResidents}
                         </div>
-                        <div className="text-xs text-gray-600 font-medium">
+                        <div 
+                          className="text-gray-600"
+                          style={{ 
+                            fontSize: '12.5px',
+                            color: '#6B7280'
+                          }}
+                        >
                           Résidents
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Statistique 3 - Hommes */}
-                  <div className="bg-white backdrop-blur-sm rounded-xl p-4 border border-gray-200 shadow-sm">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Mars className="w-6 h-6 text-blue-600" />
+                  {/* Carte 3: Hommes */}
+                  <div 
+                    className="flex items-center p-4"
+                    style={{
+                      height: '92px',
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: '16px',
+                      padding: '16px',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+                    }}
+                  >
+                    <div className="flex items-center w-full">
+                      <div 
+                        className="flex items-center justify-center mr-4"
+                        style={{ width: '48px', height: '48px' }}
+                      >
+                        <Mars 
+                          size={24} 
+                          style={{ color: '#000000' }}
+                        />
                       </div>
-                      <div className="text-center flex-1">
-                        <div className="text-3xl font-bold text-gray-800 mb-1">
+                      <div>
+                        <div 
+                          className="font-semibold text-black"
+                          style={{ 
+                            fontSize: '20px',
+                            fontWeight: '600',
+                            color: '#000000'
+                          }}
+                        >
                           {statistics.totalHommes}
                         </div>
-                        <div className="text-xs text-gray-600 font-medium">
+                        <div 
+                          className="text-gray-600"
+                          style={{ 
+                            fontSize: '12.5px',
+                            color: '#6B7280'
+                          }}
+                        >
                           Hommes
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Statistique 4 - Femmes */}
-                  <div className="bg-white backdrop-blur-sm rounded-xl p-4 border border-gray-200 shadow-sm">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Venus className="w-6 h-6 text-pink-600" />
+                  {/* Carte 4: Femmes */}
+                  <div 
+                    className="flex items-center p-4"
+                    style={{
+                      height: '92px',
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: '16px',
+                      padding: '16px',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+                    }}
+                  >
+                    <div className="flex items-center w-full">
+                      <div 
+                        className="flex items-center justify-center mr-4"
+                        style={{ width: '48px', height: '48px' }}
+                      >
+                        <Venus 
+                          size={24} 
+                          style={{ color: '#000000' }}
+                        />
                       </div>
-                      <div className="text-center flex-1">
-                        <div className="text-3xl font-bold text-gray-800 mb-1">
+                      <div>
+                        <div 
+                          className="font-semibold text-black"
+                          style={{ 
+                            fontSize: '20px',
+                            fontWeight: '600',
+                            color: '#000000'
+                          }}
+                        >
                           {statistics.totalFemmes}
                         </div>
-                        <div className="text-xs text-gray-600 font-medium">
+                        <div 
+                          className="text-gray-600"
+                          style={{ 
+                            fontSize: '12.5px',
+                            color: '#6B7280'
+                          }}
+                        >
                           Femmes
                         </div>
                       </div>
@@ -1904,232 +2106,779 @@ export default function ResidencePage({
                 </div>
               </div>
 
-              {/* CONTENU PRINCIPAL - TABLEAU STRUCTURÉ */}
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="border rounded-xl border-gray-200 bg-white shadow-sm">
-                  {currentResidences.length === 0 ? (
-                    <div className="text-center py-8">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Search className="w-8 h-8 text-gray-400" />
+              {/* Conteneur du tableau avec espace pour exactement 4 lignes */}
+              <div className="flex-1 flex flex-col">
+                <div 
+                  className="bg-white rounded-2xl overflow-hidden flex flex-col"
+                  style={{ 
+                    minHeight: '420px',
+                    padding: '24px',
+                    borderRadius: '20px',
+                    backgroundColor: '#FFFFFF',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+                    flex: '1'
+                  }}
+                >
+                  {/* En-tête du tableau */}
+                  <div className="mb-4 flex-shrink-0">
+                    <div className="flex items-center" style={{ height: '48px' }}>
+                      {/* Index */}
+                      <div style={{ width: '60px', padding: '0 12px' }}>
+                        <div 
+                          className="font-semibold"
+                          style={{ 
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: '#6B7280'
+                          }}
+                        >
+                          
+                        </div>
                       </div>
-                      <h3 className="font-semibold text-gray-800 text-lg mb-2">
-                        Aucune résidence trouvée
-                      </h3>
-                      <p className="text-gray-600 text-sm">
-                        Aucune résidence ne correspond à votre recherche "
-                        {searchQuery}"
-                      </p>
+                      
+                      {/* Photo */}
+                      <div style={{ width: '120px', padding: '0 12px' }}>
+                        <div 
+                          className="font-semibold"
+                          style={{ 
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: '#6B7280'
+                          }}
+                        >
+                          Photo
+                        </div>
+                      </div>
+                      
+                      {/* Adresse */}
+                      <div style={{ flex: 1, padding: '0 12px' }}>
+                        <div 
+                          className="font-semibold"
+                          style={{ 
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: '#6B7280'
+                          }}
+                        >
+                          Adresse
+                        </div>
+                      </div>
+                      
+                      {/* Résidents */}
+                      <div style={{ width: '180px', padding: '0 12px' }}>
+                        <div 
+                          className="font-semibold text-center"
+                          style={{ 
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: '#6B7280'
+                          }}
+                        >
+                          Résidents
+                        </div>
+                      </div>
+                      
+                      {/* Actions */}
+                      <div style={{ width: '160px', padding: '0 12px' }}>
+                        <div 
+                          className="font-semibold text-center"
+                          style={{ 
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: '#6B7280'
+                          }}
+                        >
+                          Actions
+                        </div>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            {/* AJOUT DE LA COLONNE NUMÉRO */}
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-16">
+                  </div>
+
+                  {/* Corps du tableau - exactement 4 lignes ou moins */}
+                  <div className="flex-1">
+                    {currentResidences.length === 0 ? (
+                      <div 
+                        className="text-center py-16 flex items-center justify-center"
+                        style={{ height: '304px' }} // 4 lignes de 76px
+                      >
+                        <div>
+                          <div 
+                            className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4"
+                            style={{ backgroundColor: '#E5E7EB' }}
+                          >
+                            <Search className="w-8 h-8" style={{ color: '#9CA3AF' }} />
+                          </div>
+                          <h3 
+                            className="font-semibold mb-2"
+                            style={{ 
+                              fontSize: '18px',
+                              fontWeight: '600',
+                              color: '#000000'
+                            }}
+                          >
+                            Aucune résidence trouvée
+                          </h3>
+                          <p 
+                            className="text-gray-600"
+                            style={{ 
+                              fontSize: '14px',
+                              color: '#6B7280'
+                            }}
+                          >
+                            Aucune résidence ne correspond à votre recherche "
+                            {searchQuery}"
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ minHeight: '304px' }}> {/* 4 lignes de 76px */}
+                        {currentResidences.map((residence, index) => {
+                          // Calculer le nombre réel de résidents pour cette résidence
+                          const realResidents = allResidents.filter(
+                            (resident) => resident.residence_id === residence.id
+                          );
+                          const totalRealResidents = realResidents.length;
+                          const hommesReal = realResidents.filter(
+                            (person) =>
+                              person.genre === "homme" ||
+                              person.genre === "Homme" ||
+                              person.genre === "male"
+                          ).length;
+                          const femmesReal = realResidents.filter(
+                            (person) =>
+                              person.genre === "femme" ||
+                              person.genre === "Femme" ||
+                              person.genre === "female"
+                          ).length;
+
+                          // Utiliser les valeurs réelles si disponibles
+                          const totalResidents = totalRealResidents > 0 ? totalRealResidents : (residence.totalResidents || 0);
+                          const hommes = hommesReal > 0 ? hommesReal : (residence.hommes || 0);
+                          const femmes = femmesReal > 0 ? femmesReal : (residence.femmes || 0);
+
+                          return (
+                            <div 
+                              key={residence.id} 
+                              className="flex items-center border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                              style={{ 
+                                height: '76px',
+                                borderBottomColor: '#E5E7EB'
+                              }}
+                            >
+                              {/* Index */}
+                              <div style={{ width: '60px', padding: '0 12px' }}>
+                                <span 
+                                  className="font-medium"
+                                  style={{ 
+                                    fontSize: '14px',
+                                    color: '#6B7280'
+                                  }}
+                                >
+                                  {index + 1}
+                                </span>
+                              </div>
                               
-                            </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-24">
-                              Photo
-                            </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-48">
-                              Adresse
-                            </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                              Résidents
-                            </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-40">
-                              Action
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {currentResidences.map((residence, index) => {
-                            // Calculer le nombre réel de résidents pour cette résidence
-                            const realResidents = allResidents.filter(
-                              (resident) => resident.residence_id === residence.id
-                            );
-                            const totalRealResidents = realResidents.length;
-                            const hommesReal = realResidents.filter(
-                              (person) =>
-                                person.genre === "homme" ||
-                                person.genre === "Homme" ||
-                                person.genre === "male"
-                            ).length;
-                            const femmesReal = realResidents.filter(
-                              (person) =>
-                                person.genre === "femme" ||
-                                person.genre === "Femme" ||
-                                person.genre === "female"
-                            ).length;
-
-                            // Utiliser les valeurs réelles si disponibles, sinon les valeurs de l'API
-                            const totalResidents = totalRealResidents > 0 ? totalRealResidents : (residence.totalResidents || 0);
-                            const hommes = hommesReal > 0 ? hommesReal : (residence.hommes || 0);
-                            const femmes = femmesReal > 0 ? femmesReal : (residence.femmes || 0);
-
-                            // Calculer le numéro de ligne avec pagination
-                            const lineNumber = (currentPage - 1) * residencesPerPage + index + 1;
-
-                            return (
-                              <tr key={residence.id} className="hover:bg-gray-50 transition-colors">
-                                {/* Numéro - Ajouté pour correspondre à l'en-tête */}
-                                <td className="px-6 py-4">
-                                  <span className="text-sm font-medium text-gray-700">
-                                    {lineNumber}
-                                  </span>
-                                </td>
-
-                                {/* Photo - Alignée avec l'image */}
-                                <td className="px-6 py-4">
-                                  <div className="w-20 h-16 rounded overflow-hidden flex-shrink-0 bg-gray-200">
-                                    {residence.photos && residence.photos.length > 0 ? (
-                                      <img
-                                        src={residence.photos[0]}
-                                        alt={residence.name}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                          console.warn(
-                                            "Image failed to load in list:",
-                                            residence.photos[0]
-                                          );
-                                          e.target.style.display = "none";
-                                          e.target.parentElement.classList.add("flex", "items-center", "justify-center");
-                                        }}
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                                        <Home size={16} className="text-gray-400" />
-                                      </div>
-                                    )}
+                              {/* Photo */}
+                              <div style={{ width: '120px', padding: '0 12px' }}>
+                                <div 
+                                  className="rounded-lg overflow-hidden flex items-center justify-center"
+                                  style={{ 
+                                    width: '56px',
+                                    height: '56px',
+                                    borderRadius: '8px',
+                                    backgroundColor: residence.photos && residence.photos.length > 0 ? 'transparent' : '#E5E7EB'
+                                  }}
+                                >
+                                  {residence.photos && residence.photos.length > 0 ? (
+                                    <img
+                                      src={residence.photos[0]}
+                                      alt={residence.name}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        console.warn(
+                                          "Image failed to load in list:",
+                                          residence.photos[0]
+                                        );
+                                        e.target.style.display = "none";
+                                        e.target.parentElement.classList.add("flex", "items-center", "justify-center");
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <Home size={20} style={{ color: '#9CA3AF' }} />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Adresse */}
+                              <div style={{ flex: 1, padding: '0 12px' }}>
+                                <div>
+                                  <div 
+                                    className="font-semibold mb-1"
+                                    style={{ 
+                                      fontSize: '14.5px',
+                                      fontWeight: '600',
+                                      color: '#000000'
+                                    }}
+                                  >
+                                    {residence.name}
                                   </div>
-                                </td>
-
-                                {/* Adresse */}
-                                <td className="px-6 py-4">
-                                  <div>
-                                    <h3 className="font-semibold text-gray-800 text-base mb-1">
-                                      {residence.name}
-                                    </h3>
-                                    <div className="flex items-center space-x-1">
-                                      <MapPin size={12} className="text-gray-500" />
-                                      <span className="text-sm text-gray-600">
-                                        {residence.adresse}
+                                  <div 
+                                    className="text-gray-600"
+                                    style={{ 
+                                      fontSize: '12.5px',
+                                      color: '#6B7280'
+                                    }}
+                                  >
+                                    {residence.adresse}
+                                  </div>
+                                  {residence.proprietaire && (
+                                    <div className="flex items-center mt-1">
+                                      <span 
+                                        className="text-xs"
+                                        style={{ 
+                                          fontSize: '12px',
+                                          color: '#6B7280'
+                                        }}
+                                      >
+                                        {residence.proprietaire}
                                       </span>
                                     </div>
-                                    {residence.proprietaire && (
-                                      <div className="flex items-center space-x-1 mt-1">
-                                        <User size={12} className="text-gray-500" />
-                                        <span className="text-xs text-gray-500">
-                                          {residence.proprietaire}
-                                        </span>
-                                      </div>
-                                    )}
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Résidents */}
+                              <div style={{ width: '180px', padding: '0 12px' }}>
+                                <div className="text-center">
+                                  <div 
+                                    className="font-semibold mb-1"
+                                    style={{ 
+                                      fontSize: '13px',
+                                      color: '#000000'
+                                    }}
+                                  >
+                                    {totalResidents}
                                   </div>
-                                </td>
-
-                                {/* Résidents */}
-                                <td className="px-6 py-4">
-                                  <div className="flex flex-col items-center">
-                                    <div className="text-2xl font-bold text-gray-800 mb-2">
-                                      {totalResidents}
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                      <div className="flex items-center space-x-1">
-                                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                                        <span className="text-sm font-medium text-gray-700">
-                                          {hommes}H
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center space-x-1">
-                                        <div className="w-3 h-3 rounded-full bg-pink-500"></div>
-                                        <span className="text-sm font-medium text-gray-700">
-                                          {femmes}F
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </td>
-
-                                {/* Action */}
-                                <td className="px-6 py-4">
-                                  <div className="flex items-center space-x-2">
-                                    {onViewOnMap && (
-                                      <button
-                                        onClick={() => onViewOnMap(residence)}
-                                        className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center flex-1 text-xs font-medium"
-                                        title="Carte"
+                                  <div className="flex items-center justify-center space-x-3">
+                                    <div className="flex items-center">
+                                      <span 
+                                        className="text-xs"
+                                        style={{ 
+                                          fontSize: '12px',
+                                          color: '#6B7280'
+                                        }}
                                       >
-                                        <Map size={14} className="mr-1" />
-                                        <span>Carte</span>
-                                      </button>
-                                    )}
-                                    <button
-                                      onClick={() => handleViewDetails(residence)}
-                                      className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center flex-1 text-xs font-medium"
-                                      title="Détails"
-                                    >
-                                      <Eye size={14} className="mr-1" />
-                                      <span>Détails</span>
-                                    </button>
+                                        {hommes}H
+                                      </span>
+                                    </div>
+                                    <div className="text-gray-400">•</div>
+                                    <div className="flex items-center">
+                                      <span 
+                                        className="text-xs"
+                                        style={{ 
+                                          fontSize: '12px',
+                                          color: '#6B7280'
+                                        }}
+                                      >
+                                        {femmes}F
+                                      </span>
+                                    </div>
                                   </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Actions */}
+                              <div style={{ width: '160px', padding: '0 12px' }}>
+                                <div className="flex items-center justify-center space-x-2">
+                                  {onViewOnMap && (
+                                    <button
+                                      onClick={() => onViewOnMap(residence)}
+                                      className="flex items-center justify-center bg-white border border-gray-300 text-black hover:bg-gray-50 transition-colors font-medium"
+                                      style={{
+                                        height: '32px',
+                                        borderRadius: '999px',
+                                        padding: '0 12px',
+                                        fontSize: '13px',
+                                        borderColor: '#D1D5DB',
+                                        color: '#000000'
+                                      }}
+                                      title="Voir sur la carte"
+                                    >
+                                      <Map size={14} className="mr-2" style={{ color: '#000000' }} />
+                                      Carte
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleViewDetails(residence)}
+                                    className="flex items-center justify-center bg-white border border-gray-300 text-black hover:bg-gray-50 transition-colors font-medium"
+                                    style={{
+                                      height: '32px',
+                                      borderRadius: '999px',
+                                      padding: '0 12px',
+                                      fontSize: '13px',
+                                      borderColor: '#D1D5DB',
+                                      color: '#000000'
+                                    }}
+                                    title="Voir les détails"
+                                  >
+                                    <Eye size={14} className="mr-2" style={{ color: '#000000' }} />
+                                    Détails
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        
+                        {/* Ajouter des lignes vides pour garder une hauteur constante */}
+                        {currentResidences.length < residencesPerPage && (
+                          Array.from({ length: residencesPerPage - currentResidences.length }).map((_, index) => (
+                            <div 
+                              key={`empty-${index}`}
+                              className="flex items-center border-b border-gray-200"
+                              style={{ 
+                                height: '76px',
+                                borderBottomColor: '#E5E7EB'
+                              }}
+                            >
+                              <div style={{ width: '60px', padding: '0 12px' }}></div>
+                              <div style={{ width: '120px', padding: '0 12px' }}></div>
+                              <div style={{ flex: 1, padding: '0 12px' }}></div>
+                              <div style={{ width: '180px', padding: '0 12px' }}></div>
+                              <div style={{ width: '160px', padding: '0 12px' }}></div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Pagination */}
-              {!isSearchMode && filteredResidences.length > residencesPerPage && (
-                <div className="border-t border-gray-200 bg-white py-3 px-6">
-                  <div className="flex items-center justify-center">
-                    <div className="flex items-center space-x-2">
+              {/* Pagination centrée - TOUJOURS VISIBLE */}
+              <div className="pt-4 flex-shrink-0">
+                <div className="flex items-center justify-center">
+                  <div className="flex items-center space-x-2">
+                    {/* Bouton précédent */}
+                    <button
+                      onClick={prevPage}
+                      disabled={currentPage === 1}
+                      className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '999px',
+                        borderColor: '#D1D5DB'
+                      }}
+                    >
+                      <ChevronLeft size={16} style={{ color: '#000000' }} />
+                    </button>
+
+                    {/* Numéros de page */}
+                    <div className="flex items-center space-x-1">
+                      {[...Array(totalPages)].map((_, i) => {
+                        const pageNum = i + 1;
+                        // Afficher seulement 5 pages maximum
+                        if (
+                          pageNum === 1 ||
+                          pageNum === totalPages ||
+                          (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                        ) {
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`flex items-center justify-center font-medium transition-colors ${
+                                currentPage === pageNum
+                                  ? "bg-gray-900 text-white"
+                                  : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
+                              }`}
+                              style={{
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '8px',
+                                fontSize: '13px',
+                                borderColor: '#D1D5DB',
+                                color: currentPage === pageNum ? '#FFFFFF' : '#6B7280'
+                              }}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        } else if (
+                          pageNum === currentPage - 2 ||
+                          pageNum === currentPage + 2
+                        ) {
+                          return (
+                            <span 
+                              className="text-gray-400"
+                              style={{ 
+                                fontSize: '13px',
+                                color: '#6B7280'
+                              }}
+                            >
+                              ...
+                            </span>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+
+                    {/* Bouton suivant */}
+                    <button
+                      onClick={nextPage}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '999px',
+                        borderColor: '#D1D5DB'
+                      }}
+                    >
+                      <ChevronRight size={16} style={{ color: '#000000' }} />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Indicateur de page */}
+                <div 
+                  className="text-center mt-2"
+                  style={{ 
+                    fontSize: '12px',
+                    color: '#6B7280'
+                  }}
+                >
+                  Page {currentPage} sur {totalPages} • {filteredResidences.length} résidences
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de détails */}
+        {showModal && selectedResidence && (
+          <div className="w-full">
+            <div className="h-full flex flex-col p-6 bg-white/30 backdrop-blur-sm">
+              {/* Header avec bouton retour et titre */}
+              <div className="mb-6">
+                <div className="flex items-center">
+                  <button
+                    onClick={handleCloseModal}
+                    className="mr-3 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center"
+                    style={{ 
+                      width: '20px', 
+                      height: '20px',
+                      color: '#374151'
+                    }}
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h1 
+                    className="text-black font-bold"
+                    style={{ 
+                      fontSize: '30px',
+                      fontWeight: '700',
+                      color: '#000000'
+                    }}
+                  >
+                    {selectedResidence.lot || selectedResidence.name}
+                  </h1>
+                </div>
+              </div>
+
+              {/* Grand bloc rectangulaire avec coins arrondis */}
+              <div 
+                className="mb-6 bg-white rounded-2xl p-6"
+                style={{
+                  width: '100%',
+                  height: '170px',
+                  borderRadius: '16px',
+                  backgroundColor: '#FFFFFF',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+                }}
+              >
+                <div className="flex h-full">
+                  {/* Image rectangulaire gris clair avec coins arrondis - côté gauche */}
+                  <div 
+                    className="mr-6 flex-shrink-0 cursor-pointer relative group"
+                    onClick={() => selectedResidence.photos && selectedResidence.photos.length > 0 && handleOpenImageModal(0)}
+                    style={{
+                      width: '110px',
+                      height: '110px',
+                      borderRadius: '12px',
+                      backgroundColor: selectedResidence.photos && selectedResidence.photos.length > 0 ? 'transparent' : '#E5E7EB',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    {selectedResidence.photos && selectedResidence.photos.length > 0 ? (
+                      <>
+                        <img
+                          src={selectedResidence.photos[0]}
+                          alt={selectedResidence.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.warn(
+                              "Image failed to load in details:",
+                              selectedResidence.photos[0]
+                            );
+                            e.target.style.display = "none";
+                            e.target.parentElement.classList.add("flex", "items-center", "justify-center", "bg-gray-200");
+                          }}
+                        />
+                        {/* Overlay au survol */}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                          <Eye size={24} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Home size={32} style={{ color: '#9CA3AF' }} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Conteneur pour les informations de résidence et propriétaire côte à côte */}
+                  <div className="flex-1 flex">
+                    {/* Informations de la résidence - côté gauche */}
+                    <div className="flex-1 pr-8 flex flex-col justify-between">
+                      <div>
+                        <h2 
+                          className="font-semibold text-black mb-3"
+                          style={{ 
+                            fontSize: '19px',
+                            fontWeight: '600',
+                            color: '#000000'
+                          }}
+                        >
+                          {selectedResidence.name}
+                        </h2>
+                        
+                        {/* Deuxième ligne - avec icône */}
+                        <div className="flex items-center mb-2">
+                          <MapPin size={14} className="text-gray-500 mr-2" style={{ color: '#6B7280' }} />
+                          <span 
+                            className="text-gray-700"
+                            style={{ 
+                              fontSize: '14px',
+                              color: '#374151'
+                            }}
+                          >
+                            {selectedResidence.adresse || "Adresse non disponible"}
+                          </span>
+                        </div>
+                        
+                        {/* Troisième ligne - avec icône */}
+                        <div className="flex items-center mb-2">
+                          <Users size={14} className="text-gray-500 mr-2" style={{ color: '#6B7280' }} />
+                          <span 
+                            className="font-medium text-gray-700"
+                            style={{ 
+                              fontSize: '14px',
+                              color: '#374151'
+                            }}
+                          >
+                            {selectedResidence.totalResidents || 0} résidents
+                          </span>
+                        </div>
+                        
+                        {/* Quatrième ligne - répartition avec ligne séparatrice */}
+                        <div className="flex items-center pt-2 border-t border-gray-200" style={{ borderTopColor: '#E5E7EB' }}>
+                          <div className="flex items-center mr-4">
+                            <Mars size={14} className="text-blue-600 mr-1" />
+                            <span 
+                              className="font-medium"
+                              style={{ 
+                                fontSize: '14px',
+                                color: '#000000'
+                              }}
+                            >
+                              {selectedResidence.hommes || 0} Hommes
+                            </span>
+                          </div>
+                          <div className="text-gray-400 mr-4">•</div>
+                          <div className="flex items-center">
+                            <Venus size={14} className="text-pink-600 mr-1" />
+                            <span 
+                              className="font-medium"
+                              style={{ 
+                                fontSize: '14px',
+                                color: '#000000'
+                              }}
+                            >
+                              {selectedResidence.femmes || 0} Femmes
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Informations du propriétaire - côté droit */}
+                    <div className="flex-1 pl-8 border-l border-gray-200 flex flex-col justify-between" style={{ borderLeftColor: '#E5E7EB' }}>
+                      <div>
+                        <h2 
+                          className="font-semibold text-black mb-3"
+                          style={{ 
+                            fontSize: '19px',
+                            fontWeight: '600',
+                            color: '#000000'
+                          }}
+                        >
+                          Propriétaire
+                        </h2>
+                        
+                        {/* Nom du propriétaire */}
+                        <div className="flex items-center mb-2">
+                          <User size={14} className="text-gray-500 mr-2" style={{ color: '#6B7280' }} />
+                          <span 
+                            className="font-medium text-gray-700"
+                            style={{ 
+                              fontSize: '14px',
+                              color: '#374151'
+                            }}
+                          >
+                            {selectedResidence.proprietaire || "Non spécifié"}
+                          </span>
+                        </div>
+                        
+                        {/* Téléphone du propriétaire */}
+                        {selectedResidence.telephone && (
+                          <div className="flex items-center mb-2">
+                            <Phone size={14} className="text-gray-500 mr-2" style={{ color: '#6B7280' }} />
+                            <span 
+                              className="text-gray-700"
+                              style={{ 
+                                fontSize: '14px',
+                                color: '#374151'
+                              }}
+                            >
+                              {selectedResidence.telephone}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* En-tête de la liste des résidents avec bouton ajouter - même ligne, pas de background */}
+              <div className="mb-4 flex items-center justify-between">
+                <div 
+                  className="font-semibold"
+                  style={{ 
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#000000'
+                  }}
+                >
+                  Liste des résidents
+                </div>
+                <button
+                  onClick={handleOpenAddResidentModal}
+                  className="flex items-center justify-center text-white font-medium hover:bg-gray-800 transition-colors"
+                  style={{
+                    width: '180px',
+                    height: '42px',
+                    borderRadius: '999px',
+                    backgroundColor: '#000000',
+                    fontSize: '14.5px'
+                  }}
+                >
+                  + Ajouter un résident
+                </button>
+              </div>
+
+              {/* Section tableau des résidents */}
+              <div className="flex-1 bg-white rounded-2xl overflow-hidden">
+                {/* Corps du tableau */}
+                {selectedResidence.residents && selectedResidence.residents.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <ResidentListHeader />
+                      <tbody>
+                        {currentResidentsInModal.map((resident) => (
+                          <ResidentRow
+                            key={resident.id}
+                            resident={resident}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center">
+                    <Users className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                    <div 
+                      className="text-gray-500 mb-4"
+                      style={{ 
+                        fontSize: '14px',
+                        color: '#6B7280'
+                      }}
+                    >
+                      Aucun résident enregistré
+                    </div>
+                  </div>
+                )}
+
+                {/* Pagination pour les résidents */}
+                {totalResidentPages > 1 && (
+                  <div className="px-6 py-4 border-t border-gray-200">
+                    <div className="flex items-center justify-center space-x-2">
                       <button
-                        onClick={prevPage}
-                        disabled={currentPage === 1}
-                        className={`p-2 rounded-lg border transition-colors ${
-                          currentPage === 1
-                            ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200"
-                            : "bg-white text-gray-600 hover:bg-gray-50 border-gray-300 hover:border-gray-400"
-                        }`}
+                        onClick={prevResidentPage}
+                        disabled={residentPage === 1}
+                        className="flex items-center justify-center bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          borderColor: '#D1D5DB'
+                        }}
                       >
-                        <ChevronLeft size={20} />
+                        <ChevronLeft size={16} style={{ color: '#374151' }} />
                       </button>
 
-                      {/* Affichage des numéros de page */}
                       <div className="flex items-center space-x-1">
-                        {[...Array(totalPages)].map((_, i) => {
+                        {[...Array(totalResidentPages)].map((_, i) => {
                           const pageNum = i + 1;
-                          // Afficher seulement 5 pages maximum autour de la page courante
                           if (
                             pageNum === 1 ||
-                            pageNum === totalPages ||
-                            (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                            pageNum === totalResidentPages ||
+                            (pageNum >= residentPage - 1 && pageNum <= residentPage + 1)
                           ) {
                             return (
                               <button
                                 key={pageNum}
-                                onClick={() => setCurrentPage(pageNum)}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                  currentPage === pageNum
-                                    ? "bg-blue-600 text-white"
-                                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300 hover:border-gray-400"
+                                onClick={() => setResidentPage(pageNum)}
+                                className={`flex items-center justify-center font-medium transition-colors ${
+                                  residentPage === pageNum
+                                    ? "bg-gray-900 text-white"
+                                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
                                 }`}
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '8px',
+                                  fontSize: '14px',
+                                  borderColor: '#D1D5DB'
+                                }}
                               >
                                 {pageNum}
                               </button>
                             );
                           } else if (
-                            pageNum === currentPage - 2 ||
-                            pageNum === currentPage + 2
+                            pageNum === residentPage - 2 ||
+                            pageNum === residentPage + 2
                           ) {
                             return (
-                              <span key={pageNum} className="px-1 text-gray-400">
+                              <span 
+                                className="text-gray-400"
+                                style={{ fontSize: '14px' }}
+                              >
                                 ...
                               </span>
                             );
@@ -2139,241 +2888,21 @@ export default function ResidencePage({
                       </div>
 
                       <button
-                        onClick={nextPage}
-                        disabled={currentPage === totalPages}
-                        className={`p-2 rounded-lg border transition-colors ${
-                          currentPage === totalPages
-                            ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200"
-                            : "bg-white text-gray-600 hover:bg-gray-50 border-gray-300 hover:border-gray-400"
-                        }`}
+                        onClick={nextResidentPage}
+                        disabled={residentPage === totalResidentPages}
+                        className="flex items-center justify-center bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          borderColor: '#D1D5DB'
+                        }}
                       >
-                        <ChevronRight size={20} />
+                        <ChevronRight size={16} style={{ color: '#374151' }} />
                       </button>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Modal de détails - NOUVELLE STRUCTURE */}
-        {showModal && selectedResidence && (
-          <div className="w-full">
-            <div className="h-full flex flex-col">
-              {/* Header avec bouton retour et titre */}
-              <div className="flex items-center p-4 border-b border-gray-200">
-                <button
-                  onClick={handleCloseModal}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex items-center space-x-2 mr-4"
-                >
-                  <ChevronLeft size={20} className="text-gray-600" />
-                </button>
-                <h1 className="text-xl font-bold text-gray-800">
-                  {selectedResidence.lot || selectedResidence.name}
-                </h1>
-              </div>
-
-              <div className="flex-1 overflow-y-auto">
-                {/* Carte d'information horizontale */}
-                <div className="p-4">
-                  <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
-                    <div className="flex">
-                      {/* Photo à gauche */}
-                      <div className="w-1/3 pr-6">
-                        <div className="h-64 rounded-lg overflow-hidden bg-gray-100">
-                          {selectedResidence.photos && selectedResidence.photos.length > 0 ? (
-                            <img
-                              src={selectedResidence.photos[0]}
-                              alt={selectedResidence.name}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                console.warn(
-                                  "Image failed to load in details:",
-                                  selectedResidence.photos[0]
-                                );
-                                e.target.style.display = "none";
-                                e.target.parentElement.classList.add("flex", "items-center", "justify-center", "bg-gray-200");
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                              <Home size={48} className="text-gray-400" />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Informations textuelles à droite de la photo */}
-                      <div className="w-2/3 pr-6">
-                        <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                          Informations de la résidence
-                        </h2>
-                        <div className="space-y-3">
-                          <div className="flex items-center space-x-2">
-                            <MapPin size={18} className="text-gray-500" />
-                            <span className="text-gray-700">
-                              {selectedResidence.adresse}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Users size={18} className="text-gray-500" />
-                            <span className="text-gray-700 font-medium">
-                              {selectedResidence.totalResidents || 0} résidents
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-4 pt-2">
-                            <div className="flex items-center space-x-2">
-                              <Mars size={18} className="text-blue-600" />
-                              <span className="font-medium text-gray-700">
-                                {selectedResidence.hommes || 0} Hommes
-                              </span>
-                            </div>
-                            <div className="text-gray-400">•</div>
-                            <div className="flex items-center space-x-2">
-                              <Venus size={18} className="text-pink-600" />
-                              <span className="font-medium text-gray-700">
-                                {selectedResidence.femmes || 0} Femmes
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Informations du propriétaire alignées à droite */}
-                      <div className="w-1/3 pl-6 border-l border-gray-200">
-                        <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                          Propriétaire
-                        </h2>
-                        <div className="space-y-3">
-                          <div className="flex items-center space-x-2">
-                            <User size={18} className="text-gray-500" />
-                            <span className="text-gray-700">
-                              {selectedResidence.proprietaire || "Non spécifié"}
-                            </span>
-                          </div>
-                          {selectedResidence.telephone && (
-                            <div className="flex items-center space-x-2">
-                              <Phone size={18} className="text-gray-500" />
-                              <span className="text-gray-700">
-                                {selectedResidence.telephone}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Section liste des résidents */}
-                  <div className="bg-white rounded-lg border border-gray-200">
-                    <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-800">
-                        Liste des résidents
-                      </h3>
-                      <button
-                        onClick={handleOpenAddResidentModal}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center space-x-2"
-                      >
-                        <Plus size={16} />
-                        <span>+ Ajouter un résident</span>
-                      </button>
-                    </div>
-
-                    {selectedResidence.residents && selectedResidence.residents.length > 0 ? (
-                      <>
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <ResidentListHeader />
-                            <tbody>
-                              {currentResidentsInModal.map((resident) => (
-                                <ResidentRow
-                                  key={resident.id}
-                                  resident={resident}
-                                />
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {/* Pagination pour les résidents - CENTRÉE */}
-                        {totalResidentPages > 1 && (
-                          <div className="px-6 py-4 border-t border-gray-200">
-                            <div className="flex items-center justify-center space-x-2">
-                              <button
-                                onClick={prevResidentPage}
-                                disabled={residentPage === 1}
-                                className={`p-2 rounded-lg border transition-colors ${
-                                  residentPage === 1
-                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200"
-                                    : "bg-white text-gray-600 hover:bg-gray-50 border-gray-300 hover:border-gray-400"
-                                }`}
-                              >
-                                <ChevronLeft size={20} />
-                              </button>
-
-                              {/* Affichage des numéros de page */}
-                              <div className="flex items-center space-x-1">
-                                {[...Array(totalResidentPages)].map((_, i) => {
-                                  const pageNum = i + 1;
-                                  // Afficher seulement 5 pages maximum autour de la page courante
-                                  if (
-                                    pageNum === 1 ||
-                                    pageNum === totalResidentPages ||
-                                    (pageNum >= residentPage - 1 && pageNum <= residentPage + 1)
-                                  ) {
-                                    return (
-                                      <button
-                                        key={pageNum}
-                                        onClick={() => setResidentPage(pageNum)}
-                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                          residentPage === pageNum
-                                            ? "bg-blue-600 text-white"
-                                            : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300 hover:border-gray-400"
-                                        }`}
-                                      >
-                                        {pageNum}
-                                      </button>
-                                    );
-                                  } else if (
-                                    pageNum === residentPage - 2 ||
-                                    pageNum === residentPage + 2
-                                  ) {
-                                    return (
-                                      <span key={pageNum} className="px-1 text-gray-400">
-                                        ...
-                                      </span>
-                                    );
-                                  }
-                                  return null;
-                                })}
-                              </div>
-
-                              <button
-                                onClick={nextResidentPage}
-                                disabled={residentPage === totalResidentPages}
-                                className={`p-2 rounded-lg border transition-colors ${
-                                  residentPage === totalResidentPages
-                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200"
-                                    : "bg-white text-gray-600 hover:bg-gray-50 border-gray-300 hover:border-gray-400"
-                                }`}
-                              >
-                                <ChevronRight size={20} />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="p-8 text-center">
-                        <Users className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                        <div className="text-gray-500 mb-4">
-                          Aucun résident enregistré
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -2390,7 +2919,17 @@ export default function ResidencePage({
         />
       </div>
 
-      {/* MODAL POUR AJOUTER UN RÉSIDENT - SÉPARÉ ET RENDU DANS LE BODY */}
+      {/* MODAL POUR AGRANDIR L'IMAGE */}
+      <ImageModal
+        isOpen={showImageModal}
+        onClose={handleCloseImageModal}
+        images={selectedResidence?.photos || []}
+        currentIndex={currentImageIndex}
+        onNext={handleNextImage}
+        onPrev={handlePrevImage}
+      />
+
+      {/* MODAL POUR AJOUTER UN RÉSIDENT */}
       <AddResidentModal
         isOpen={showAddResidentModal}
         onClose={handleCloseAddResidentModal}

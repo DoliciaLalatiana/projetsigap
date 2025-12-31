@@ -25,6 +25,8 @@ import {
   ClipboardList,
   ChevronDown,
   ChevronUp,
+  Menu,
+  Circle,
 } from "lucide-react";
 
 // Import des composants Google Maps
@@ -974,12 +976,17 @@ export default function Interface({ user }) {
         setShowSearchResults(false);
       }
 
-      // MODIFICATION : Ne fermer le menu déroulant que si on clique sur le bouton "MENU" lui-même
-      // OU si on clique en dehors de toute la sidebar
-      const sidebar = document.querySelector('.sidebar-container');
-      if (menuDropdownOpen && sidebar && !sidebar.contains(event.target)) {
-        setMenuDropdownOpen(false);
+      // MODIFICATION CRITIQUE : Le menu ne se ferme que si on clique sur le bouton "MENU" lui-même
+      // Les clics ailleurs ne ferment pas le menu déroulant
+      const menuButton = document.querySelector('[data-menu-button]');
+      const menuDropdown = menuDropdownRef.current;
+      
+      if (menuDropdownOpen && menuButton && menuButton.contains(event.target)) {
+        // C'est un clic sur le bouton menu, on laisse le toggle se faire dans handleMenuButtonClick
+        return;
       }
+      
+      // Ne rien faire pour les autres clics - le menu reste ouvert
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -1105,7 +1112,7 @@ export default function Interface({ user }) {
       });
       setIsModalOpen(false);
     }
-    // MODIFICATION : Ne pas fermer le menu déroulant
+    // MODIFICATION : Ne pas fermer le menu déroulant quand on clique sur un item
     // setMenuDropdownOpen(false);
   };
 
@@ -1137,7 +1144,7 @@ export default function Interface({ user }) {
       });
       setIsModalOpen(false);
     }
-    // MODIFICATION : Ne pas fermer le menu déroulant
+    // MODIFICATION : Ne pas fermer le menu déroulant quand on clique sur un item
     // setMenuDropdownOpen(false);
   };
 
@@ -1158,7 +1165,7 @@ export default function Interface({ user }) {
       setClickedResidenceId(null);
       setResidenceToSelect(null);
     }
-    // MODIFICATION : Ne pas fermer le menu déroulant
+    // MODIFICATION : Ne pas fermer le menu déroulant quand on clique sur un item
     // setMenuDropdownOpen(false);
   };
 
@@ -1193,7 +1200,7 @@ export default function Interface({ user }) {
       });
       setIsModalOpen(false);
     }
-    // MODIFICATION : Ne pas fermer le menu déroulant
+    // MODIFICATION : Ne pas fermer le menu déroulant quand on clique sur un item
     // setMenuDropdownOpen(false);
   };
 
@@ -1354,12 +1361,13 @@ export default function Interface({ user }) {
     setTimeout(() => {
       if (map) {
         const screenPos = latLngToPixel(location);
-        const modalWidth = 448;
-        const modalHeight = 400;
+        const modalWidth = 480;
+        const modalHeight = 600;
 
         const mapContainer = document.querySelector('[data-map-container]');
         const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
 
+        // Position avec décalage de 20px vers la droite par rapport au centre
         let modalX = screenPos.x + 20;
         let modalY = screenPos.y - (modalHeight / 2);
 
@@ -1710,7 +1718,6 @@ export default function Interface({ user }) {
     setIsSelectingLocation(false);
     setSelectedLocation(null);
     setSelectedAddress("");
-;
     setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
@@ -2096,7 +2103,7 @@ export default function Interface({ user }) {
 
       {/* Barre de recherche fixe à gauche */}
       <div className="absolute top-6 left-[320px] z-30">
-        
+        <div className="w-96">
           <div className="rounded-full flex items-center px-6 py-1.5 w-100 border bg-white backdrop-blur-sm border-gray-200/60 hover:border-gray-300/80 transition-all duration-300">
             <Search className="mr-3 flex-shrink-0 text-gray-600" size={20} />
 
@@ -2118,7 +2125,7 @@ export default function Interface({ user }) {
               )}
             </form>
           </div>
-        
+        </div>
       </div>
 
       {/* === RÉSULTATS DE RECHERCHE === */}
@@ -2134,10 +2141,10 @@ export default function Interface({ user }) {
               onClick={handleAddAddressClick}
               disabled={isAnyPageOpen || isSelectingLocation || isModalOpen}
               className={`flex items-center px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap ${isAnyPageOpen || isSelectingLocation || isModalOpen
-                ? "bg-green-600 text-gray-200 cursor-not-allowed backdrop-blur-sm"
+                ? "bg-neutral-950 text-gray-200 cursor-not-allowed backdrop-blur-sm"
                 : isSelectingLocation
-                  ? "bg-green-600 text-white hover:bg-green-700 backdrop-blur-sm"
-                  : "bg-green-600 text-white hover:bg-green-700 backdrop-blur-sm"
+                  ? "bg-neutral-950 text-white hover:bg-black-500 backdrop-blur-sm"
+                  : "bg-neutral-950 text-white hover:bg-black-500 backdrop-blur-sm"
                 }`}
               title={
                 isAnyPageOpen
@@ -2296,146 +2303,298 @@ export default function Interface({ user }) {
         </div>
       )}
 
-      {/* === MODAL AJOUT ADRESSE === */}
+      {/* === MODAL AJOUT ADRESSE - MODIFIÉ SELON VOS SPÉCIFICATIONS === */}
       {showAddAddress && (
         <>
           <div className="fixed inset-0 bg-black/50 z-40"></div>
 
           <div
             ref={addAddressRef}
-            className="fixed z-50 w-full max-w-md"
+            className="fixed z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
             style={{
               left: `${modalPosition.x}px`,
               top: `${modalPosition.y}px`,
               transform: 'translate(0, 0)',
-              transition: 'left 0.3s ease, top 0.3s ease'
+              transition: 'left 0.3s ease, top 0.3s ease',
+              width: '480px',
+              maxHeight: '600px',
+              display: 'flex',
+              flexDirection: 'column'
             }}
           >
-            <div className="bg-white rounded-2xl overflow-hidden shadow-2xl border border-gray-200 mx-4">
-              <div className="bg-gradient-to-r from-green-500 to-green-600 px-6 py-4 flex items-center justify-between">
-                <h3 className="text-white font-semibold text-lg">Ajouter une résidence</h3>
-                <button
-                  onClick={handleReturnToSelection}
-                  className="text-white/80 hover:text-white transition-all duration-200"
-                >
-                  <X size={20} />
-                </button>
-              </div>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 flex items-center justify-between">
+              <h3 className="text-white font-semibold text-lg">Ajouter une résidence</h3>
+              <button
+                onClick={handleReturnToSelection}
+                className="text-white/80 hover:text-white transition-all duration-200"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
-              <div className="p-5">
-                <div className="mb-4">
-                  <div className="flex items-start space-x-3 mb-3">
-                    <MapPin size={20} className="text-green-600 flex-shrink-0 mt-1" />
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-800 text-base mb-1">Fokontany sélectionné :</p>
-                      <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-200">
-                        {fokontanyName || selectedAddress || '—'}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        <span className="font-medium">Adresse:</span> {selectedAddress || '-'}
-                      </p>
-                    </div>
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-6" style={{ paddingTop: '16px', paddingBottom: '16px' }}>
+              {/* Informations du fokontany */}
+              <div className="mb-6">
+                <div className="flex items-start space-x-3">
+                  <MapPin size={20} className="text-blue-600 flex-shrink-0 mt-1" />
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-800 text-base mb-1">Fokontany sélectionné :</p>
+                    <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-200">
+                      {fokontanyName || selectedAddress || '—'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      <span className="font-medium">Adresse:</span> {selectedAddress || '-'}
+                    </p>
                   </div>
                 </div>
-
-                {/* Etape 1 : Lot */}
-                {addStep === 1 && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-base font-medium text-gray-700 mb-2">
-                        Numéro de lot
-                      </label>
-                      <input
-                        type="text"
-                        value={addressDetails.lot}
-                        onChange={(e) => handleAddressDetailsChange('lot', e.target.value)}
-                        placeholder="Ex: Lot 123, Lot ABC"
-                        className={`w-full px-4 py-3 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent ${formError ? "border-red-500" : "border-gray-300"}`}
-                      />
-                      {formError && (
-                        <p className="text-red-500 text-sm mt-1 flex items-center">
-                          <Info size={14} className="mr-1" />
-                          {formError}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex space-x-4 mt-6 pt-4 border-t border-gray-200">
-                      <button
-                        onClick={handleReturnToSelection}
-                        className="flex-1 px-1 py-3 text-base bg-gray-100 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
-                      >
-                        Retour
-                      </button>
-                      <button
-                        onClick={handleNextFromLot}
-                        className="flex-1 px-1 py-3 text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 font-medium"
-                      >
-                        Suivant
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Etape 2 : personnes optionnelles */}
-                {addStep === 2 && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h4 className="font-semibold">Formulaire personnes (optionnel)</h4>
-                      <button onClick={handleAddPerson} className="text-sm bg-green-500 text-white px-3 py-1 rounded">Ajouter une personne</button>
-                    </div>
-
-                    <div className="space-y-3 max-h-64 overflow-y-auto">
-                      {newResidents.length === 0 && (
-                        <div className="text-sm text-gray-500">Aucune personne ajoutée — vous pouvez confirmer directement.</div>
-                      )}
-
-                      {newResidents.map((p, idx) => (
-                        <div key={idx} className="border p-3 rounded-lg space-y-2">
-                          <div className="flex justify-between">
-                            <strong>{p.nom || p.prenom ? `${p.nom} ${p.prenom}` : `Personne ${idx + 1}`}</strong>
-                            <button onClick={() => handleRemovePerson(idx)} className="text-red-500 text-sm">Supprimer</button>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <input type="text" placeholder="Nom" value={p.nom} onChange={(e) => handlePersonChange(idx, 'nom', e.target.value)} className="px-2 py-1 border rounded" />
-                            <input type="text" placeholder="Prénom" value={p.prenom} onChange={(e) => handlePersonChange(idx, 'prenom', e.target.value)} className="px-2 py-1 border rounded" />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <input type="date" placeholder="Date de naissance" value={p.birthdate} onChange={(e) => handlePersonChange(idx, 'birthdate', e.target.value)} className="px-2 py-1 border rounded" />
-                            <select value={p.sexe} onChange={(e) => handlePersonChange(idx, 'sexe', e.target.value)} className="px-2 py-1 border rounded">
-                              <option value="masculin">Masculin</option>
-                              <option value="feminin">Féminin</option>
-                            </select>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2 items-center">
-                            <input type="text" placeholder="CIN" value={p.cin} onChange={(e) => handlePersonChange(idx, 'cin', e.target.value)} className="px-2 py-1 border rounded" />
-                            <input type="text" placeholder="Téléphone" value={p.phone} onChange={(e) => handlePersonChange(idx, 'phone', e.target.value)} className="px-2 py-1 border rounded" />
-                          </div>
-
-                          <div className="text-xs text-gray-500">
-                            {p.birthdate ? `Age: ${calculateAgeFromDate(p.birthdate)}` : ''}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex justify-between mt-4">
-                      <button onClick={handleBackToLot} className="px-4 py-2 border rounded-lg">Retour</button>
-                      <div className="flex gap-2">
-                        <button onClick={() => { setShowAddAddress(false); setAddStep(1); }} className="px-4 py-2 border rounded-lg">Annuler</button>
-                        <button onClick={handleConfirmSave} disabled={savingResidence} className="px-4 py-2 bg-blue-600 text-white rounded-lg">
-                          {savingResidence ? 'Enregistrement...' : 'Confirmer'}
-                        </button>
-                      </div>
-                    </div>
-
-                    {modalError && <div className="text-red-600 text-sm mt-2">{modalError}</div>}
-                  </div>
-                )}
               </div>
+
+              {/* Etape 1 : Lot */}
+              {addStep === 1 && (
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-base font-medium text-gray-700 mb-3">
+                      Numéro de lot
+                    </label>
+                    <input
+                      type="text"
+                      value={addressDetails.lot}
+                      onChange={(e) => handleAddressDetailsChange('lot', e.target.value)}
+                      placeholder="Ex: Lot 123, Lot ABC"
+                      className={`w-full px-4 py-3 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formError ? "border-red-500" : "border-gray-300"}`}
+                      style={{ height: '40px', fontSize: '14px' }}
+                    />
+                    {formError && (
+                      <p className="text-red-500 text-sm mt-2 flex items-center">
+                        <Info size={14} className="mr-1" />
+                        {formError}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Section pour ajouter un résident directement */}
+                  <div className="space-y-4 pt-4 border-t border-gray-200">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-semibold text-gray-800">Ajouter un résident (optionnel)</h4>
+                      <button 
+                        onClick={handleAddPerson}
+                        className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center"
+                      >
+                        <Plus size={16} className="mr-1" />
+                        Ajouter un résident
+                      </button>
+                    </div>
+
+                    {newResidents.length === 0 ? (
+                      <div className="text-sm text-gray-500 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        Aucun résident ajouté — vous pouvez ajouter des résidents ou confirmer directement.
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {newResidents.map((p, idx) => (
+                          <div key={idx} className="border border-gray-200 rounded-xl p-4 space-y-4 bg-white">
+                            <div className="flex justify-between items-center">
+                              <strong className="text-gray-800">
+                                {p.nom || p.prenom ? `${p.nom} ${p.prenom}` : `Résident ${idx + 1}`}
+                              </strong>
+                              <button 
+                                onClick={() => handleRemovePerson(idx)} 
+                                className="text-red-600 hover:text-red-800 text-sm flex items-center"
+                              >
+                                <X size={14} className="mr-1" />
+                                Supprimer
+                              </button>
+                            </div>
+
+                            {/* Champs de saisie */}
+                            <div className="space-y-4">
+                              {/* Nom et Prénom */}
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <input 
+                                    type="text" 
+                                    placeholder="Nom" 
+                                    value={p.nom} 
+                                    onChange={(e) => handlePersonChange(idx, 'nom', e.target.value)} 
+                                    className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    style={{ height: '40px', fontSize: '14px' }}
+                                  />
+                                </div>
+                                <div>
+                                  <input 
+                                    type="text" 
+                                    placeholder="Prénom" 
+                                    value={p.prenom} 
+                                    onChange={(e) => handlePersonChange(idx, 'prenom', e.target.value)} 
+                                    className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    style={{ height: '40px', fontSize: '14px' }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Date de naissance et Sexe */}
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <input 
+                                    type="date" 
+                                    placeholder="Date de naissance" 
+                                    value={p.birthdate} 
+                                    onChange={(e) => handlePersonChange(idx, 'birthdate', e.target.value)} 
+                                    className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    style={{ height: '40px', fontSize: '14px' }}
+                                  />
+                                </div>
+                                <div>
+                                  {/* Section Sexe avec boutons radio horizontaux */}
+                                  <div className="flex items-center space-x-4">
+                                    <label className="text-sm text-gray-700 font-medium mr-3">Sexe:</label>
+                                    <div className="flex items-center space-x-4">
+                                      <label className="flex items-center cursor-pointer">
+                                        <input
+                                          type="radio"
+                                          name={`sexe-${idx}`}
+                                          value="masculin"
+                                          checked={p.sexe === 'masculin'}
+                                          onChange={(e) => handlePersonChange(idx, 'sexe', e.target.value)}
+                                          className="mr-2"
+                                          style={{ width: '16px', height: '16px', accentColor: '#3b82f6' }}
+                                        />
+                                        <span className="text-sm text-gray-700">Masculin</span>
+                                      </label>
+                                      <label className="flex items-center cursor-pointer">
+                                        <input
+                                          type="radio"
+                                          name={`sexe-${idx}`}
+                                          value="feminin"
+                                          checked={p.sexe === 'feminin'}
+                                          onChange={(e) => handlePersonChange(idx, 'sexe', e.target.value)}
+                                          className="mr-2"
+                                          style={{ width: '16px', height: '16px', accentColor: '#3b82f6' }}
+                                        />
+                                        <span className="text-sm text-gray-700">Féminin</span>
+                                      </label>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* CIN et Téléphone */}
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <input 
+                                    type="text" 
+                                    placeholder="CIN" 
+                                    value={p.cin} 
+                                    onChange={(e) => handlePersonChange(idx, 'cin', e.target.value)} 
+                                    className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    style={{ height: '40px', fontSize: '14px' }}
+                                  />
+                                </div>
+                                <div>
+                                  <input 
+                                    type="text" 
+                                    placeholder="Téléphone" 
+                                    value={p.phone} 
+                                    onChange={(e) => handlePersonChange(idx, 'phone', e.target.value)} 
+                                    className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    style={{ height: '40px', fontSize: '14px' }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {p.birthdate && (
+                              <div className="text-xs text-gray-500">
+                                Âge: {calculateAgeFromDate(p.birthdate)} ans
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Etape 2 (ancienne étape 2 transformée en section optionnelle) */}
+              {addStep === 2 && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-semibold">Formulaire personnes (optionnel)</h4>
+                    <button onClick={handleAddPerson} className="text-sm bg-green-500 text-white px-3 py-1 rounded">Ajouter une personne</button>
+                  </div>
+
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {newResidents.length === 0 && (
+                      <div className="text-sm text-gray-500">Aucune personne ajoutée — vous pouvez confirmer directement.</div>
+                    )}
+
+                    {newResidents.map((p, idx) => (
+                      <div key={idx} className="border p-3 rounded-lg space-y-2">
+                        <div className="flex justify-between">
+                          <strong>{p.nom || p.prenom ? `${p.nom} ${p.prenom}` : `Personne ${idx + 1}`}</strong>
+                          <button onClick={() => handleRemovePerson(idx)} className="text-red-500 text-sm">Supprimer</button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <input type="text" placeholder="Nom" value={p.nom} onChange={(e) => handlePersonChange(idx, 'nom', e.target.value)} className="px-2 py-1 border rounded" />
+                          <input type="text" placeholder="Prénom" value={p.prenom} onChange={(e) => handlePersonChange(idx, 'prenom', e.target.value)} className="px-2 py-1 border rounded" />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <input type="date" placeholder="Date de naissance" value={p.birthdate} onChange={(e) => handlePersonChange(idx, 'birthdate', e.target.value)} className="px-2 py-1 border rounded" />
+                          <select value={p.sexe} onChange={(e) => handlePersonChange(idx, 'sexe', e.target.value)} className="px-2 py-1 border rounded">
+                            <option value="masculin">Masculin</option>
+                            <option value="feminin">Féminin</option>
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 items-center">
+                          <input type="text" placeholder="CIN" value={p.cin} onChange={(e) => handlePersonChange(idx, 'cin', e.target.value)} className="px-2 py-1 border rounded" />
+                          <input type="text" placeholder="Téléphone" value={p.phone} onChange={(e) => handlePersonChange(idx, 'phone', e.target.value)} className="px-2 py-1 border rounded" />
+                        </div>
+
+                        <div className="text-xs text-gray-500">
+                          {p.birthdate ? `Age: ${calculateAgeFromDate(p.birthdate)}` : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex justify-between mt-4">
+                    <button onClick={handleBackToLot} className="px-4 py-2 border rounded-lg">Retour</button>
+                    <div className="flex gap-2">
+                      <button onClick={() => { setShowAddAddress(false); setAddStep(1); }} className="px-4 py-2 border rounded-lg">Annuler</button>
+                      <button onClick={handleConfirmSave} disabled={savingResidence} className="px-4 py-2 bg-blue-600 text-white rounded-lg">
+                        {savingResidence ? 'Enregistrement...' : 'Confirmer'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {modalError && <div className="text-red-600 text-sm mt-2">{modalError}</div>}
+                </div>
+              )}
+            </div>
+
+            {/* Footer avec boutons Annuler et Enregistrer */}
+            <div className="border-t border-gray-200 px-6 py-4 flex justify-end space-x-4" style={{ paddingTop: '16px', paddingBottom: '16px' }}>
+              <button
+                onClick={() => { setShowAddAddress(false); setAddStep(1); }}
+                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium"
+                style={{ height: '40px', fontSize: '14px' }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={addStep === 1 ? handleConfirmSave : handleConfirmSave}
+                disabled={savingResidence}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ height: '40px', fontSize: '14px' }}
+              >
+                {savingResidence ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
             </div>
           </div>
         </>
@@ -2443,7 +2602,7 @@ export default function Interface({ user }) {
 
       {/* === SIDEBAR GAUCHE === */}
       <div className="absolute top-6 left-6 z-20 sidebar-container">
-        <div className="bg-white/30 hover:bg-white/50 rounded-2xl shadow-lg border border-gray-200/60 hover:border-gray-300/80 transition-all duration-300 ease-out overflow-hidden"
+        <div className="bg-white/30 hover:bg-white/50 rounded-2xl shadow-lg border border-gray-200/60 backdrop-blur-sm hover:border-gray-300/80 transition-all duration-300 ease-out overflow-hidden"
           style={{
             width: "260px",
             minHeight: "400px",
@@ -2456,7 +2615,7 @@ export default function Interface({ user }) {
             disabled={isModalOpen}
             className={`w-full flex items-center px-4 py-3 transition-all duration-200 ${isModalOpen
               ? 'cursor-not-allowed opacity-70'
-              : 'hover:bg-white/50'
+              : 'hover:bg-gray-100/50'
               }`}
             style={{ height: "44px" }}
           >
@@ -2466,20 +2625,20 @@ export default function Interface({ user }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: "rgba(59, 130, 246, 0.1)",
+              backgroundColor: "#1f2937",
               borderRadius: "8px",
               marginRight: "12px"
             }}>
               <span style={{
                 fontSize: "14px",
                 fontWeight: "bold",
-                color: "#3b82f6"
-              }}>SG</span>
+                color: "#ffffff"
+              }}>S</span>
             </div>
             <span style={{
               fontSize: "16px",
               fontWeight: 600,
-              color: isModalOpen ? "#6b7280" : "#1f2937"
+              color: isModalOpen ? "#6b7280" : "#111827"
             }}>SIGAP</span>
           </button>
 
@@ -2487,42 +2646,27 @@ export default function Interface({ user }) {
           <div className="p-4">
             <div ref={menuDropdownRef} className="mb-4">
               <button
+                data-menu-button
                 onClick={handleMenuButtonClick}
                 disabled={isModalOpen}
                 className={`w-full flex items-center justify-between rounded-xl transition-all duration-200 mb-2 ${isModalOpen
                   ? 'cursor-not-allowed opacity-70'
                   : menuDropdownOpen
-                  ? "bg-white/50"
-                  : "hover:bg-white/50"
+                  ? "bg-gray-100/80"
+                  : "hover:bg-gray-100/50"
                   }`}
                 style={{
-                  padding: "8px 12px"
+                  padding: "10px 12px",
+                  minHeight: "48px"
                 }}
               >
-                <div className="flex items-center">
-                  <div style={{
-                    width: "28px",
-                    height: "28px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: menuDropdownOpen ? "rgba(156, 163, 175, 0.1)" : "rgba(156, 163, 175, 0.1)",
-                    borderRadius: "6px",
-                    marginRight: "10px"
-                  }}>
-                    <span style={{
-                      fontSize: "12px",
-                      fontWeight: 500,
-                      color: "#6b7280"
-                    }}>M</span>
-                  </div>
+                <div className="flex items-center gap-3">
+                  <Menu size={18} className={isModalOpen ? "text-gray-400" : "text-gray-700"} />
                   <span style={{
-                    fontSize: "13px",
+                    fontSize: "14px",
                     fontWeight: 500,
-                    color: isModalOpen ? "#9ca3af" : "#4b5563",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em"
-                  }}>Menu</span>
+                    color: isModalOpen ? "#9ca3af" : "#374151"
+                  }}>MENU</span>
                 </div>
                 <ChevronDown 
                   size={16} 
@@ -2533,17 +2677,17 @@ export default function Interface({ user }) {
 
               {/* Menu déroulant "MENU" - version dropdown */}
               {menuDropdownOpen && !isModalOpen && (
-                <div className="ml-8 mt-2 space-y-1 animate-fadeIn">
+                <div className="mt-2 space-y-1 animate-fadeIn">
                   {/* Option Résidence */}
                   <button
                     onClick={handleResidenceClick}
                     className={`w-full flex items-center rounded-xl transition-all duration-200 ${showResidence
-                      ? "bg-blue-50 border border-blue-100"
-                      : "hover:bg-gray-50"
+                      ? "bg-gray-100/80 border border-gray-200"
+                      : "hover:bg-gray-100/50"
                       }`}
                     style={{
                       height: "44px",
-                      padding: "0 12px"
+                      padding: "0 12px 0 40px"
                     }}
                   >
                     <div style={{
@@ -2552,12 +2696,12 @@ export default function Interface({ user }) {
                       justifyContent: "center",
                       marginRight: "10px"
                     }}>
-                      <MapPin size={20} className={showResidence ? "text-blue-600" : "text-gray-600"} />
+                      <MapPin size={20} className={showResidence ? "text-gray-800" : "text-gray-700"} />
                     </div>
                     <span style={{
                       fontSize: "14px",
                       fontWeight: 500,
-                      color: showResidence ? "#2563eb" : "#4b5563"
+                      color: showResidence ? "#111827" : "#374151"
                     }}>Résidence</span>
                   </button>
 
@@ -2565,12 +2709,12 @@ export default function Interface({ user }) {
                   <button
                     onClick={handleStatistiqueClick}
                     className={`w-full flex items-center rounded-xl transition-all duration-200 ${showStatistique
-                      ? "bg-green-50 border border-green-100"
-                      : "hover:bg-gray-50"
+                      ? "bg-gray-100/80 border border-gray-200"
+                      : "hover:bg-gray-100/50"
                       }`}
                     style={{
                       height: "44px",
-                      padding: "0 12px"
+                      padding: "0 12px 0 40px"
                     }}
                   >
                     <div style={{
@@ -2579,12 +2723,12 @@ export default function Interface({ user }) {
                       justifyContent: "center",
                       marginRight: "10px"
                     }}>
-                      <BarChart3 size={20} className={showStatistique ? "text-green-600" : "text-gray-600"} />
+                      <BarChart3 size={20} className={showStatistique ? "text-gray-800" : "text-gray-700"} />
                     </div>
                     <span style={{
                       fontSize: "14px",
                       fontWeight: 500,
-                      color: showStatistique ? "#059669" : "#4b5563"
+                      color: showStatistique ? "#111827" : "#374151"
                     }}>Statistiques</span>
                   </button>
 
@@ -2593,12 +2737,12 @@ export default function Interface({ user }) {
                     <button
                       onClick={handlePendingResidencesClick}
                       className={`w-full flex items-center rounded-xl transition-all duration-200 ${showPendingResidences
-                        ? "bg-purple-50 border border-purple-100"
-                        : "hover:bg-gray-50"
+                        ? "bg-gray-100/80 border border-gray-200"
+                        : "hover:bg-gray-100/50"
                         }`}
                       style={{
                         height: "44px",
-                        padding: "0 12px"
+                        padding: "0 12px 0 40px"
                       }}
                     >
                       <div style={{
@@ -2607,12 +2751,12 @@ export default function Interface({ user }) {
                         justifyContent: "center",
                         marginRight: "10px"
                       }}>
-                        <ClipboardList size={20} className={showPendingResidences ? "text-purple-600" : "text-gray-600"} />
+                        <ClipboardList size={20} className={showPendingResidences ? "text-gray-800" : "text-gray-700"} />
                       </div>
                       <span style={{
                         fontSize: "14px",
                         fontWeight: 500,
-                        color: showPendingResidences ? "#7c3aed" : "#4b5563"
+                        color: showPendingResidences ? "#111827" : "#374151"
                       }}>Demande</span>
                     </button>
                   )}
@@ -2626,7 +2770,7 @@ export default function Interface({ user }) {
       {/* === PAGES ÉLARGIES (positionnées parallèlement à la barre de recherche) === */}
       {/* Page Résidence */}
       {showResidence && (
-        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/30 backdrop-blur-sm  rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
           style={{
             height: "calc(100vh - 110px)"
           }}>
@@ -2641,7 +2785,7 @@ export default function Interface({ user }) {
 
       {/* Page Statistique */}
       {showStatistique && (
-        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/30 backdrop-blur-sm  rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
           style={{
             height: "calc(100vh - 110px)"
           }}>
@@ -2651,7 +2795,7 @@ export default function Interface({ user }) {
 
       {/* Page Utilisateur */}
       {showUserPage && (
-        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/95 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
           style={{
             height: "calc(100vh - 110px)"
           }}>
@@ -2667,7 +2811,7 @@ export default function Interface({ user }) {
 
       {/* Page Demandes en attente */}
       {showPendingResidences && currentUser?.role === 'secretaire' && (
-        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/30 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/95 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
           style={{
             height: "calc(100vh - 110px)"
           }}>
@@ -2683,24 +2827,24 @@ export default function Interface({ user }) {
       <div className="fixed right-6 bottom-24 z-10 flex flex-col items-center space-y-2">
         <button
           onClick={handleZoomIn}
-          className="w-10 h-10 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
+          className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
           title="Zoom avant"
         >
           <Plus size={20} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
         </button>
         <button
           onClick={handleZoomOut}
-          className="w-10 h-10 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
+          className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
           title="Zoom arrière"
         >
           <Minus size={20} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
         </button>
         <button
           onClick={handleCenterMap}
-          className="w-10 h-10 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
+          className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
           title="Voir la zone limite"
         >
-          <LocateFixed size={20} className="text-blue-600 hover:text-blue-700 transition-all duration-300" />
+          <LocateFixed size={20} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
         </button>
       </div>
 
@@ -2708,7 +2852,7 @@ export default function Interface({ user }) {
       <div className="fixed right-6 bottom-8 z-10">
         <button
           onClick={handleMapTypeChange}
-          className="w-10 h-10 bg-white/30 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 hover:shadow-xl border border-gray-200/60 hover:border-gray-300/80"
+          className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 hover:shadow-xl border border-gray-200/60 hover:border-gray-300/80"
           title={mapType === "satellite" ? "Passer en vue plan" : "Passer en vue satellite"}
         >
           <Layers size={22} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
