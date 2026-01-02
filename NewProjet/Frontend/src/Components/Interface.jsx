@@ -226,8 +226,8 @@ export default function Interface({ user }) {
   // NOUVEL ÉTAT : pour indiquer si la carte doit être zoomée sur la zone limite
   const [shouldZoomToPolygon, setShouldZoomToPolygon] = useState(true);
 
-  // NOUVEL ÉTAT : pour contrôler si les autres boutons sont désactivés
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // NOUVEL ÉTAT : pour contrôler si le modal d'ajout d'adresse est ouvert
+  const [isAddAddressModalOpen, setIsAddAddressModalOpen] = useState(false);
 
   // NOUVEL ÉTAT : pour gérer la couleur du marqueur de localisation
   const [selectedMarkerColor, setSelectedMarkerColor] = useState("yellow"); // "yellow" (avant confirmation), "green" (après confirmation)
@@ -238,11 +238,15 @@ export default function Interface({ user }) {
   // NOUVEL ÉTAT : pour stocker l'ID de la résidence à sélectionner dans PendingResidences
   const [residenceToSelect, setResidenceToSelect] = useState(null);
 
+  // NOUVEAUX ÉTATS : pour gérer le scroll des champs résidents
+  const [residentFieldsScrollable, setResidentFieldsScrollable] = useState(false);
+
   // Références pour les éléments DOM
   const dropdownRef = useRef(null);
   const searchRef = useRef(null);
   const addAddressRef = useRef(null);
   const menuDropdownRef = useRef(null); // NOUVELLE RÉFÉRENCE : pour le menu déroulant "MENU"
+  const residentFieldsRef = useRef(null); // Référence pour les champs résidents
 
   // --- NOUVEAUX ÉTATS : fokontany récupéré depuis le backend ---
   const [fokontanyPolygon, setFokontanyPolygon] = useState(null);
@@ -730,11 +734,11 @@ export default function Interface({ user }) {
                           +{result.residences.length - 2} autre(s) adresse(s)
                         </p>
                       )}
-                    </div>
-                  )}
                 </div>
               )}
             </div>
+              )}
+              </div>
           ))}
         </div>
       </div>
@@ -1009,7 +1013,7 @@ export default function Interface({ user }) {
         ville: ""
       });
       setMessageStatus("normal");
-      setIsModalOpen(false);
+      setIsAddAddressModalOpen(false);
     }
   }, [isAnyPageOpen, isSelectingLocation]);
 
@@ -1078,14 +1082,12 @@ export default function Interface({ user }) {
 
   // NOUVEAU : Gestionnaire de clic sur le bouton "MENU"
   const handleMenuButtonClick = () => {
-    if (isModalOpen) return;
-    // MODIFICATION : Basculer uniquement l'état du menu
+    // MODIFICATION : Ne pas vérifier isModalOpen
     setMenuDropdownOpen(!menuDropdownOpen);
   };
 
   // MODIFICATION : Gestionnaires de clic sur les items du menu
   const handleResidenceClick = () => {
-    if (isModalOpen) return;
     const newShowResidence = !showResidence;
     setShowResidence(newShowResidence);
     if (newShowResidence) {
@@ -1110,7 +1112,7 @@ export default function Interface({ user }) {
         quartier: "",
         ville: ""
       });
-      setIsModalOpen(false);
+      setIsAddAddressModalOpen(false);
     }
     // MODIFICATION : Ne pas fermer le menu déroulant quand on clique sur un item
     // setMenuDropdownOpen(false);
@@ -1118,7 +1120,6 @@ export default function Interface({ user }) {
 
   // MODIFICATION : Gestionnaire de clic sur Statistique
   const handleStatistiqueClick = () => {
-    if (isModalOpen) return;
     const newShowStatistique = !showStatistique;
     setShowStatistique(newShowStatistique);
     if (newShowStatistique) {
@@ -1142,7 +1143,7 @@ export default function Interface({ user }) {
         quartier: "",
         ville: ""
       });
-      setIsModalOpen(false);
+      setIsAddAddressModalOpen(false);
     }
     // MODIFICATION : Ne pas fermer le menu déroulant quand on clique sur un item
     // setMenuDropdownOpen(false);
@@ -1150,7 +1151,6 @@ export default function Interface({ user }) {
 
   // MODIFICATION : Gestionnaire de clic sur l'icône utilisateur
   const handleUserIconClick = () => {
-    if (isModalOpen) return;
     const newShowUserPage = !showUserPage;
     setShowUserPage(newShowUserPage);
     if (newShowUserPage) {
@@ -1171,7 +1171,6 @@ export default function Interface({ user }) {
 
   // MODIFICATION : Gestionnaire de clic sur Demandes (pour secrétaire)
   const handlePendingResidencesClick = () => {
-    if (isModalOpen) return;
     const newShowPending = !showPendingResidences;
     setShowPendingResidences(newShowPending);
 
@@ -1198,7 +1197,7 @@ export default function Interface({ user }) {
         quartier: "",
         ville: ""
       });
-      setIsModalOpen(false);
+      setIsAddAddressModalOpen(false);
     }
     // MODIFICATION : Ne pas fermer le menu déroulant quand on clique sur un item
     // setMenuDropdownOpen(false);
@@ -1264,9 +1263,9 @@ export default function Interface({ user }) {
 
   // Gestionnaire de clic sur Ajouter une adresse
   const handleAddAddressClick = () => {
-    if (isAnyPageOpen || isSelectingLocation || isModalOpen || showAddAddress) return;
+    if (isAnyPageOpen || isSelectingLocation || isAddAddressModalOpen || showAddAddress) return;
 
-    setIsModalOpen(true);
+    setIsAddAddressModalOpen(true);
     setSelectedMarkerColor("yellow");
 
     if (map) {
@@ -1284,6 +1283,7 @@ export default function Interface({ user }) {
       ville: ""
     });
 
+    // CORRECTION : Message en noir et blanc initialement
     setMessageStatus("normal");
 
     setShowNotifications(false);
@@ -1362,7 +1362,7 @@ export default function Interface({ user }) {
       if (map) {
         const screenPos = latLngToPixel(location);
         const modalWidth = 480;
-        const modalHeight = 600;
+        const modalHeight = 580; // Augmenté pour afficher les boutons d'action
 
         const mapContainer = document.querySelector('[data-map-container]');
         const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
@@ -1462,10 +1462,11 @@ export default function Interface({ user }) {
 
         setMessageStatus("normal");
         setIsSelectingLocation(false);
-        setIsModalOpen(true);
+        setIsAddAddressModalOpen(true);
 
         repositionModalForLocation({ lat, lng });
       } else {
+        // CORRECTION : Changement en rouge uniquement si on clique en dehors de la zone
         setMessageStatus("error");
       }
     }
@@ -1485,7 +1486,7 @@ export default function Interface({ user }) {
     });
 
     setMessageStatus("normal");
-    setIsModalOpen(true);
+    setIsAddAddressModalOpen(true);
     setSelectedMarkerColor("yellow");
   };
 
@@ -1503,7 +1504,7 @@ export default function Interface({ user }) {
     });
 
     setMessageStatus("normal");
-    setIsModalOpen(false);
+    setIsAddAddressModalOpen(false);
     setSelectedMarkerColor("yellow");
   };
 
@@ -1520,10 +1521,14 @@ export default function Interface({ user }) {
   /* Ajout / suppression personne */
   const handleAddPerson = () => {
     setNewResidents(prev => [...prev, { nom: '', prenom: '', birthdate: '', cin: '', sexe: 'masculin', phone: '' }]);
+    setResidentFieldsScrollable(true);
   };
 
   const handleRemovePerson = (index) => {
     setNewResidents(prev => prev.filter((_, i) => i !== index));
+    if (newResidents.length <= 1) {
+      setResidentFieldsScrollable(false);
+    }
   };
 
   const handlePersonChange = (index, field, value) => {
@@ -1695,6 +1700,8 @@ export default function Interface({ user }) {
       setAddStep(1);
       setNewResidents([]);
       setModalError('');
+      setResidentFieldsScrollable(false);
+      setIsAddAddressModalOpen(false);
 
       // Recharger la liste des résidences
       fetchResidences();
@@ -1727,7 +1734,29 @@ export default function Interface({ user }) {
 
     setMessageStatus("normal");
 
-    setIsModalOpen(false);
+    setIsAddAddressModalOpen(false);
+    setSelectedMarkerColor("yellow");
+  };
+
+  // NOUVEAU : Gestionnaire pour retourner à la sélection de localisation (bouton Annuler)
+  const handleCancelToSelection = () => {
+    setShowAddAddress(false);
+    setIsSelectingLocation(true);
+    setSelectedAddress("");
+    setSelectedLocation(null);
+    setHasSelectedAddress(false);
+    setAddressDetails({
+      lot: "",
+      quartier: "",
+      ville: ""
+    });
+    setAddStep(1);
+    setNewResidents([]);
+    setModalError('');
+    setResidentFieldsScrollable(false);
+
+    setMessageStatus("normal");
+    setIsAddAddressModalOpen(true);
     setSelectedMarkerColor("yellow");
   };
 
@@ -2098,11 +2127,11 @@ export default function Interface({ user }) {
     <div className="relative w-full h-screen bg-gradient-to-r from-blue-50 to-indigo-50 overflow-hidden">
       {/* Overlay flou quand une page est ouverte */}
       {isAnyPageOpen && (
-        <div className="absolute inset-0 z-20 bg-gray-500/30 backdrop-blur-sm transition-all duration-300 ease-in-out"></div>
+        <div className="absolute inset-0 z-25 bg-white transition-all duration-300 ease-in-out pointer-events-none"></div>
       )}
 
       {/* Barre de recherche fixe à gauche */}
-      <div className="absolute top-6 left-[320px] z-30">
+      <div className="absolute top-6 left-[320px] z-40">
         <div className="w-96">
           <div className="rounded-full flex items-center px-6 py-1.5 w-100 border bg-white backdrop-blur-sm border-gray-200/60 hover:border-gray-300/80 transition-all duration-300">
             <Search className="mr-3 flex-shrink-0 text-gray-600" size={20} />
@@ -2114,8 +2143,8 @@ export default function Interface({ user }) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={getSearchPlaceholder()}
-                disabled={isSearchDisabled || isModalOpen}
-                className={`w-full p-1 bg-transparent outline-none text-sm ${isSearchDisabled || isModalOpen ? 'text-gray-400' : 'text-gray-700'
+                disabled={isSearchDisabled || isAddAddressModalOpen}
+                className={`w-full p-1 bg-transparent outline-none text-sm ${isSearchDisabled || isAddAddressModalOpen ? 'text-gray-400' : 'text-gray-700'
                   } placeholder-gray-600`}
               />
               {searchLoading && (
@@ -2132,16 +2161,16 @@ export default function Interface({ user }) {
       <SearchResultsModal />
 
       {/* === BOUTONS DROITS (AJOUTER, NOTIFICATIONS, LANGUE, PROFIL) === */}
-      <div className="absolute top-6 right-4 z-20">
+      <div className="absolute top-6 right-4 z-50">
         <div className="bg-white/30 hover:bg-white/50 rounded-2xl shadow-lg border border-gray-200/60 hover:border-gray-300/80 transition-all duration-300">
           <div className="flex items-center justify-end px-4 py-1 space-x-4">
 
             {/* Bouton Ajouter une adresse */}
             <button
               onClick={handleAddAddressClick}
-              disabled={isAnyPageOpen || isSelectingLocation || isModalOpen}
-              className={`flex items-center px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap ${isAnyPageOpen || isSelectingLocation || isModalOpen
-                ? "bg-neutral-950 text-gray-200 cursor-not-allowed backdrop-blur-sm"
+              disabled={isAnyPageOpen || isSelectingLocation || isAddAddressModalOpen}
+              className={`flex items-center px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap ${isAnyPageOpen || isSelectingLocation || isAddAddressModalOpen
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed backdrop-blur-sm"
                 : isSelectingLocation
                   ? "bg-neutral-950 text-white hover:bg-black-500 backdrop-blur-sm"
                   : "bg-neutral-950 text-white hover:bg-black-500 backdrop-blur-sm"
@@ -2149,7 +2178,7 @@ export default function Interface({ user }) {
               title={
                 isAnyPageOpen
                   ? "Fermez les autres pages pour ajouter une adresse"
-                  : isModalOpen
+                  : isAddAddressModalOpen
                     ? "Une modal est déjà ouverte"
                     : isSelectingLocation
                       ? "Sélection en cours - cliquez sur la carte ou annulez"
@@ -2177,11 +2206,13 @@ export default function Interface({ user }) {
               disabled={showAddAddress}
               className={`relative w-8 h-8 rounded-full flex items-center justify-center ${showAddAddress
                 ? 'bg-gray-100 cursor-not-allowed'
+                : isAddAddressModalOpen
+                ? 'bg-gray-300 text-gray-400 cursor-not-allowed'
                 : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
                 }`}
-              title={showAddAddress ? "Fermez la modal d'ajout d'adresse pour accéder aux notifications" : "Notifications"}
+              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : showAddAddress ? "Fermez la modal d'ajout d'adresse pour accéder aux notifications" : "Notifications"}
             >
-              <Bell size={20} className={`${showAddAddress ? 'text-gray-400' : 'text-gray-600 hover:text-gray-800 transition-all duration-300'}`} />
+              <Bell size={20} className={`${isAddAddressModalOpen ? 'text-gray-400' : showAddAddress ? 'text-gray-400' : 'text-gray-600 hover:text-gray-800 transition-all duration-300'}`} />
               {totalNotificationsCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                   {totalNotificationsCount > 9 ? '9+' : totalNotificationsCount}
@@ -2192,25 +2223,25 @@ export default function Interface({ user }) {
             {/* BOUTON LANGUE (entre notification et profil) */}
             <button
               onClick={handleToggleLang}
-              disabled={isModalOpen}
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${isModalOpen ? 'bg-gray-100 cursor-not-allowed' : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
+              disabled={isAddAddressModalOpen}
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${isAddAddressModalOpen ? 'bg-gray-300 text-gray-400 cursor-not-allowed' : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
                 }`}
-              title="Changer la langue"
+              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : "Changer la langue"}
             >
-              <span className="text-sm text-gray-700 font-medium">{i18n.language === 'fr' ? 'FR' : 'MG'}</span>
+              <span className="text-sm font-medium" style={{ color: isAddAddressModalOpen ? '#9ca3af' : '#374151' }}>{i18n.language === 'fr' ? 'FR' : 'MG'}</span>
             </button>
 
             {/* Bouton Profil */}
             <button
               onClick={handleUserIconClick}
-              disabled={isModalOpen}
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${isModalOpen
-                ? 'bg-gray-100 cursor-not-allowed'
+              disabled={isAddAddressModalOpen}
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${isAddAddressModalOpen
+                ? 'bg-gray-300 text-gray-400 cursor-not-allowed'
                 : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
                 }`}
-              title={isModalOpen ? "Fermez la modal pour accéder au profil" : "Profil"}
+              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : "Profil"}
             >
-              <User size={20} className={`${isModalOpen ? 'text-gray-400' : 'text-gray-600 hover:text-gray-800 transition-all duration-300'}`} />
+              <User size={20} className={`${isAddAddressModalOpen ? 'text-gray-400' : 'text-gray-600 hover:text-gray-800 transition-all duration-300'}`} />
             </button>
           </div>
         </div>
@@ -2218,7 +2249,7 @@ export default function Interface({ user }) {
 
       {/* PANEL DE NOTIFICATIONS */}
       {showNotifications && (
-        <div className="absolute top-18 right-4 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
+        <div className="absolute top-18 right-4 z-60 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
           <div className="p-4 border-b border-gray-200">
             <h3 className="font-semibold text-gray-800">Notifications</h3>
             <p className="text-xs text-gray-500 mt-1">
@@ -2268,10 +2299,10 @@ export default function Interface({ user }) {
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-end pb-8 pointer-events-none">
           <div className={`rounded-2xl shadow-2xl p-4 mx-4 border relative w-full max-w-2xl ${messageStatus === "error"
             ? "bg-red-50 border-red-200"
-            : "bg-white/95 backdrop-blur-sm border-orange-200"}`}>
+            : "bg-white/95 backdrop-blur-sm border-gray-200"}`}>
             <div className="flex items-center justify-between space-x-4">
               <div className="flex items-center space-x-3 flex-1">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${messageStatus === "error" ? "bg-red-500" : "bg-green-600"}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${messageStatus === "error" ? "bg-red-500" : "bg-gray-700"}`}>
                   <Navigation size={20} className="text-white" />
                 </div>
                 <div className="flex-1">
@@ -2281,7 +2312,7 @@ export default function Interface({ user }) {
                       : "Cliquez sur la carte pour sélectionner une adresse"}
                   </p>
                   <p className={`text-sm ${messageStatus === "error" ? "text-red-600" : "text-gray-600"}`}>
-                    <span className={`font-medium ${messageStatus === "error" ? "text-red-700" : "text-blue-600"}`}>
+                    <span className={`font-medium ${messageStatus === "error" ? "text-red-700" : "text-gray-700"}`}>
                       Zone limitée :
                     </span> {messageStatus === "error"
                       ? "Cliquez dans la zone bleue pour ajouter une résidence"
@@ -2306,65 +2337,64 @@ export default function Interface({ user }) {
       {/* === MODAL AJOUT ADRESSE - MODIFIÉ SELON VOS SPÉCIFICATIONS === */}
       {showAddAddress && (
         <>
-          <div className="fixed inset-0 bg-black/50 z-40"></div>
+          <div className="fixed inset-0 bg-black/50 z-60"></div>
 
           <div
             ref={addAddressRef}
-            className="fixed z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
+            className="fixed z-70 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
             style={{
               left: `${modalPosition.x}px`,
               top: `${modalPosition.y}px`,
               transform: 'translate(0, 0)',
               transition: 'left 0.3s ease, top 0.3s ease',
               width: '480px',
-              maxHeight: '600px',
+              maxHeight: '580px',
               display: 'flex',
               flexDirection: 'column'
             }}
           >
-            {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 flex items-center justify-between">
-              <h3 className="text-white font-semibold text-lg">Ajouter une résidence</h3>
+            {/* Header - MODIFICATION: fond gris au lieu de noir */}
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-5 flex items-center justify-between border-b border-gray-200">
+              <h3 className="text-gray-800 font-semibold text-lg">Ajouter une résidence</h3>
               <button
                 onClick={handleReturnToSelection}
-                className="text-white/80 hover:text-white transition-all duration-200"
+                className="text-gray-500 hover:text-gray-700 transition-all duration-200"
               >
                 <X size={20} />
               </button>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto px-6" style={{ paddingTop: '16px', paddingBottom: '16px' }}>
-              {/* Informations du fokontany */}
-              <div className="mb-6">
+            {/* Content - AVEC SCROLL SI NÉCESSAIRE */}
+            <div className="flex-1 overflow-y-auto px-6 py-4" style={{ paddingTop: '16px', paddingBottom: '16px', maxHeight: '440px' }}>
+              {/* Informations du fokontany - MODIFIÉ (même ligne avec coordonnées à droite) */}
+              <div className="mb-5">
                 <div className="flex items-start space-x-3">
-                  <MapPin size={20} className="text-blue-600 flex-shrink-0 mt-1" />
+                  <MapPin size={20} className="text-gray-700 flex-shrink-0 mt-1" />
                   <div className="flex-1">
-                    <p className="font-medium text-gray-800 text-base mb-1">Fokontany sélectionné :</p>
-                    <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-200">
-                      {fokontanyName || selectedAddress || '—'}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      <span className="font-medium">Adresse:</span> {selectedAddress || '-'}
-                    </p>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium text-gray-800 text-base">{fokontanyName || 'Non spécifié'}</span>
+                        <span className="text-sm text-gray-500">(-23.352776, 43.684839)</span>
+                      </div>
+                      
+                    </div>
+                    
                   </div>
                 </div>
               </div>
 
-              {/* Etape 1 : Lot */}
+              {/* Etape 1 : Lot - MODIFIÉ */}
               {addStep === 1 && (
-                <div className="space-y-6">
+                <div className="space-y-5">
+                  {/* Champs Lot sans titre */}
                   <div>
-                    <label className="block text-base font-medium text-gray-700 mb-3">
-                      Numéro de lot
-                    </label>
                     <input
                       type="text"
                       value={addressDetails.lot}
                       onChange={(e) => handleAddressDetailsChange('lot', e.target.value)}
-                      placeholder="Ex: Lot 123, Lot ABC"
-                      className={`w-full px-4 py-3 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formError ? "border-red-500" : "border-gray-300"}`}
-                      style={{ height: '40px', fontSize: '14px' }}
+                      placeholder="Numéro de lot"
+                      className={`w-full px-4 py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formError ? "border-red-500" : "border-gray-300"}`}
+                      style={{ height: '42px', fontSize: '14px' }}
                     />
                     {formError && (
                       <p className="text-red-500 text-sm mt-2 flex items-center">
@@ -2377,141 +2407,167 @@ export default function Interface({ user }) {
                   {/* Section pour ajouter un résident directement */}
                   <div className="space-y-4 pt-4 border-t border-gray-200">
                     <div className="flex justify-between items-center">
-                      <h4 className="font-semibold text-gray-800">Ajouter un résident (optionnel)</h4>
+                      <h4 className="font-semibold text-gray-800 text-sm">Ajouter un résident (optionnel)</h4>
                       <button 
                         onClick={handleAddPerson}
-                        className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center"
+                        className="text-xs bg-gray-800 text-white px-3 py-1.5 rounded-lg hover:bg-gray-900 transition-all duration-200 flex items-center"
                       >
-                        <Plus size={16} className="mr-1" />
+                        <Plus size={14} className="mr-1" />
                         Ajouter un résident
                       </button>
                     </div>
 
                     {newResidents.length === 0 ? (
-                      <div className="text-sm text-gray-500 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        Aucun résident ajouté — vous pouvez ajouter des résidents ou confirmer directement.
+                      <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs">
+                        Aucun résident ajouté — vous pouvez enregistrer directement.
                       </div>
                     ) : (
-                      <div className="space-y-4">
-                        {newResidents.map((p, idx) => (
-                          <div key={idx} className="border border-gray-200 rounded-xl p-4 space-y-4 bg-white">
-                            <div className="flex justify-between items-center">
-                              <strong className="text-gray-800">
-                                {p.nom || p.prenom ? `${p.nom} ${p.prenom}` : `Résident ${idx + 1}`}
-                              </strong>
-                              <button 
-                                onClick={() => handleRemovePerson(idx)} 
-                                className="text-red-600 hover:text-red-800 text-sm flex items-center"
-                              >
-                                <X size={14} className="mr-1" />
-                                Supprimer
-                              </button>
-                            </div>
-
-                            {/* Champs de saisie */}
-                            <div className="space-y-4">
-                              {/* Nom et Prénom */}
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <input 
-                                    type="text" 
-                                    placeholder="Nom" 
-                                    value={p.nom} 
-                                    onChange={(e) => handlePersonChange(idx, 'nom', e.target.value)} 
-                                    className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    style={{ height: '40px', fontSize: '14px' }}
-                                  />
-                                </div>
-                                <div>
-                                  <input 
-                                    type="text" 
-                                    placeholder="Prénom" 
-                                    value={p.prenom} 
-                                    onChange={(e) => handlePersonChange(idx, 'prenom', e.target.value)} 
-                                    className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    style={{ height: '40px', fontSize: '14px' }}
-                                  />
-                                </div>
+                      <div 
+                        ref={residentFieldsRef}
+                        className={`space-y-3 ${residentFieldsScrollable ? 'max-h-48 overflow-y-auto pr-2' : ''}`}
+                        style={{ 
+                          scrollbarWidth: 'thin',
+                          scrollbarColor: '#cbd5e1 #f1f5f9'
+                        }}
+                      >
+                        {newResidents.map((p, idx) => {
+                          const age = calculateAgeFromDate(p.birthdate);
+                          const showCinField = age !== null && age >= 18;
+                          
+                          return (
+                            <div key={idx} className="border border-gray-200 rounded-xl p-3 space-y-3 bg-white">
+                              <div className="flex justify-between items-center">
+                                <strong className="text-gray-800 text-sm">
+                                  {p.nom || p.prenom ? `${p.nom} ${p.prenom}` : `Résident ${idx + 1}`}
+                                </strong>
+                                <button 
+                                  onClick={() => handleRemovePerson(idx)} 
+                                  className="text-red-600 hover:text-red-800 text-xs flex items-center"
+                                >
+                                  <X size={12} className="mr-1" />
+                                  Supprimer
+                                </button>
                               </div>
 
-                              {/* Date de naissance et Sexe */}
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <input 
-                                    type="date" 
-                                    placeholder="Date de naissance" 
-                                    value={p.birthdate} 
-                                    onChange={(e) => handlePersonChange(idx, 'birthdate', e.target.value)} 
-                                    className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    style={{ height: '40px', fontSize: '14px' }}
-                                  />
+                              {/* Champs de saisie - SEXE AVANT DATE DE NAISSANCE */}
+                              <div className="space-y-3">
+                                {/* Nom et Prénom */}
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <input 
+                                      type="text" 
+                                      placeholder="Nom" 
+                                      value={p.nom} 
+                                      onChange={(e) => handlePersonChange(idx, 'nom', e.target.value)} 
+                                      className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
+                                      style={{ height: '36px', fontSize: '12px' }}
+                                    />
+                                  </div>
+                                  <div>
+                                    <input 
+                                      type="text" 
+                                      placeholder="Prénom" 
+                                      value={p.prenom} 
+                                      onChange={(e) => handlePersonChange(idx, 'prenom', e.target.value)} 
+                                      className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
+                                      style={{ height: '36px', fontSize: '12px' }}
+                                    />
+                                  </div>
                                 </div>
-                                <div>
-                                  {/* Section Sexe avec boutons radio horizontaux */}
-                                  <div className="flex items-center space-x-4">
-                                    <label className="text-sm text-gray-700 font-medium mr-3">Sexe:</label>
-                                    <div className="flex items-center space-x-4">
-                                      <label className="flex items-center cursor-pointer">
-                                        <input
-                                          type="radio"
-                                          name={`sexe-${idx}`}
-                                          value="masculin"
-                                          checked={p.sexe === 'masculin'}
-                                          onChange={(e) => handlePersonChange(idx, 'sexe', e.target.value)}
-                                          className="mr-2"
-                                          style={{ width: '16px', height: '16px', accentColor: '#3b82f6' }}
-                                        />
-                                        <span className="text-sm text-gray-700">Masculin</span>
-                                      </label>
-                                      <label className="flex items-center cursor-pointer">
-                                        <input
-                                          type="radio"
-                                          name={`sexe-${idx}`}
-                                          value="feminin"
-                                          checked={p.sexe === 'feminin'}
-                                          onChange={(e) => handlePersonChange(idx, 'sexe', e.target.value)}
-                                          className="mr-2"
-                                          style={{ width: '16px', height: '16px', accentColor: '#3b82f6' }}
-                                        />
-                                        <span className="text-sm text-gray-700">Féminin</span>
-                                      </label>
+
+                                {/* Sexe et Date de naissance - SEXE EN PREMIER */}
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    {/* Section Sexe avec boutons radio horizontaux - EN BLEU */}
+                                    <div className="flex flex-col">
+                                      <label className="text-xs text-gray-700 font-medium mb-1">Sexe:</label>
+                                      <div className="flex items-center space-x-3">
+                                        <label className="flex items-center cursor-pointer">
+                                          <input
+                                            type="radio"
+                                            name={`sexe-${idx}`}
+                                            value="masculin"
+                                            checked={p.sexe === 'masculin'}
+                                            onChange={(e) => handlePersonChange(idx, 'sexe', e.target.value)}
+                                            className="mr-1"
+                                            style={{ width: '14px', height: '14px', accentColor: '#3b82f6' }}
+                                          />
+                                          <span className="text-xs text-gray-700">Masculin</span>
+                                        </label>
+                                        <label className="flex items-center cursor-pointer">
+                                          <input
+                                            type="radio"
+                                            name={`sexe-${idx}`}
+                                            value="feminin"
+                                            checked={p.sexe === 'feminin'}
+                                            onChange={(e) => handlePersonChange(idx, 'sexe', e.target.value)}
+                                            className="mr-1"
+                                            style={{ width: '14px', height: '14px', accentColor: '#3b82f6' }}
+                                          />
+                                          <span className="text-xs text-gray-700">Féminin</span>
+                                        </label>
+                                      </div>
                                     </div>
+                                  </div>
+                                  <div>
+                                    <input 
+                                      type="date" 
+                                      placeholder="Date de naissance" 
+                                      value={p.birthdate} 
+                                      onChange={(e) => handlePersonChange(idx, 'birthdate', e.target.value)} 
+                                      className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
+                                      style={{ height: '36px', fontSize: '12px' }}
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* CIN (seulement si 18 ans ou plus) et Téléphone */}
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    {showCinField ? (
+                                      <input 
+                                        type="text" 
+                                        placeholder="CIN" 
+                                        value={p.cin} 
+                                        onChange={(e) => handlePersonChange(idx, 'cin', e.target.value)} 
+                                        className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
+                                        style={{ height: '36px', fontSize: '12px' }}
+                                      />
+                                    ) : p.birthdate ? (
+                                      <input 
+                                        type="text" 
+                                        placeholder="CIN" 
+                                        value="Mineur" 
+                                        disabled
+                                        className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
+                                        style={{ height: '36px', fontSize: '12px' }}
+                                      />
+                                    ) : (
+                                      <input 
+                                        type="text" 
+                                        placeholder="CIN" 
+                                        value="" 
+                                        disabled
+                                        className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
+                                        style={{ height: '36px', fontSize: '12px' }}
+                                      />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <input 
+                                      type="text" 
+                                      placeholder="Téléphone" 
+                                      value={p.phone} 
+                                      onChange={(e) => handlePersonChange(idx, 'phone', e.target.value)} 
+                                      className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
+                                      style={{ height: '36px', fontSize: '12px' }}
+                                    />
                                   </div>
                                 </div>
                               </div>
-
-                              {/* CIN et Téléphone */}
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <input 
-                                    type="text" 
-                                    placeholder="CIN" 
-                                    value={p.cin} 
-                                    onChange={(e) => handlePersonChange(idx, 'cin', e.target.value)} 
-                                    className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    style={{ height: '40px', fontSize: '14px' }}
-                                  />
-                                </div>
-                                <div>
-                                  <input 
-                                    type="text" 
-                                    placeholder="Téléphone" 
-                                    value={p.phone} 
-                                    onChange={(e) => handlePersonChange(idx, 'phone', e.target.value)} 
-                                    className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    style={{ height: '40px', fontSize: '14px' }}
-                                  />
-                                </div>
-                              </div>
                             </div>
-
-                            {p.birthdate && (
-                              <div className="text-xs text-gray-500">
-                                Âge: {calculateAgeFromDate(p.birthdate)} ans
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -2522,53 +2578,64 @@ export default function Interface({ user }) {
               {addStep === 2 && (
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <h4 className="font-semibold">Formulaire personnes (optionnel)</h4>
-                    <button onClick={handleAddPerson} className="text-sm bg-green-500 text-white px-3 py-1 rounded">Ajouter une personne</button>
+                    <h4 className="font-semibold text-sm text-gray-800">Formulaire personnes (optionnel)</h4>
+                    <button onClick={handleAddPerson} className="text-xs bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-900">Ajouter une personne</button>
                   </div>
 
                   <div className="space-y-3 max-h-64 overflow-y-auto">
                     {newResidents.length === 0 && (
-                      <div className="text-sm text-gray-500">Aucune personne ajoutée — vous pouvez confirmer directement.</div>
+                      <div className="text-sm text-gray-500">Aucune personne ajoutée — vous pouvez enregistrer directement.</div>
                     )}
 
-                    {newResidents.map((p, idx) => (
-                      <div key={idx} className="border p-3 rounded-lg space-y-2">
-                        <div className="flex justify-between">
-                          <strong>{p.nom || p.prenom ? `${p.nom} ${p.prenom}` : `Personne ${idx + 1}`}</strong>
-                          <button onClick={() => handleRemovePerson(idx)} className="text-red-500 text-sm">Supprimer</button>
-                        </div>
+                    {newResidents.map((p, idx) => {
+                      const age = calculateAgeFromDate(p.birthdate);
+                      const showCinField = age !== null && age >= 18;
+                      
+                      return (
+                        <div key={idx} className="border p-3 rounded-lg space-y-2 bg-white">
+                          <div className="flex justify-between">
+                            <strong className="text-sm text-gray-800">{p.nom || p.prenom ? `${p.nom} ${p.prenom}` : `Personne ${idx + 1}`}</strong>
+                            <button onClick={() => handleRemovePerson(idx)} className="text-red-500 text-xs">Supprimer</button>
+                          </div>
 
-                        <div className="grid grid-cols-2 gap-2">
-                          <input type="text" placeholder="Nom" value={p.nom} onChange={(e) => handlePersonChange(idx, 'nom', e.target.value)} className="px-2 py-1 border rounded" />
-                          <input type="text" placeholder="Prénom" value={p.prenom} onChange={(e) => handlePersonChange(idx, 'prenom', e.target.value)} className="px-2 py-1 border rounded" />
-                        </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input type="text" placeholder="Nom" value={p.nom} onChange={(e) => handlePersonChange(idx, 'nom', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }} />
+                            <input type="text" placeholder="Prénom" value={p.prenom} onChange={(e) => handlePersonChange(idx, 'prenom', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }} />
+                          </div>
 
-                        <div className="grid grid-cols-2 gap-2">
-                          <input type="date" placeholder="Date de naissance" value={p.birthdate} onChange={(e) => handlePersonChange(idx, 'birthdate', e.target.value)} className="px-2 py-1 border rounded" />
-                          <select value={p.sexe} onChange={(e) => handlePersonChange(idx, 'sexe', e.target.value)} className="px-2 py-1 border rounded">
-                            <option value="masculin">Masculin</option>
-                            <option value="feminin">Féminin</option>
-                          </select>
-                        </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {/* Sexe en premier */}
+                            <div className="flex flex-col">
+                              <label className="text-xs text-gray-700 font-medium mb-1">Sexe:</label>
+                              <select value={p.sexe} onChange={(e) => handlePersonChange(idx, 'sexe', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }}>
+                                <option value="masculin">Masculin</option>
+                                <option value="feminin">Féminin</option>
+                              </select>
+                            </div>
+                            <input type="date" placeholder="Date de naissance" value={p.birthdate} onChange={(e) => handlePersonChange(idx, 'birthdate', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }} />
+                          </div>
 
-                        <div className="grid grid-cols-2 gap-2 items-center">
-                          <input type="text" placeholder="CIN" value={p.cin} onChange={(e) => handlePersonChange(idx, 'cin', e.target.value)} className="px-2 py-1 border rounded" />
-                          <input type="text" placeholder="Téléphone" value={p.phone} onChange={(e) => handlePersonChange(idx, 'phone', e.target.value)} className="px-2 py-1 border rounded" />
+                          <div className="grid grid-cols-2 gap-2 items-center">
+                            {showCinField ? (
+                              <input type="text" placeholder="CIN" value={p.cin} onChange={(e) => handlePersonChange(idx, 'cin', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }} />
+                            ) : p.birthdate ? (
+                              <input type="text" placeholder="CIN" value="Mineur" disabled className="px-2 py-1 border rounded text-sm bg-gray-100 text-gray-500" style={{ height: '32px' }} />
+                            ) : (
+                              <input type="text" placeholder="CIN" value="" disabled className="px-2 py-1 border rounded text-sm bg-gray-100 text-gray-500" style={{ height: '32px' }} />
+                            )}
+                            <input type="text" placeholder="Téléphone" value={p.phone} onChange={(e) => handlePersonChange(idx, 'phone', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }} />
+                          </div>
                         </div>
-
-                        <div className="text-xs text-gray-500">
-                          {p.birthdate ? `Age: ${calculateAgeFromDate(p.birthdate)}` : ''}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   <div className="flex justify-between mt-4">
-                    <button onClick={handleBackToLot} className="px-4 py-2 border rounded-lg">Retour</button>
+                    <button onClick={handleBackToLot} className="px-3 py-1.5 border rounded-lg text-sm text-gray-700 border-gray-300 hover:bg-gray-50">Retour</button>
                     <div className="flex gap-2">
-                      <button onClick={() => { setShowAddAddress(false); setAddStep(1); }} className="px-4 py-2 border rounded-lg">Annuler</button>
-                      <button onClick={handleConfirmSave} disabled={savingResidence} className="px-4 py-2 bg-blue-600 text-white rounded-lg">
-                        {savingResidence ? 'Enregistrement...' : 'Confirmer'}
+                      <button onClick={handleCancelToSelection} className="px-3 py-1.5 border rounded-lg text-sm text-gray-700 border-gray-300 hover:bg-gray-50">Annuler</button>
+                      <button onClick={handleConfirmSave} disabled={savingResidence} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                        {savingResidence ? 'Enregistrement...' : 'Enregistrer'}
                       </button>
                     </div>
                   </div>
@@ -2578,20 +2645,20 @@ export default function Interface({ user }) {
               )}
             </div>
 
-            {/* Footer avec boutons Annuler et Enregistrer */}
-            <div className="border-t border-gray-200 px-6 py-4 flex justify-end space-x-4" style={{ paddingTop: '16px', paddingBottom: '16px' }}>
+            {/* Footer avec boutons Annuler et Enregistrer - TOUJOURS VISIBLE */}
+            <div className="border-t border-gray-200 px-6 py-4 flex justify-end space-x-4 bg-white" style={{ paddingTop: '16px', paddingBottom: '16px' }}>
               <button
-                onClick={() => { setShowAddAddress(false); setAddStep(1); }}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium"
-                style={{ height: '40px', fontSize: '14px' }}
+                onClick={handleCancelToSelection}
+                className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium"
+                style={{ height: '38px', fontSize: '13px' }}
               >
                 Annuler
               </button>
               <button
                 onClick={addStep === 1 ? handleConfirmSave : handleConfirmSave}
                 disabled={savingResidence}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ height: '40px', fontSize: '14px' }}
+                className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ height: '38px', fontSize: '13px' }}
               >
                 {savingResidence ? 'Enregistrement...' : 'Enregistrer'}
               </button>
@@ -2601,7 +2668,7 @@ export default function Interface({ user }) {
       )}
 
       {/* === SIDEBAR GAUCHE === */}
-      <div className="absolute top-6 left-6 z-20 sidebar-container">
+      <div className="absolute top-6 left-6 z-40 sidebar-container">
         <div className="bg-white/30 hover:bg-white/50 rounded-2xl shadow-lg border border-gray-200/60 backdrop-blur-sm hover:border-gray-300/80 transition-all duration-300 ease-out overflow-hidden"
           style={{
             width: "260px",
@@ -2612,8 +2679,8 @@ export default function Interface({ user }) {
           {/* En-tête SIGAP - Bouton retour */}
           <button
             onClick={handleLogoClick}
-            disabled={isModalOpen}
-            className={`w-full flex items-center px-4 py-3 transition-all duration-200 ${isModalOpen
+            disabled={isAddAddressModalOpen}
+            className={`w-full flex items-center px-4 py-3 transition-all duration-200 ${isAddAddressModalOpen
               ? 'cursor-not-allowed opacity-70'
               : 'hover:bg-gray-100/50'
               }`}
@@ -2625,7 +2692,7 @@ export default function Interface({ user }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: "#1f2937",
+              backgroundColor: isAddAddressModalOpen ? "#9ca3af" : "#1f2937",
               borderRadius: "8px",
               marginRight: "12px"
             }}>
@@ -2638,7 +2705,7 @@ export default function Interface({ user }) {
             <span style={{
               fontSize: "16px",
               fontWeight: 600,
-              color: isModalOpen ? "#6b7280" : "#111827"
+              color: isAddAddressModalOpen ? "#9ca3af" : "#111827"
             }}>SIGAP</span>
           </button>
 
@@ -2648,8 +2715,8 @@ export default function Interface({ user }) {
               <button
                 data-menu-button
                 onClick={handleMenuButtonClick}
-                disabled={isModalOpen}
-                className={`w-full flex items-center justify-between rounded-xl transition-all duration-200 mb-2 ${isModalOpen
+                disabled={isAddAddressModalOpen}
+                className={`w-full flex items-center justify-between rounded-xl transition-all duration-200 mb-2 ${isAddAddressModalOpen
                   ? 'cursor-not-allowed opacity-70'
                   : menuDropdownOpen
                   ? "bg-gray-100/80"
@@ -2661,22 +2728,22 @@ export default function Interface({ user }) {
                 }}
               >
                 <div className="flex items-center gap-3">
-                  <Menu size={18} className={isModalOpen ? "text-gray-400" : "text-gray-700"} />
+                  <Menu size={18} className={isAddAddressModalOpen ? "text-gray-400" : "text-gray-700"} />
                   <span style={{
                     fontSize: "14px",
                     fontWeight: 500,
-                    color: isModalOpen ? "#9ca3af" : "#374151"
+                    color: isAddAddressModalOpen ? "#9ca3af" : "#374151"
                   }}>MENU</span>
                 </div>
                 <ChevronDown 
                   size={16} 
                   className={`transition-transform duration-200 ${menuDropdownOpen ? 'rotate-180' : ''}`}
-                  style={{ color: isModalOpen ? "#9ca3af" : "#6b7280" }}
+                  style={{ color: isAddAddressModalOpen ? "#9ca3af" : "#6b7280" }}
                 />
               </button>
 
               {/* Menu déroulant "MENU" - version dropdown */}
-              {menuDropdownOpen && !isModalOpen && (
+              {menuDropdownOpen && !isAddAddressModalOpen && (
                 <div className="mt-2 space-y-1 animate-fadeIn">
                   {/* Option Résidence */}
                   <button
@@ -2770,9 +2837,10 @@ export default function Interface({ user }) {
       {/* === PAGES ÉLARGIES (positionnées parallèlement à la barre de recherche) === */}
       {/* Page Résidence */}
       {showResidence && (
-        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/30 backdrop-blur-sm  rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
           style={{
-            height: "calc(100vh - 110px)"
+            height: "calc(100vh - 28px)",
+            bottom: "4px"
           }}>
           <ResidencePage
             onBack={handleCloseResidence}
@@ -2785,9 +2853,10 @@ export default function Interface({ user }) {
 
       {/* Page Statistique */}
       {showStatistique && (
-        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/30 backdrop-blur-sm  rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
           style={{
-            height: "calc(100vh - 110px)"
+            height: "calc(100vh - 28px)",
+            bottom: "4px"
           }}>
           <Statistique onBack={handleCloseStatistique} />
         </div>
@@ -2795,9 +2864,10 @@ export default function Interface({ user }) {
 
       {/* Page Utilisateur */}
       {showUserPage && (
-        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/95 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
           style={{
-            height: "calc(100vh - 110px)"
+            height: "calc(100vh - 28px)",
+            bottom: "4px"
           }}>
           <UserPage
             user={currentUser}
@@ -2811,9 +2881,10 @@ export default function Interface({ user }) {
 
       {/* Page Demandes en attente */}
       {showPendingResidences && currentUser?.role === 'secretaire' && (
-        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white/95 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
           style={{
-            height: "calc(100vh - 110px)"
+            height: "calc(100vh - 28px)",
+            bottom: "4px"
           }}>
           <PendingResidences
             onBack={handleClosePendingResidences}
@@ -2823,41 +2894,49 @@ export default function Interface({ user }) {
         </div>
       )}
 
-      {/* === CONTROLES ZOOM ET COUCHE === */}
-      <div className="fixed right-6 bottom-24 z-10 flex flex-col items-center space-y-2">
-        <button
-          onClick={handleZoomIn}
-          className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
-          title="Zoom avant"
-        >
-          <Plus size={20} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
-        </button>
-        <button
-          onClick={handleZoomOut}
-          className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
-          title="Zoom arrière"
-        >
-          <Minus size={20} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
-        </button>
-        <button
-          onClick={handleCenterMap}
-          className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 border border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl"
-          title="Voir la zone limite"
-        >
-          <LocateFixed size={20} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
-        </button>
-      </div>
+      {/* === CONTROLES ZOOM ET COUCHE - CACHÉS QUAND UNE PAGE EST OUVERTE === */}
+      {!isAnyPageOpen && (
+        <>
+          <div className="fixed right-6 bottom-24 z-40 flex flex-col items-center space-y-2">
+            <button
+              onClick={handleZoomIn}
+              disabled={isAddAddressModalOpen}
+              className={`w-10 h-10 ${isAddAddressModalOpen ? 'bg-gray-300 cursor-not-allowed' : 'bg-white/95 backdrop-blur-sm hover:bg-white'} rounded-full shadow-lg flex items-center justify-center transition-all duration-300 border ${isAddAddressModalOpen ? 'border-gray-300' : 'border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl'}`}
+              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : "Zoom avant"}
+            >
+              <Plus size={20} className={isAddAddressModalOpen ? "text-gray-400" : "text-gray-700 hover:text-gray-800 transition-all duration-300"} />
+            </button>
+            <button
+              onClick={handleZoomOut}
+              disabled={isAddAddressModalOpen}
+              className={`w-10 h-10 ${isAddAddressModalOpen ? 'bg-gray-300 cursor-not-allowed' : 'bg-white/95 backdrop-blur-sm hover:bg-white'} rounded-full shadow-lg flex items-center justify-center transition-all duration-300 border ${isAddAddressModalOpen ? 'border-gray-300' : 'border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl'}`}
+              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : "Zoom arrière"}
+            >
+              <Minus size={20} className={isAddAddressModalOpen ? "text-gray-400" : "text-gray-700 hover:text-gray-800 transition-all duration-300"} />
+            </button>
+            <button
+              onClick={handleCenterMap}
+              disabled={isAddAddressModalOpen}
+              className={`w-10 h-10 ${isAddAddressModalOpen ? 'bg-gray-300 cursor-not-allowed' : 'bg-white/95 backdrop-blur-sm hover:bg-white'} rounded-full shadow-lg flex items-center justify-center transition-all duration-300 border ${isAddAddressModalOpen ? 'border-gray-300' : 'border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl'}`}
+              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : "Voir la zone limite"}
+            >
+              <LocateFixed size={20} className={isAddAddressModalOpen ? "text-gray-400" : "text-gray-700 hover:text-gray-800 transition-all duration-300"} />
+            </button>
+          </div>
 
-      {/* Bouton changement de type de carte */}
-      <div className="fixed right-6 bottom-8 z-10">
-        <button
-          onClick={handleMapTypeChange}
-          className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 hover:shadow-xl border border-gray-200/60 hover:border-gray-300/80"
-          title={mapType === "satellite" ? "Passer en vue plan" : "Passer en vue satellite"}
-        >
-          <Layers size={22} className="text-gray-700 hover:text-gray-800 transition-all duration-300" />
-        </button>
-      </div>
+          {/* Bouton changement de type de carte */}
+          <div className="fixed right-6 bottom-8 z-40">
+            <button
+              onClick={handleMapTypeChange}
+              disabled={isAddAddressModalOpen}
+              className={`w-10 h-10 ${isAddAddressModalOpen ? 'bg-gray-300 cursor-not-allowed' : 'bg-white/95 backdrop-blur-sm hover:bg-white'} rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:shadow-xl border ${isAddAddressModalOpen ? 'border-gray-300' : 'border-gray-200/60 hover:border-gray-300/80'}`}
+              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : mapType === "satellite" ? "Passer en vue plan" : "Passer en vue satellite"}
+            >
+              <Layers size={22} className={isAddAddressModalOpen ? "text-gray-400" : "text-gray-700 hover:text-gray-800 transition-all duration-300"} />
+            </button>
+          </div>
+        </>
+      )}
 
       {/* === GOOGLE MAPS === */}
       <div className="absolute inset-0 z-0" data-map-container>

@@ -8,7 +8,6 @@ import {
   User,
   Map,
   Search,
-  Plus,
   ChevronLeft,
   ChevronRight,
   Camera,
@@ -556,16 +555,16 @@ const AddResidentModal = ({
         onClick={handleCancel}
       />
       
-      {/* Modal - Décalé vers la gauche et taille ajustée */}
+      {/* Modal décalé vers la droite pour être bien centré */}
       <div 
-        className="relative bg-white rounded-2xl shadow-2xl w-[480px] h-auto max-h-[600px] overflow-hidden flex flex-col transform transition-all mr-20"
+        className="relative bg-white rounded-2xl shadow-2xl w-[480px] h-auto max-h-[600px] overflow-hidden flex flex-col transform transition-all ml-24"
         style={{
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header du modal déplacé vers le haut */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+        {/* Header du modal sans bordure en bas */}
+        <div className="flex items-center justify-between px-6 py-5">
           <h2 className="text-xl font-bold text-gray-800">
             Ajouter un résident
           </h2>
@@ -578,9 +577,9 @@ const AddResidentModal = ({
           </button>
         </div>
 
-        {/* Contenu du modal - Contenu déplacé vers le haut */}
+        {/* Contenu du modal */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          {/* Formulaire avec champs plus petits */}
+          {/* Formulaire avec champs visibles */}
           <div className="space-y-4">
             {/* Champ Nom */}
             <div>
@@ -614,12 +613,12 @@ const AddResidentModal = ({
               />
             </div>
 
-            {/* Sélection Sexe - Déplacé vers le haut avec boutons radio bleus */}
-            <div>
+            {/* Sélection Sexe - Radio boutons verticaux décalés vers la droite */}
+            <div className="pl-4">
               <div className="mb-2 text-sm font-medium text-gray-700">
                 Sexe
               </div>
-              <div className="flex space-x-4">
+              <div className="flex flex-col space-y-2">
                 <label className="flex items-center space-x-2 cursor-pointer">
                   <input
                     type="radio"
@@ -659,12 +658,12 @@ const AddResidentModal = ({
                 onFocus={handleDateFocus}
                 onKeyDown={handleDateKeyDown}
                 onBlur={handleDateBlur}
-                className={`w-full px-3 py-2.5 border rounded-lg text-sm font-mono text-left transition-colors placeholder-gray-500 ${
+                className={`w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm font-mono text-left transition-colors placeholder-gray-500 ${
                   dateError
                     ? "border-red-500 focus:border-red-500 focus:ring-red-200"
-                    : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                    : "focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 }`}
-                placeholder="Date de naissance"
+                placeholder="Date de naissance (jj/mm/aaaa)"
                 maxLength={10}
               />
               {dateError && (
@@ -711,7 +710,7 @@ const AddResidentModal = ({
           </div>
         </div>
 
-        {/* Footer */}
+        {/* Footer avec bouton bleu */}
         <div className="flex space-x-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
           <button
             onClick={handleCancel}
@@ -1163,18 +1162,16 @@ export default function ResidencePage({
           }`;
         });
 
-        setSelectedResidence((prev) => {
-          const updated = {
-            ...prev,
-            photos: [...(prev.photos || []), ...newPhotoUrls],
-          };
-          setResList((list) =>
-            list.map((r) =>
-              r.id === updated.id ? { ...r, photos: updated.photos } : r
-            )
-          );
-          return updated;
-        });
+        setSelectedResidence((prev) => ({
+          ...prev,
+          photos: [...(prev.photos || []), ...newPhotoUrls],
+        }));
+
+        setResList((list) =>
+          list.map((r) =>
+            r.id === selectedResidence.id ? { ...r, photos: newPhotoUrls } : r
+          )
+        );
       }
     } catch (err) {
       console.warn("handlePhotoSelect upload error", err);
@@ -1899,9 +1896,9 @@ export default function ResidencePage({
         {/* Section principale - cachée quand le modal est ouvert */}
         {!showModal && (
           <div className="w-full">
-            {/* Conteneur principal avec fond semi-transparent */}
+            {/* Conteneur principal SANS fond semi-transparent */}
             <div 
-              className="h-full flex flex-col p-6 space-y-6 min-h-screen bg-white/30 backdrop-blur-sm"
+              className="h-full flex flex-col p-6 space-y-6 min-h-screen"
               style={{ 
                 padding: '24px 32px'
               }}
@@ -1914,7 +1911,7 @@ export default function ResidencePage({
                     fontSize: '32px',
                     fontWeight: '700',
                     color: '#000000',
-                    marginBottom: '16px'
+                    marginBottom: '10px'
                   }}
                 >
                   Liste des Résidences
@@ -2106,24 +2103,24 @@ export default function ResidencePage({
                 </div>
               </div>
 
-              {/* Conteneur du tableau avec espace pour exactement 4 lignes */}
-              <div className="flex-1 flex flex-col">
+              {/* Conteneur principal du tableau avec spécifications exactes */}
+              <div className="flex-1">
                 <div 
-                  className="bg-white rounded-2xl overflow-hidden flex flex-col"
-                  style={{ 
-                    minHeight: '420px',
-                    padding: '24px',
-                    borderRadius: '20px',
+                  className="bg-white rounded-2xl flex flex-col"
+                  style={{
+                    width: '100%',
+                    minHeight: 'calc(4 * 72px + 48px + 40px + 20px + 48px)', // 4 lignes + header + pagination + padding + margin
+                    borderRadius: '22px',
                     backgroundColor: '#FFFFFF',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
-                    flex: '1'
+                    padding: '24px',
+                    overflow: 'hidden'
                   }}
                 >
                   {/* En-tête du tableau */}
-                  <div className="mb-4 flex-shrink-0">
+                  <div className="flex-shrink-0 mb-1">
                     <div className="flex items-center" style={{ height: '48px' }}>
-                      {/* Index */}
-                      <div style={{ width: '60px', padding: '0 12px' }}>
+                      <div style={{ width: '40px', padding: '0 12px' }}>
                         <div 
                           className="font-semibold"
                           style={{ 
@@ -2132,14 +2129,13 @@ export default function ResidencePage({
                             color: '#6B7280'
                           }}
                         >
-                          
+                          N°
                         </div>
                       </div>
                       
-                      {/* Photo */}
-                      <div style={{ width: '120px', padding: '0 12px' }}>
+                      <div style={{ width: '90px', padding: '0 12px' }}>
                         <div 
-                          className="font-semibold"
+                          className="font-semibold text-center"
                           style={{ 
                             fontSize: '13px',
                             fontWeight: '600',
@@ -2150,7 +2146,6 @@ export default function ResidencePage({
                         </div>
                       </div>
                       
-                      {/* Adresse */}
                       <div style={{ flex: 1, padding: '0 12px' }}>
                         <div 
                           className="font-semibold"
@@ -2164,8 +2159,7 @@ export default function ResidencePage({
                         </div>
                       </div>
                       
-                      {/* Résidents */}
-                      <div style={{ width: '180px', padding: '0 12px' }}>
+                      <div style={{ width: '160px', padding: '0 12px' }}>
                         <div 
                           className="font-semibold text-center"
                           style={{ 
@@ -2178,10 +2172,9 @@ export default function ResidencePage({
                         </div>
                       </div>
                       
-                      {/* Actions */}
-                      <div style={{ width: '160px', padding: '0 12px' }}>
+                      <div style={{ width: '220px', padding: '0 12px' }}>
                         <div 
-                          className="font-semibold text-center"
+                          className="font-semibold text-right"
                           style={{ 
                             fontSize: '13px',
                             fontWeight: '600',
@@ -2194,14 +2187,14 @@ export default function ResidencePage({
                     </div>
                   </div>
 
-                  {/* Corps du tableau - exactement 4 lignes ou moins */}
-                  <div className="flex-1">
+                  {/* Corps du tableau - EXACTEMENT 4 LIGNES de 72px */}
+                  <div className="flex-1 overflow-hidden">
                     {currentResidences.length === 0 ? (
                       <div 
-                        className="text-center py-16 flex items-center justify-center"
-                        style={{ height: '304px' }} // 4 lignes de 76px
+                        className="h-full flex items-center justify-center"
+                        style={{ minHeight: '288px' }} // 4 * 72px
                       >
-                        <div>
+                        <div className="text-center">
                           <div 
                             className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4"
                             style={{ backgroundColor: '#E5E7EB' }}
@@ -2231,9 +2224,8 @@ export default function ResidencePage({
                         </div>
                       </div>
                     ) : (
-                      <div style={{ minHeight: '304px' }}> {/* 4 lignes de 76px */}
+                      <div>
                         {currentResidences.map((residence, index) => {
-                          // Calculer le nombre réel de résidents pour cette résidence
                           const realResidents = allResidents.filter(
                             (resident) => resident.residence_id === residence.id
                           );
@@ -2251,7 +2243,6 @@ export default function ResidencePage({
                               person.genre === "female"
                           ).length;
 
-                          // Utiliser les valeurs réelles si disponibles
                           const totalResidents = totalRealResidents > 0 ? totalRealResidents : (residence.totalResidents || 0);
                           const hommes = hommesReal > 0 ? hommesReal : (residence.hommes || 0);
                           const femmes = femmesReal > 0 ? femmesReal : (residence.femmes || 0);
@@ -2261,12 +2252,11 @@ export default function ResidencePage({
                               key={residence.id} 
                               className="flex items-center border-b border-gray-200 hover:bg-gray-50 transition-colors"
                               style={{ 
-                                height: '76px',
+                                height: '72px',
                                 borderBottomColor: '#E5E7EB'
                               }}
                             >
-                              {/* Index */}
-                              <div style={{ width: '60px', padding: '0 12px' }}>
+                              <div style={{ width: '40px', padding: '0 12px' }}>
                                 <span 
                                   className="font-medium"
                                   style={{ 
@@ -2274,14 +2264,13 @@ export default function ResidencePage({
                                     color: '#6B7280'
                                   }}
                                 >
-                                  {index + 1}
+                                  {(currentPage - 1) * residencesPerPage + index + 1}
                                 </span>
                               </div>
                               
-                              {/* Photo */}
-                              <div style={{ width: '120px', padding: '0 12px' }}>
+                              <div style={{ width: '90px', padding: '0 12px' }}>
                                 <div 
-                                  className="rounded-lg overflow-hidden flex items-center justify-center"
+                                  className="rounded-lg overflow-hidden flex items-center justify-center mx-auto"
                                   style={{ 
                                     width: '56px',
                                     height: '56px',
@@ -2311,7 +2300,6 @@ export default function ResidencePage({
                                 </div>
                               </div>
                               
-                              {/* Adresse */}
                               <div style={{ flex: 1, padding: '0 12px' }}>
                                 <div>
                                   <div 
@@ -2349,8 +2337,7 @@ export default function ResidencePage({
                                 </div>
                               </div>
                               
-                              {/* Résidents */}
-                              <div style={{ width: '180px', padding: '0 12px' }}>
+                              <div style={{ width: '160px', padding: '0 12px' }}>
                                 <div className="text-center">
                                   <div 
                                     className="font-semibold mb-1"
@@ -2359,7 +2346,7 @@ export default function ResidencePage({
                                       color: '#000000'
                                     }}
                                   >
-                                    {totalResidents}
+                                    {totalResidents} résident{totalResidents !== 1 ? 's' : ''}
                                   </div>
                                   <div className="flex items-center justify-center space-x-3">
                                     <div className="flex items-center">
@@ -2389,9 +2376,8 @@ export default function ResidencePage({
                                 </div>
                               </div>
                               
-                              {/* Actions */}
-                              <div style={{ width: '160px', padding: '0 12px' }}>
-                                <div className="flex items-center justify-center space-x-2">
+                              <div style={{ width: '220px', padding: '0 12px' }}>
+                                <div className="flex items-center justify-end space-x-2">
                                   {onViewOnMap && (
                                     <button
                                       onClick={() => onViewOnMap(residence)}
@@ -2432,127 +2418,161 @@ export default function ResidencePage({
                           );
                         })}
                         
-                        {/* Ajouter des lignes vides pour garder une hauteur constante */}
-                        {currentResidences.length < residencesPerPage && (
-                          Array.from({ length: residencesPerPage - currentResidences.length }).map((_, index) => (
-                            <div 
-                              key={`empty-${index}`}
-                              className="flex items-center border-b border-gray-200"
-                              style={{ 
-                                height: '76px',
-                                borderBottomColor: '#E5E7EB'
-                              }}
-                            >
-                              <div style={{ width: '60px', padding: '0 12px' }}></div>
-                              <div style={{ width: '120px', padding: '0 12px' }}></div>
-                              <div style={{ flex: 1, padding: '0 12px' }}></div>
-                              <div style={{ width: '180px', padding: '0 12px' }}></div>
-                              <div style={{ width: '160px', padding: '0 12px' }}></div>
+                        {/* Lignes vides pour compléter les 4 lignes */}
+                        {Array.from({ length: Math.max(0, residencesPerPage - currentResidences.length) }).map((_, index) => (
+                          <div 
+                            key={`empty-${index}`}
+                            className="flex items-center border-b border-gray-200"
+                            style={{ 
+                              height: '72px',
+                              borderBottomColor: '#E5E7EB'
+                            }}
+                          >
+                            <div style={{ width: '40px', padding: '0 12px' }}>
+                              <span 
+                                className="text-gray-400"
+                                style={{ fontSize: '14px' }}
+                              >
+                                -
+                              </span>
                             </div>
-                          ))
-                        )}
+                            <div style={{ width: '90px', padding: '0 12px' }}>
+                              <div 
+                                className="rounded-lg flex items-center justify-center mx-auto"
+                                style={{ 
+                                  width: '56px',
+                                  height: '56px',
+                                  borderRadius: '8px',
+                                  backgroundColor: '#F9FAFB'
+                                }}
+                              >
+                                <Home size={20} style={{ color: '#E5E7EB' }} />
+                              </div>
+                            </div>
+                            <div style={{ flex: 1, padding: '0 12px' }}>
+                              <div className="text-gray-400 italic" style={{ fontSize: '14px' }}>
+                                Aucune donnée
+                              </div>
+                            </div>
+                            <div style={{ width: '160px', padding: '0 12px' }}>
+                              <div className="text-center">
+                                <div className="text-gray-400" style={{ fontSize: '13px' }}>-</div>
+                              </div>
+                            </div>
+                            <div style={{ width: '220px', padding: '0 12px' }}></div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
-                </div>
-              </div>
 
-              {/* Pagination centrée - TOUJOURS VISIBLE */}
-              <div className="pt-4 flex-shrink-0">
-                <div className="flex items-center justify-center">
-                  <div className="flex items-center space-x-2">
-                    {/* Bouton précédent */}
-                    <button
-                      onClick={prevPage}
-                      disabled={currentPage === 1}
-                      className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '999px',
-                        borderColor: '#D1D5DB'
-                      }}
-                    >
-                      <ChevronLeft size={16} style={{ color: '#000000' }} />
-                    </button>
+                  {/* Pagination centrée - TOUJOURS VISIBLE à l'intérieur du conteneur */}
+                  <div className="flex-shrink-0 pt-4" style={{ paddingTop: '16px' }}>
+                    <div className="flex items-center justify-center">
+                      <div 
+                        className="flex items-center space-x-2 bg-white rounded-full px-4 py-2"
+                        style={{
+                          borderRadius: '999px',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                          height: '40px',
+                          width: '220px',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        {/* Bouton précédent - 36px */}
+                        <button
+                          onClick={prevPage}
+                          disabled={currentPage === 1}
+                          className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '999px',
+                            borderColor: '#D1D5DB'
+                          }}
+                        >
+                          <ChevronLeft size={16} style={{ color: '#000000' }} />
+                        </button>
 
-                    {/* Numéros de page */}
-                    <div className="flex items-center space-x-1">
-                      {[...Array(totalPages)].map((_, i) => {
-                        const pageNum = i + 1;
-                        // Afficher seulement 5 pages maximum
-                        if (
-                          pageNum === 1 ||
-                          pageNum === totalPages ||
-                          (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
-                        ) {
-                          return (
-                            <button
-                              key={pageNum}
-                              onClick={() => setCurrentPage(pageNum)}
-                              className={`flex items-center justify-center font-medium transition-colors ${
-                                currentPage === pageNum
-                                  ? "bg-gray-900 text-white"
-                                  : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
-                              }`}
-                              style={{
-                                width: '36px',
-                                height: '36px',
-                                borderRadius: '8px',
-                                fontSize: '13px',
-                                borderColor: '#D1D5DB',
-                                color: currentPage === pageNum ? '#FFFFFF' : '#6B7280'
-                              }}
-                            >
-                              {pageNum}
-                            </button>
-                          );
-                        } else if (
-                          pageNum === currentPage - 2 ||
-                          pageNum === currentPage + 2
-                        ) {
-                          return (
-                            <span 
-                              className="text-gray-400"
-                              style={{ 
-                                fontSize: '13px',
-                                color: '#6B7280'
-                              }}
-                            >
-                              ...
-                            </span>
-                          );
-                        }
-                        return null;
-                      })}
+                        {/* Numéros de page - 32px */}
+                        <div className="flex items-center space-x-2">
+                          {[...Array(totalPages)].map((_, i) => {
+                            const pageNum = i + 1;
+                            // Afficher seulement les pages pertinentes
+                            if (
+                              pageNum === 1 ||
+                              pageNum === totalPages ||
+                              (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                            ) {
+                              return (
+                                <button
+                                  key={pageNum}
+                                  onClick={() => setCurrentPage(pageNum)}
+                                  className={`flex items-center justify-center font-medium transition-colors ${
+                                    currentPage === pageNum
+                                      ? "bg-gray-900 text-white"
+                                      : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
+                                  }`}
+                                  style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    borderColor: '#D1D5DB',
+                                    color: currentPage === pageNum ? '#FFFFFF' : '#6B7280'
+                                  }}
+                                >
+                                  {pageNum}
+                                </button>
+                              );
+                            } else if (
+                              pageNum === currentPage - 2 ||
+                              pageNum === currentPage + 2
+                            ) {
+                              return (
+                                <span 
+                                  className="text-gray-400"
+                                  style={{ 
+                                    fontSize: '14px',
+                                    color: '#6B7280'
+                                  }}
+                                >
+                                  ...
+                                </span>
+                              );
+                            }
+                            return null;
+                          })}
+                        </div>
+
+                        {/* Bouton suivant - 36px */}
+                        <button
+                          onClick={nextPage}
+                          disabled={currentPage === totalPages}
+                          className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '999px',
+                            borderColor: '#D1D5DB'
+                          }}
+                        >
+                          <ChevronRight size={16} style={{ color: '#000000' }} />
+                        </button>
+                      </div>
                     </div>
-
-                    {/* Bouton suivant */}
-                    <button
-                      onClick={nextPage}
-                      disabled={currentPage === totalPages}
-                      className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '999px',
-                        borderColor: '#D1D5DB'
+                    
+                    {/* Indicateur de page */}
+                    <div 
+                      className="text-center mt-2"
+                      style={{ 
+                        fontSize: '12px',
+                        color: '#6B7280'
                       }}
                     >
-                      <ChevronRight size={16} style={{ color: '#000000' }} />
-                    </button>
+                      Page {currentPage} sur {totalPages} • {filteredResidences.length} résidences
+                    </div>
                   </div>
-                </div>
-                
-                {/* Indicateur de page */}
-                <div 
-                  className="text-center mt-2"
-                  style={{ 
-                    fontSize: '12px',
-                    color: '#6B7280'
-                  }}
-                >
-                  Page {currentPage} sur {totalPages} • {filteredResidences.length} résidences
                 </div>
               </div>
             </div>
@@ -2562,7 +2582,7 @@ export default function ResidencePage({
         {/* Modal de détails */}
         {showModal && selectedResidence && (
           <div className="w-full">
-            <div className="h-full flex flex-col p-6 bg-white/30 backdrop-blur-sm">
+            <div className="h-full flex flex-col p-6">
               {/* Header avec bouton retour et titre */}
               <div className="mb-6">
                 <div className="flex items-center">

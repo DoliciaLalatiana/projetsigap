@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, MapPin, User, Clock, AlertCircle, Bell } from 'lucide-react';
+import { Check, X, MapPin, User, Clock, AlertCircle } from 'lucide-react';
 
 const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) => {
   const [pendingResidences, setPendingResidences] = useState([]);
@@ -235,7 +235,7 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Chargement des demandes...</p>
         </div>
       </div>
@@ -248,10 +248,9 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
       <div className="w-1/2 border-r border-gray-200/60 overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center space-x-3 mb-6">
-            <Bell className="text-blue-500" size={24} />
-            <h2 className="text-2xl bg-white backdrop-blur-sm py-1.5 px-4 rounded-2xl font-bold text-gray-800">Demandes en attente</h2>
+            <h2 className="text-2xl font-bold text-gray-800">Demandes en attente</h2>
             {residenceToSelect && !notificationCleared && (
-              <span className="text-xs px-3 py-1 bg-yellow-500 text-white rounded-full animate-pulse">
+              <span className="text-xs px-3 py-1 bg-gray-800 text-white rounded-full animate-pulse">
                 Nouvelle notification
               </span>
             )}
@@ -260,8 +259,8 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
           {pendingResidences.length === 0 ? (
             <div className="text-center py-12">
               <Clock className="mx-auto text-gray-400 mb-4" size={48} />
-              <p className="text-black text-lg">Aucune demande en attente</p>
-              <p className="text-black text-sm mt-2">
+              <p className="text-gray-800 text-lg">Aucune demande en attente</p>
+              <p className="text-gray-600 text-sm mt-2">
                 Les nouvelles résidences soumises par les agents apparaîtront ici
               </p>
             </div>
@@ -273,20 +272,20 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
                   data-residence-id={residence.id}
                   className={`p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md ${
                     selectedResidence?.id === residence.id 
-                      ? 'border-blue-500 bg-blue-50/50' 
+                      ? 'border-gray-800 bg-gray-100/50' 
                       : 'border-gray-200/60 bg-white/50'
-                  } ${residence.id === residenceToSelect && !notificationCleared ? 'border-yellow-400 border-2' : ''}`}
+                  } ${residence.id === residenceToSelect && !notificationCleared ? 'border-gray-800 border-2' : ''}`}
                   onClick={() => handleResidenceClick(residence)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
-                        <MapPin size={16} className="text-blue-500" />
+                        <MapPin size={16} className="text-gray-600" />
                         <h3 className="font-semibold text-gray-800">
                           {residence.residence_data?.lot || 'Lot non spécifié'}
                         </h3>
                         {residence.id === residenceToSelect && !notificationCleared && (
-                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full animate-pulse">
+                          <span className="text-xs px-2 py-1 bg-gray-800 text-white rounded-full animate-pulse">
                             Nouveau!
                           </span>
                         )}
@@ -322,7 +321,7 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
             <h3 className="text-xl font-bold text-gray-800 mb-6">
               Détails de la demande
               {selectedResidence.id === residenceToSelect && !notificationCleared && (
-                <span className="ml-2 text-sm bg-yellow-500 text-white px-2 py-1 rounded-full animate-pulse">
+                <span className="ml-2 text-sm bg-gray-800 text-white px-2 py-1 rounded-full animate-pulse">
                   Nouvelle notification
                 </span>
               )}
@@ -334,19 +333,19 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Numéro de lot:</span>
-                    <span className="font-medium">{selectedResidence.residence_data?.lot || 'Non spécifié'}</span>
+                    <span className="font-medium text-gray-800">{selectedResidence.residence_data?.lot || 'Non spécifié'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Quartier:</span>
-                    <span className="font-medium">{selectedResidence.residence_data?.quartier || 'Non spécifié'}</span>
+                    <span className="font-medium text-gray-800">{selectedResidence.residence_data?.quartier || 'Non spécifié'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Ville:</span>
-                    <span className="font-medium">{selectedResidence.residence_data?.ville || 'Non spécifié'}</span>
+                    <span className="font-medium text-gray-800">{selectedResidence.residence_data?.ville || 'Non spécifié'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Coordonnées:</span>
-                    <span className="font-medium">
+                    <span className="font-medium text-gray-800">
                       {selectedResidence.residence_data?.lat?.toFixed(6) || 'N/A'}, {selectedResidence.residence_data?.lng?.toFixed(6) || 'N/A'}
                     </span>
                   </div>
@@ -358,19 +357,19 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Nom:</span>
-                    <span className="font-medium">{selectedResidence.submitter_name || 'Non spécifié'}</span>
+                    <span className="font-medium text-gray-800">{selectedResidence.submitter_name || 'Non spécifié'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Immatricule:</span>
-                    <span className="font-medium">{selectedResidence.submitter_immatricule || 'Non spécifié'}</span>
+                    <span className="font-medium text-gray-800">{selectedResidence.submitter_immatricule || 'Non spécifié'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Fokontany:</span>
-                    <span className="font-medium">{selectedResidence.fokontany_nom || 'Non spécifié'}</span>
+                    <span className="font-medium text-gray-800">{selectedResidence.fokontany_nom || 'Non spécifié'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Date de soumission:</span>
-                    <span className="font-medium">{formatDate(selectedResidence.created_at)}</span>
+                    <span className="font-medium text-gray-800">{formatDate(selectedResidence.created_at)}</span>
                   </div>
                 </div>
               </div>
@@ -384,7 +383,7 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
                 value={reviewNotes}
                 onChange={(e) => setReviewNotes(e.target.value)}
                 placeholder="Ajoutez des commentaires ou des raisons pour votre décision..."
-                className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50"
+                className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-600 focus:border-transparent bg-white/50"
                 rows="4"
               />
             </div>
@@ -392,7 +391,7 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
             <div className="flex space-x-4">
               <button
                 onClick={() => handleApprove(selectedResidence.id)}
-                className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
               >
                 <Check size={20} />
                 <span>Approuver</span>
@@ -400,7 +399,7 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
               
               <button
                 onClick={() => handleReject(selectedResidence.id)}
-                className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
               >
                 <X size={20} />
                 <span>Rejeter</span>
@@ -410,13 +409,12 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
         ) : (
           <div className="text-center py-12">
             <AlertCircle className="mx-auto text-gray-400 mb-4 mt-16" size={48} />
-            <p className="text-black text-lg">Sélectionnez une demande</p>
-            <p className="text-black text-sm mt-2">
+            <p className="text-gray-800 text-lg">Sélectionnez une demande</p>
+            <p className="text-gray-600 text-sm mt-2">
               Cliquez sur une demande dans la liste pour voir les détails
             </p>
             {residenceToSelect && !notificationCleared && (
-              <p className="text-blue-600 text-sm mt-4 flex items-center justify-center">
-                <Bell className="mr-2" size={16} />
+              <p className="text-gray-700 text-sm mt-4 flex items-center justify-center">
                 <i>Une notification a été cliquée - sélectionnez la résidence correspondante</i>
               </p>
             )}

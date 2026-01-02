@@ -1,20 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Key, LogOut, User, ArrowLeft, X, Lock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Camera, Key, LogOut, User, X, Lock, ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange }) => {
+const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
   const [profileImage, setProfileImage] = useState(null);
-  const { t, i18n, ready } = useTranslation(); // Ajout de 'ready'
+  const { t, i18n, ready } = useTranslation();
   
   useEffect(() => {
     console.log('UserPage i18n.language=', i18n.language, 't.title=', t('title'));
   }, [i18n.language, t]);
   
-  // Afficher un chargement si les traductions ne sont pas prêtes
   if (!ready) {
     return (
-      <div className="min-h-screen bg-transparent py-4 px-4 flex items-center justify-center">
+      <div className="flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
           <p className="mt-2 text-gray-600">Chargement des traductions...</p>
@@ -23,7 +21,6 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
     );
   }
   
-  const currentLang = i18n?.language || 'fr';
   const [passwordData, setPasswordData] = useState({
     oldPassword: '',
     newPassword: '',
@@ -32,27 +29,19 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
   const [userData, setUserData] = useState(user);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const navigate = useNavigate();
   
   const fileInputRef = useRef(null);
   
-  // Gérer localement l'ouverture du modal de changement de mot de passe
   const [showPasswordModal, setShowPasswordModal] = useState(() =>
     (userPageState && typeof userPageState.showPasswordModal !== 'undefined') ? userPageState.showPasswordModal : false
   );
-  // Si parent contrôle showPasswordModal, synchroniser quand il change
+  
   useEffect(() => {
     if (userPageState && typeof userPageState.showPasswordModal !== 'undefined') {
       setShowPasswordModal(userPageState.showPasswordModal);
     }
   }, [userPageState?.showPasswordModal]);
  
-  const toggleLanguage = () => {
-    const next = (i18n.language === 'fr' || !i18n.language) ? 'mg' : 'fr';
-    i18n.changeLanguage(next);
-  };
-
-  // Charger les données utilisateur depuis l'API
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -232,160 +221,40 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
     }
   };
 
+  const handleGoBack = () => {
+    // Logique pour revenir en arrière si nécessaire
+    console.log('Retour en arrière');
+  };
+
   return (
-    <div className="min-h-screen bg-transparent py-4 px-4 relative overflow-hidden">
-      
-      {/* Bouton de changement de langue */}
-      <div className="absolute top-4 right-4 z-20">
-        <button
-          onClick={toggleLanguage}
-          className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-lg hover:scale-110 transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          title={t('ChangeLanguage') || (currentLang === 'fr' ? 'Changer en Malagasy' : 'Hiova amin\'ny frantsay')}
-        >
-          {currentLang === 'fr' ? (
-            // Drapeau français (bandes verticales)
-            <div className="w-full h-full flex">
-              <div className="w-1/3 bg-blue-600"></div>
-              <div className="w-1/3 bg-white"></div>
-              <div className="w-1/3 bg-red-600"></div>
-            </div>
-          ) : (
-            // Drapeau malgache CORRIGÉ : bande verticale blanche à gauche, bandes horizontales rouge et verte à droite
-            <div className="w-full h-full flex">
-              {/* Bande verticale blanche */}
-              <div className="w-1/3 bg-white"></div>
-              {/* Partie droite avec bandes horizontales */}
-              <div className="w-2/3 flex flex-col">
-                <div className="h-1/2 bg-red-600"></div>
-                <div className="h-1/2 bg-green-600"></div>
-              </div>
-            </div>
-          )}
-        </button>
-      </div>
-
-      {/* Message de notification */}
-      {message && (
-        <div className="max-w-lg mx-auto mb-4 relative z-10">
-          <div className={`p-4 rounded-xl backdrop-blur-sm ${
-            message.includes('succès') || message.includes('envoyée') || message.includes('soa aman-tsara') || message.includes('nalefa')
-              ? 'bg-green-50/80 border border-green-200/60 text-green-800' 
-              : 'bg-red-50/80 border border-red-200/60 text-red-800'
-          }`}>
-            <div className="flex items-center justify-between">
-              <span>{message}</span>
-              <button 
-                onClick={() => setMessage('')}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Conteneur principal */}
-      <div className="max-w-lg mx-auto relative z-10">
-        
-        { !showPasswordModal ? (
-          <div className="transition-opacity duration-300 opacity-100">
-            <div className="bg-white backdrop-blur-sm rounded-3xl shadow-2xl border border-blue-100/30 overflow-hidden">
-              {/* En-tête avec le titre */}
-              <div className="bg-gradient-to-r from-blue-500/80 to-purple-600/80 backdrop-blur-sm py-6 px-6">
-                <div className="text-center">
-                  <h1 className="text-2xl font-bold text-white">
-                    {t('title')}
-                  </h1>
-                </div>
-              </div>
-
-              {/* Contenu principal */}
-              <div className="p-6 space-y-6">
-                {/* Section Photo de profil */}
-                <div className="flex flex-col items-center space-y-4">
-                  <div className="relative">
-                    <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-blue-300/60 bg-gradient-to-br from-blue-100/50 to-purple-100/50 backdrop-blur-sm flex items-center justify-center shadow-lg">
-                      {profileImage ? (
-                        <img 
-                          src={profileImage} 
-                          alt="Profile" 
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <div className="text-blue-400">
-                          <User size={48} />
-                        </div>
-                      )}
-                    </div>
-                    
-                    <button
-                      onClick={triggerFileInput}
-                      className="absolute -bottom-1 -right-1 bg-gradient-to-r from-blue-500/80 to-purple-600/80 backdrop-blur-sm text-white p-2 rounded-full shadow-lg hover:from-blue-600/80 hover:to-purple-700/80 transition-all duration-300 transform hover:scale-110 border-2 border-white"
-                      title={t('profilePhoto')}
-                      type="button"
+    <div className="min-h-screen bg-gray-50">
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="relative w-full max-w-md mx-auto">
+            {message && (
+              <div className="mb-4 relative z-10">
+                <div className={`p-4 rounded-xl backdrop-blur-sm ${
+                  message.includes('succès') || message.includes('envoyée') || message.includes('soa aman-tsara') || message.includes('nalefa')
+                    ? 'bg-green-50/80 border border-green-200/60 text-green-800' 
+                    : 'bg-red-50/80 border border-red-200/60 text-red-800'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span>{message}</span>
+                    <button 
+                      onClick={() => setMessage('')}
+                      className="text-gray-500 hover:text-gray-700"
                     >
-                      <Camera size={16} />
+                      <X size={16} />
                     </button>
-                    
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleImageChange}
-                      accept="image/*"
-                      className="hidden"
-                    />
                   </div>
-
-                  <div className="text-center space-y-2">
-                    <h2 className="text-xl font-bold text-gray-800">
-                      {userData?.nom_complet || "Chargement..."}
-                    </h2>
-                    <p className="text-blue-600 font-semibold bg-blue-50/50 backdrop-blur-sm px-3 py-1 rounded-full text-sm capitalize">
-                      {userData?.role || "Utilisateur"}
-                    </p>
-                    <p className="text-gray-600 text-sm">
-                      {t('immatriculation')}: <span className="font-medium text-purple-600">{userData?.immatricule || "Chargement..."}</span>
-                    </p>
-                    <p className="text-gray-600 text-sm">
-                      {t('username')}: <span className="font-medium text-purple-600">{userData?.username || "Chargement..."}</span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="pt-4">
-                  <button
-                    onClick={handleChangePassword}
-                    className="w-full bg-gradient-to-r from-blue-500/80 to-purple-600/80 backdrop-blur-sm text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:from-blue-600/80 hover:to-purple-700/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center space-x-2"
-                    type="button"
-                  >
-                    <Key size={20} />
-                    <span>{t('changePassword')}</span>
-                  </button>
                 </div>
               </div>
-            </div>
+            )}
 
-            <div className="mt-2">
-              <button
-                onClick={handleLogout}
-                className="w-full bg-gradient-to-r from-red-500/80 to-red-600/80 backdrop-blur-sm text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:from-red-600/80 hover:to-red-700/80 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center space-x-2"
-                type="button"
-              >
-                <LogOut size={20} />
-                <span>{t('logout')}</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="transition-opacity duration-300 opacity-100">
-            <div className="bg-white backdrop-blur-sm rounded-3xl shadow-2xl border border-blue-100/30 overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-500/80 to-purple-600/80 backdrop-blur-sm py-6 px-6 relative">
+            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-500 to-purple-600 py-6 px-6">
                 <div className="text-center">
-                  <h2 className="text-2xl font-bold text-white text-center">
+                  <h2 className="text-2xl font-bold text-white">
                     {t('passwordChangeTitle')}
                   </h2>
                 </div>
@@ -393,8 +262,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
 
               <div className="p-6">
                 <form onSubmit={handlePasswordSubmit} className="space-y-3">
-
-                  <div className="bg-blue-50/80 backdrop-blur-sm border border-blue-200/60 rounded-xl p-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                     <div className="flex items-start space-x-3">
                       <Lock className="text-blue-500 w-5 h-5 flex-shrink-0 mt-0.5" />
                       <div>
@@ -416,7 +284,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
                         type="password"
                         value={passwordData.oldPassword}
                         onChange={(e) => handlePasswordChange('oldPassword', e.target.value)}
-                        className="block w-full pl-10 pr-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-300/60 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder={t('oldPasswordPlaceholder')}
                         required
                         disabled={loading}
@@ -434,7 +302,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
                         type="password"
                         value={passwordData.newPassword}
                         onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
-                        className="block w-full pl-10 pr-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-300/60 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder={t('newPasswordPlaceholder')}
                         required
                         minLength={6}
@@ -453,7 +321,7 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
                         type="password"
                         value={passwordData.confirmPassword}
                         onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
-                        className="block w-full pl-10 pr-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-300/60 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder={t('confirmPasswordPlaceholder')}
                         required
                         minLength={6}
@@ -467,14 +335,14 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
                       type="button"
                       onClick={handleCloseModal}
                       disabled={loading}
-                      className="flex-1 bg-gray-500/80 backdrop-blur-sm text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:bg-gray-600/80 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 bg-gray-500 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {t('cancel')}
                     </button>
                     <button
                       type="submit"
                       disabled={loading}
-                      className="flex-1 bg-gradient-to-r from-blue-500/80 to-purple-600/80 backdrop-blur-sm text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:from-blue-600/80 hover:to-purple-700/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading ? (
                         <div className="flex items-center justify-center space-x-2">
@@ -490,7 +358,151 @@ const UserPage = ({ user, onBack, onLogout, userPageState, onUserPageStateChange
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      <div className="flex-1 bg-white p-8 md:p-10">
+        {/* En-tête avec bouton retour et titre sur la même ligne */}
+        <div className="flex items-center mb-5">
+          <button
+            onClick={handleGoBack}
+            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors mr-4 flex-shrink-0"
+            aria-label="Retour"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            {t('title') || 'Paramètres et compte'}
+          </h1>
+        </div>
+
+        {/* Message de notification */}
+        {message && !showPasswordModal && (
+          <div className="mb-8">
+            <div className={`p-4 rounded-xl ${
+              message.includes('succès') || message.includes('envoyée') || message.includes('soa aman-tsara') || message.includes('nalefa')
+                ? 'bg-green-50 border border-green-200 text-green-800' 
+                : 'bg-red-50 border border-red-200 text-red-800'
+            }`}>
+              <div className="flex items-center justify-between">
+                <span>{message}</span>
+                <button 
+                  onClick={() => setMessage('')}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
         )}
+
+        {/* Section profil utilisateur - Photo montée vers le haut */}
+        <div className="flex flex-col items-center mb-5">
+          {/* Avatar circulaire */}
+          <div className="relative mb-8">
+            <div className="w-36 h-36 md:w-40 md:h-40 rounded-full bg-gray-200 overflow-hidden border-4 border-white shadow-lg">
+              {profileImage ? (
+                <img 
+                  src={profileImage} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                  <User size={60} className="text-gray-400" />
+                </div>
+              )}
+            </div>
+            
+            <button
+              onClick={triggerFileInput}
+              className="absolute -bottom-2 -right-2 bg-blue-500 text-white p-3 rounded-full shadow-lg hover:bg-blue-600 transition-all duration-300 transform hover:scale-110 border-4 border-white"
+              title={t('profilePhoto') || 'Changer la photo'}
+              type="button"
+            >
+              <Camera size={18} />
+            </button>
+            
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageChange}
+              accept="image/*"
+              className="hidden"
+            />
+          </div>
+
+          {/* Nom et rôle sur la même ligne */}
+          <div className="flex items-center justify-center space-x-3 mb-2">
+            <h2 className="text-xl md:text-2xl font-semibold text-gray-900">
+              {userData?.nom_complet || "Chargement..."}
+            </h2>
+            <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full capitalize">
+              {userData?.role || "Utilisateur"}
+            </span>
+          </div>
+
+          {/* Informations secondaires */}
+          <div className="space-y-2 text-center">
+            <p className="text-gray-600 text-sm">
+              {t('immatriculation') || 'Immatriculation'}: <span className="font-medium text-gray-800">{userData?.immatricule || "Chargement..."}</span>
+            </p>
+            <p className="text-gray-600 text-sm">
+              {t('username') || 'Nom d\'utilisateur'}: <span className="font-medium text-gray-800">{userData?.username || "Chargement..."}</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Section Sécurité - Titre centré */}
+        <div className="mb-3">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 text-center mb-5">
+            Sécurité
+          </h2>
+          
+          <div className="flex justify-center">
+            <button
+              onClick={handleChangePassword}
+              className="w-400 max-w-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-2xl transition-all duration-200 flex items-center space-x-4 mx-auto"
+            >
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 md:w-14 md:h-14 rounded-full bg-blue-100 flex items-center justify-center">
+                  <Lock className="text-blue-600 w-6 h-6 md:w-7 md:h-7" />
+                </div>
+              </div>
+              <div className="flex-1 text-left">
+                <h3 className="font-bold text-gray-900 text-lg mb-1">
+                  {t('changePassword') || 'MOT DE PASSE'}
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  {t('passwordChangeDescription') || 'Mettez à jour votre mot de passe pour sécuriser votre compte'}
+                </p>
+              </div>
+              <div className="flex-shrink-0">
+                <div className="text-gray-400">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Bouton Déconnexion - Visible en bas de page */}
+        <div className="mt-5 flex justify-center">
+          <button
+            onClick={handleLogout}
+            className="flex items-center justify-center space-x-3 text-red-600 hover:text-red-700 font-medium py-3 px-4 rounded-lg hover:bg-red-50 transition-colors border border-red-200"
+          >
+            <LogOut size={20} />
+            <span className="font-semibold">{t('logout') || 'Déconnexion'}</span>
+          </button>
+        </div>
       </div>
     </div>
   );
