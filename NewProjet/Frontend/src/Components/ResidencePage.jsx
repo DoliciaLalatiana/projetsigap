@@ -748,7 +748,7 @@ export default function ResidencePage({
   const [sortBy, setSortBy] = useState("date");
   const [expandedResidence, setExpandedResidence] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [residencesPerPage] = useState(4);
+  const [residencesPerPage] = useState(3);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [newResident, setNewResident] = useState({
     nom: "",
@@ -2104,12 +2104,12 @@ export default function ResidencePage({
               </div>
 
               {/* Conteneur principal du tableau avec spécifications exactes */}
-              <div className="flex-1">
+              <div className="flex-1 mb-4">
                 <div 
                   className="bg-white rounded-2xl flex flex-col"
                   style={{
                     width: '100%',
-                    minHeight: 'calc(4 * 72px + 48px + 40px + 20px + 48px)', // 4 lignes + header + pagination + padding + margin
+                    minHeight: 'calc(4 * 68px + 48px + 2px + 20px + 48px)', // 4 lignes + header + pagination + padding + margin
                     borderRadius: '22px',
                     backgroundColor: '#FFFFFF',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
@@ -2192,7 +2192,7 @@ export default function ResidencePage({
                     {currentResidences.length === 0 ? (
                       <div 
                         className="h-full flex items-center justify-center"
-                        style={{ minHeight: '288px' }} // 4 * 72px
+                        style={{ minHeight: '280px' }} // 4 * 72px
                       >
                         <div className="text-center">
                           <div 
@@ -2467,7 +2467,7 @@ export default function ResidencePage({
                   </div>
 
                   {/* Pagination centrée - TOUJOURS VISIBLE à l'intérieur du conteneur */}
-                  <div className="flex-shrink-0 pt-4" style={{ paddingTop: '16px' }}>
+                  <div className="flex-shrink-0 pt-2" style={{ paddingTop: '16px' }}>
                     <div className="flex items-center justify-center">
                       <div 
                         className="flex items-center space-x-2 bg-white rounded-full px-4 py-2"
