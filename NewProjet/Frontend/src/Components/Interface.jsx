@@ -187,9 +187,11 @@ export default function Interface({ user }) {
   const [mapType, setMapType] = useState("satellite");
   const [mapLoaded, setMapLoaded] = useState(false);
 
-  // État pour les détails de l'adresse
+  // État pour les détails de l'adresse - MODIFIÉ POUR INCLURE LES NOUVEAUX CHAMPS
   const [addressDetails, setAddressDetails] = useState({
     lot: "",
+    nomResidence: "", // NOUVEAU CHAMP
+    nomProprietaire: "", // NOUVEAU CHAMP
     quartier: "",
     ville: ""
   });
@@ -242,6 +244,10 @@ export default function Interface({ user }) {
 
   // NOUVEAUX ÉTATS : pour gérer le scroll des champs résidents
   const [residentFieldsScrollable, setResidentFieldsScrollable] = useState(false);
+
+  // RÉFÉRENCES POUR LA NAVIGATION HIÉRARCHIQUE
+  const [navigationHistory, setNavigationHistory] = useState([]); // Historique de navigation
+  const [residenceDetailMode, setResidenceDetailMode] = useState(false); // Mode détail dans la page Résidence
 
   // Références pour les éléments DOM
   const dropdownRef = useRef(null);
@@ -1134,6 +1140,8 @@ export default function Interface({ user }) {
       setHasSelectedAddress(false);
       setAddressDetails({
         lot: "",
+        nomResidence: "",
+        nomProprietaire: "",
         quartier: "",
         ville: ""
       });
@@ -1183,49 +1191,140 @@ export default function Interface({ user }) {
     window.location.href = "/login";
   };
 
-  // Gestionnaire de clic sur le logo SIGAP
+  // NOUVELLE FONCTION : Gestionnaire hiérarchique pour le bouton retour SIGAP
   const handleLogoClick = () => {
+    console.log('=== NAVIGATION HIÉRARCHIQUE ===');
+    console.log('État actuel:', {
+      showUserPage,
+      showPasswordModal: userPageState.showPasswordModal,
+      showResidence,
+      showStatistique,
+      showPendingResidences,
+      residenceDetailMode,
+      navigationHistory
+    });
+
+    // CAS 1: Modal changement de mot de passe ouvert
     if (showUserPage && userPageState.showPasswordModal) {
+      console.log('CAS 1: Fermeture modal mot de passe');
       setUserPageState(prev => ({ ...prev, showPasswordModal: false }));
+      return;
     }
+    
+    // CAS 2: Page utilisateur principale ouverte
     else if (showUserPage) {
+      console.log('CAS 2: Retour carte depuis page utilisateur');
       setShowUserPage(false);
       setUserPageState({ showPasswordModal: false });
+      
+      // Si on avait une page principale avant, la rouvrir
+      const lastMainPage = navigationHistory[navigationHistory.length - 1];
+      if (lastMainPage) {
+        console.log('Restauration page principale:', lastMainPage);
+        switch(lastMainPage) {
+          case 'residence':
+            setShowResidence(true);
+            break;
+          case 'statistique':
+            setShowStatistique(true);
+            break;
+          case 'pending':
+            setShowPendingResidences(true);
+            break;
+        }
+        setNavigationHistory(prev => prev.slice(0, -1));
+      }
+      return;
     }
-    else if (isAnyPageOpen) {
+    
+    // CAS 3: Page Résidence en mode détail
+    else if (showResidence && residenceDetailMode) {
+      console.log('CAS 3: Retour de détail à liste des résidences');
+      setResidenceDetailMode(false);
+      return;
+    }
+    
+    // CAS 4: Page principale (Résidence, Statistique, Demandes) en mode liste
+    else if (showResidence || showStatistique || showPendingResidences) {
+      console.log('CAS 4: Fermeture vers carte depuis page principale');
+      
+      // Fermer la page actuelle
       setShowResidence(false);
       setShowStatistique(false);
-      setShowUserPage(false);
       setShowPendingResidences(false);
-      setUserPageState({ showPasswordModal: false });
       setResidenceToSelect(null);
+      
+      // Réinitialiser le mode détail
+      setResidenceDetailMode(false);
+      
+      // Fermer le menu déroulant
+      setMenuDropdownOpen(false);
+      
+      // Nettoyer l'historique de navigation
+      setNavigationHistory([]);
     }
+    
+    // CAS 5: Déjà sur la carte, ne rien faire
+    else {
+      console.log('CAS 5: Déjà sur la carte');
+    }
+    
     setShowSearchResults(false);
-    // MODIFICATION : Ne pas fermer le menu déroulant quand on clique sur le logo
-    // setMenuDropdownOpen(false);
   };
 
-  // NOUVEAU : Gestionnaire de clic sur le bouton "MENU"
+  // NOUVEAU : Fonction pour ajouter une page à l'historique de navigation
+  const addToNavigationHistory = (page) => {
+    // Ne pas ajouter si on est déjà dans cette page
+    if (navigationHistory[navigationHistory.length - 1] !== page) {
+      setNavigationHistory(prev => [...prev, page]);
+    }
+    console.log('Historique navigation:', navigationHistory);
+  };
+
+  // NOUVELLE : Gestionnaire pour entrer dans le mode détail d'une résidence
+  const handleEnterResidenceDetail = () => {
+    console.log('Entrée en mode détail résidence');
+    setResidenceDetailMode(true);
+  };
+
+  // NOUVELLE : Gestionnaire pour sortir du mode détail d'une résidence
+  const handleExitResidenceDetail = () => {
+    console.log('Sortie du mode détail résidence');
+    setResidenceDetailMode(false);
+  };
+
+  // NOUVELLE : Gestionnaire de clic sur le bouton "MENU"
   const handleMenuButtonClick = () => {
-    // MODIFICATION : Ne pas vérifier isModalOpen
     setMenuDropdownOpen(!menuDropdownOpen);
   };
 
-  // MODIFICATION : Gestionnaires de clic sur les items du menu
+  // MODIFICATION : Gestionnaires de clic sur les items du menu avec historique
   const handleResidenceClick = () => {
     const newShowResidence = !showResidence;
     setShowResidence(newShowResidence);
+    
     if (newShowResidence) {
+      // Ajouter à l'historique si on ouvre une nouvelle page
+      addToNavigationHistory('residence');
       setShowStatistique(false);
       setShowUserPage(false);
       setShowPendingResidences(false);
       setUserPageState({ showPasswordModal: false });
-      setShowNotifications(false);
-      setShowSearchResults(false);
-      setSearchResults([]);
-      setClickedResidenceId(null);
-      setResidenceToSelect(null);
+      // Réinitialiser le mode détail quand on ouvre la page
+      setResidenceDetailMode(false);
+    } else {
+      // Si on ferme, supprimer de l'historique
+      setNavigationHistory(prev => prev.filter(p => p !== 'residence'));
+      // Réinitialiser le mode détail
+      setResidenceDetailMode(false);
     }
+    
+    setShowNotifications(false);
+    setShowSearchResults(false);
+    setSearchResults([]);
+    setClickedResidenceId(null);
+    setResidenceToSelect(null);
+    
     if (isSelectingLocation || showAddAddress) {
       setIsSelectingLocation(false);
       setShowAddAddress(false);
@@ -1234,29 +1333,37 @@ export default function Interface({ user }) {
       setHasSelectedAddress(false);
       setAddressDetails({
         lot: "",
+        nomResidence: "",
+        nomProprietaire: "",
         quartier: "",
         ville: ""
       });
       setIsAddAddressModalOpen(false);
     }
-    // MODIFICATION : Ne pas fermer le menu déroulant quand on clique sur un item
-    // setMenuDropdownOpen(false);
   };
 
-  // MODIFICATION : Gestionnaire de clic sur Statistique
+  // MODIFICATION : Gestionnaire de clic sur Statistique avec historique
   const handleStatistiqueClick = () => {
     const newShowStatistique = !showStatistique;
     setShowStatistique(newShowStatistique);
+    
     if (newShowStatistique) {
+      // Ajouter à l'historique si on ouvre une nouvelle page
+      addToNavigationHistory('statistique');
       setShowResidence(false);
       setShowUserPage(false);
       setShowPendingResidences(false);
       setUserPageState({ showPasswordModal: false });
-      setShowNotifications(false);
-      setShowSearchResults(false);
-      setClickedResidenceId(null);
-      setResidenceToSelect(null);
+    } else {
+      // Si on ferme, supprimer de l'historique
+      setNavigationHistory(prev => prev.filter(p => p !== 'statistique'));
     }
+    
+    setShowNotifications(false);
+    setShowSearchResults(false);
+    setClickedResidenceId(null);
+    setResidenceToSelect(null);
+    
     if (isSelectingLocation || showAddAddress) {
       setIsSelectingLocation(false);
       setShowAddAddress(false);
@@ -1265,51 +1372,69 @@ export default function Interface({ user }) {
       setHasSelectedAddress(false);
       setAddressDetails({
         lot: "",
+        nomResidence: "",
+        nomProprietaire: "",
         quartier: "",
         ville: ""
       });
       setIsAddAddressModalOpen(false);
     }
-    // MODIFICATION : Ne pas fermer le menu déroulant quand on clique sur un item
-    // setMenuDropdownOpen(false);
   };
 
-  // MODIFICATION : Gestionnaire de clic sur l'icône utilisateur
+  // MODIFICATION : Gestionnaire de clic sur l'icône utilisateur avec historique
   const handleUserIconClick = () => {
     const newShowUserPage = !showUserPage;
     setShowUserPage(newShowUserPage);
+    
     if (newShowUserPage) {
       setUserPageState({ showPasswordModal: false });
     }
+    
     if (newShowUserPage) {
+      // Si on a une page principale ouverte, la sauvegarder dans l'historique
+      if (showResidence || showStatistique || showPendingResidences) {
+        let currentPage = '';
+        if (showResidence) currentPage = 'residence';
+        else if (showStatistique) currentPage = 'statistique';
+        else if (showPendingResidences) currentPage = 'pending';
+        
+        if (currentPage) {
+          addToNavigationHistory(currentPage);
+        }
+      }
+      
       setShowResidence(false);
       setShowStatistique(false);
       setShowPendingResidences(false);
-      setShowNotifications(false);
-      setShowSearchResults(false);
-      setClickedResidenceId(null);
-      setResidenceToSelect(null);
     }
-    // MODIFICATION : Ne pas fermer le menu déroulant quand on clique sur un item
-    // setMenuDropdownOpen(false);
+    
+    setShowNotifications(false);
+    setShowSearchResults(false);
+    setClickedResidenceId(null);
+    setResidenceToSelect(null);
   };
 
-  // MODIFICATION : Gestionnaire de clic sur Demandes (pour secrétaire)
+  // MODIFICATION : Gestionnaire de clic sur Demandes (pour secrétaire) avec historique
   const handlePendingResidencesClick = () => {
     const newShowPending = !showPendingResidences;
     setShowPendingResidences(newShowPending);
 
     if (newShowPending) {
+      // Ajouter à l'historique si on ouvre une nouvelle page
+      addToNavigationHistory('pending');
       setShowResidence(false);
       setShowStatistique(false);
       setShowUserPage(false);
       setUserPageState({ showPasswordModal: false });
-      setShowNotifications(false);
-      setShowSearchResults(false);
-      setClickedResidenceId(null);
     } else {
+      // Si on ferme, supprimer de l'historique
+      setNavigationHistory(prev => prev.filter(p => p !== 'pending'));
       setResidenceToSelect(null);
     }
+
+    setShowNotifications(false);
+    setShowSearchResults(false);
+    setClickedResidenceId(null);
 
     if (isSelectingLocation || showAddAddress) {
       setIsSelectingLocation(false);
@@ -1319,13 +1444,13 @@ export default function Interface({ user }) {
       setHasSelectedAddress(false);
       setAddressDetails({
         lot: "",
+        nomResidence: "",
+        nomProprietaire: "",
         quartier: "",
         ville: ""
       });
       setIsAddAddressModalOpen(false);
     }
-    // MODIFICATION : Ne pas fermer le menu déroulant quand on clique sur un item
-    // setMenuDropdownOpen(false);
   };
 
   const latLngToPixel = (latLng) => {
@@ -1404,6 +1529,8 @@ export default function Interface({ user }) {
     setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
+      nomResidence: "",
+      nomProprietaire: "",
       quartier: "",
       ville: ""
     });
@@ -1465,6 +1592,8 @@ export default function Interface({ user }) {
       setSelectedAddress(fullAddress);
       setAddressDetails({
         lot: "",
+        nomResidence: "",
+        nomProprietaire: "",
         quartier: addressInfo.quartier,
         ville: addressInfo.ville
       });
@@ -1476,6 +1605,8 @@ export default function Interface({ user }) {
       setSelectedAddress(fallbackAddress);
       setAddressDetails({
         lot: "",
+        nomResidence: "",
+        nomProprietaire: "",
         quartier: "Quartier inconnu",
         ville: "Ville inconnue"
       });
@@ -1606,6 +1737,8 @@ export default function Interface({ user }) {
     setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
+      nomResidence: "",
+      nomProprietaire: "",
       quartier: "",
       ville: ""
     });
@@ -1624,6 +1757,8 @@ export default function Interface({ user }) {
     setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
+      nomResidence: "",
+      nomProprietaire: "",
       quartier: "",
       ville: ""
     });
@@ -1703,7 +1838,7 @@ export default function Interface({ user }) {
     setAddStep(1);
   };
 
-  /* Confirmation finale: envoi résidence + residents si fournis - CORRIGÉE */
+  /* Confirmation finale: envoi résidence + residents si fournis - MODIFIÉE POUR LES NOUVEAUX CHAMPS */
   const handleConfirmSave = async () => {
     if (!addressDetails.lot || !addressDetails.lot.trim()) {
       setModalError('Lot requis');
@@ -1723,6 +1858,8 @@ export default function Interface({ user }) {
       // ÉTAPE 1: Créer la résidence d'abord
       const residencePayload = {
         lot: addressDetails.lot.trim(),
+        nom_residence: addressDetails.nomResidence || null, // NOUVEAU CHAMP
+        nom_proprietaire: addressDetails.nomProprietaire || null, // NOUVEAU CHAMP
         quartier: addressDetails.quartier || null,
         ville: addressDetails.ville || null,
         fokontany: fokontanyName || null,
@@ -1823,6 +1960,8 @@ export default function Interface({ user }) {
       const newResidence = {
         id: residenceId,
         lot: residenceResult.lot,
+        nom_residence: residenceResult.nom_residence, // NOUVEAU CHAMP
+        nom_proprietaire: residenceResult.nom_proprietaire, // NOUVEAU CHAMP
         quartier: residenceResult.quartier,
         ville: residenceResult.ville,
         fokontany: residenceResult.fokontany,
@@ -1844,7 +1983,13 @@ export default function Interface({ user }) {
       }
 
       // Reset du modal
-      setAddressDetails({ lot: '', quartier: '', ville: '' });
+      setAddressDetails({ 
+        lot: '', 
+        nomResidence: '', 
+        nomProprietaire: '', 
+        quartier: '', 
+        ville: '' 
+      });
       setSelectedAddress('');
       setSelectedLocation(null);
       setHasSelectedAddress(true);
@@ -1881,6 +2026,8 @@ export default function Interface({ user }) {
     setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
+      nomResidence: "",
+      nomProprietaire: "",
       quartier: "",
       ville: ""
     });
@@ -1900,6 +2047,8 @@ export default function Interface({ user }) {
     setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
+      nomResidence: "",
+      nomProprietaire: "",
       quartier: "",
       ville: ""
     });
@@ -1913,26 +2062,28 @@ export default function Interface({ user }) {
     setSelectedMarkerColor("yellow");
   };
 
-  // Gestionnaire de changement des détails de l'adresse
+  // Gestionnaire de changement des détails de l'adresse - MODIFIÉ POUR LES NOUVEAUX CHAMPS
   const handleAddressDetailsChange = (field, value) => {
-    if (field === 'lot') {
-      setAddressDetails(prev => ({
-        ...prev,
-        [field]: value
-      }));
-      if (formError) {
-        setFormError("");
-      }
+    setAddressDetails(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    if (field === 'lot' && formError) {
+      setFormError("");
     }
   };
 
   // Gestionnaires pour fermer les différentes pages
   const handleCloseResidence = () => {
     setShowResidence(false);
+    setResidenceDetailMode(false);
+    setNavigationHistory(prev => prev.filter(p => p !== 'residence'));
   };
 
   const handleCloseStatistique = () => {
     setShowStatistique(false);
+    setNavigationHistory(prev => prev.filter(p => p !== 'statistique'));
   };
 
   const handleCloseUserPage = () => {
@@ -1943,6 +2094,7 @@ export default function Interface({ user }) {
   const handleClosePendingResidences = () => {
     setShowPendingResidences(false);
     setResidenceToSelect(null);
+    setNavigationHistory(prev => prev.filter(p => p !== 'pending'));
   };
 
   // Gestionnaire pour changer l'état de la page utilisateur
@@ -2003,6 +2155,8 @@ export default function Interface({ user }) {
     console.log('[INTERFACE] Affichage résidence sur carte:', residence);
 
     setShowResidence(false);
+    setResidenceDetailMode(false);
+    setNavigationHistory(prev => prev.filter(p => p !== 'residence'));
 
     if (map) {
       setPreviousZoom(map.getZoom());
@@ -2277,7 +2431,7 @@ export default function Interface({ user }) {
 
   // Rendu du composant
   return (
-    <div className="relative w-full h-screen bg-gradient-to-r from-blue-50 to-indigo-50 overflow-hidden">
+    <div className="relative w-full h-screen bg-[#F2F2F2] overflow-hidden">
       {/* Overlay flou quand une page est ouverte */}
       {isAnyPageOpen && (
         <div className="absolute inset-0 z-25 bg-white transition-all duration-300 ease-in-out pointer-events-none"></div>
@@ -2286,7 +2440,14 @@ export default function Interface({ user }) {
       {/* Barre de recherche fixe à gauche */}
       <div className="absolute top-6 left-[320px] z-40">
         <div className="w-96">
-          <div className="rounded-full flex items-center px-6 py-1.5 w-100 border bg-white backdrop-blur-sm border-gray-200/60 hover:border-gray-300/80 transition-all duration-300">
+          <div className={`
+            rounded-full flex items-center px-6 py-1.5 w-100 border 
+            ${showResidence 
+              ? 'bg-gray-400/30 border-white' 
+              : 'bg-white backdrop-blur-sm border-gray-200/60 hover:border-gray-300/80'
+            } 
+            transition-all duration-300
+          `}>
             <Search className="mr-3 flex-shrink-0 text-gray-600" size={20} />
 
             <form onSubmit={handleSearchSubmit} className="flex-1 flex items-center">
@@ -2297,8 +2458,12 @@ export default function Interface({ user }) {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={getSearchPlaceholder()}
                 disabled={isSearchDisabled || isAddAddressModalOpen}
-                className={`w-full p-1 bg-transparent outline-none text-sm ${isSearchDisabled || isAddAddressModalOpen ? 'text-gray-400' : 'text-gray-700'
-                  } placeholder-gray-600`}
+                className={`
+                  w-full p-1 bg-transparent outline-none text-sm 
+                  ${isSearchDisabled || isAddAddressModalOpen ? 'text-gray-400' : 'text-gray-700'}
+                  placeholder-gray-600
+                  ${showResidence ? 'placeholder-gray-300' : ''}
+                `}
               />
               {searchLoading && (
                 <div className="ml-2">
@@ -2314,39 +2479,40 @@ export default function Interface({ user }) {
       <SearchResultsModal />
 
       {/* === BOUTONS DROITS (AJOUTER, NOTIFICATIONS, LANGUE, PROFIL) === */}
+      {/* MODIFICATION : Le bouton "Ajouter une nouvelle adresse" est masqué quand une page est ouverte */}
       <div className="absolute top-6 right-4 z-50">
         <div className="bg-white/30 hover:bg-white/50 rounded-2xl shadow-lg border border-gray-200/60 hover:border-gray-300/80 transition-all duration-300">
           <div className="flex items-center justify-end px-4 py-1 space-x-4">
 
-            {/* Bouton Ajouter une adresse */}
-            <button
-              onClick={handleAddAddressClick}
-              disabled={isAnyPageOpen || isSelectingLocation || isAddAddressModalOpen}
-              className={`flex items-center px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap ${isAnyPageOpen || isSelectingLocation || isAddAddressModalOpen
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed backdrop-blur-sm"
-                : isSelectingLocation
-                  ? "bg-neutral-950 text-white hover:bg-black-500 backdrop-blur-sm"
-                  : "bg-neutral-950 text-white hover:bg-black-500 backdrop-blur-sm"
-                }`}
-              title={
-                isAnyPageOpen
-                  ? "Fermez les autres pages pour ajouter une adresse"
-                  : isAddAddressModalOpen
-                    ? "Une modal est déjà ouverte"
-                    : isSelectingLocation
-                      ? "Sélection en cours - cliquez sur la carte ou annulez"
+            {/* Bouton Ajouter une adresse - MASQUÉ QUAND UNE PAGE EST OUVERTE */}
+            {!isAnyPageOpen && (
+              <button
+                onClick={handleAddAddressClick}
+                disabled={isSelectingLocation || isAddAddressModalOpen}
+                className={`flex items-center px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap ${isSelectingLocation || isAddAddressModalOpen
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed backdrop-blur-sm"
+                  : isSelectingLocation
+                    ? "bg-neutral-950 text-white hover:bg-black-500 backdrop-blur-sm"
+                    : "bg-neutral-950 text-white hover:bg-black-500 backdrop-blur-sm"
+                  }`}
+                title={
+                  isSelectingLocation
+                    ? "Sélection en cours - cliquez sur la carte ou annulez"
+                    : isAddAddressModalOpen
+                      ? "Une modal est déjà ouverte"
                       : "Ajouter une nouvelle adresse"
-              }
-            >
-              {isSelectingLocation ? (
-                <Navigation size={18} className="mr-2 flex-shrink-0" />
-              ) : (
-                <Plus size={18} className="mr-2 flex-shrink-0" />
-              )}
-              <span className="text-sm font-medium">
-                {isSelectingLocation ? "Cliquez sur la carte" : "Ajouter une nouvelle adresse"}
-              </span>
-            </button>
+                }
+              >
+                {isSelectingLocation ? (
+                  <Navigation size={18} className="mr-2 flex-shrink-0" />
+                ) : (
+                  <Plus size={18} className="mr-2 flex-shrink-0" />
+                )}
+                <span className="text-sm font-medium">
+                  {isSelectingLocation ? "Cliquez sur la carte" : "Ajouter une nouvelle adresse"}
+                </span>
+              </button>
+            )}
 
             {/* BOUTON NOTIFICATION */}
             <button
@@ -2403,6 +2569,7 @@ export default function Interface({ user }) {
           </div>
         </div>
       </div>
+
 
       {/* PANEL DE NOTIFICATIONS */}
       {showNotifications && (
@@ -2491,7 +2658,7 @@ export default function Interface({ user }) {
         </div>
       )}
 
-      {/* === MODAL AJOUT ADRESSE - MODIFIÉ SELON VOS SPÉCIFICATIONS === */}
+      {/* === MODAL AJOUT ADRESSE - MODIFIÉ AVEC LES NOUVEAUX CHAMPS === */}
       {showAddAddress && (
         <>
           <div className="fixed inset-0 bg-black/50 z-60"></div>
@@ -2510,7 +2677,7 @@ export default function Interface({ user }) {
               flexDirection: 'column'
             }}
           >
-            {/* Header - MODIFICATION: fond gris au lieu de noir */}
+            {/* Header */}
             <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-5 flex items-center justify-between border-b border-gray-200">
               <h3 className="text-gray-800 font-semibold text-lg">Ajouter une résidence</h3>
               <button
@@ -2521,9 +2688,9 @@ export default function Interface({ user }) {
               </button>
             </div>
 
-            {/* Content - AVEC SCROLL SI NÉCESSAIRE */}
+            {/* Content */}
             <div className="flex-1 overflow-y-auto px-6 py-4" style={{ paddingTop: '16px', paddingBottom: '16px', maxHeight: '440px' }}>
-              {/* Informations du fokontany - MODIFIÉ (même ligne avec coordonnées à droite) */}
+              {/* Informations du fokontany */}
               <div className="mb-5">
                 <div className="flex items-start space-x-3">
                   <MapPin size={20} className="text-gray-700 flex-shrink-0 mt-1" />
@@ -2533,23 +2700,21 @@ export default function Interface({ user }) {
                         <span className="font-medium text-gray-800 text-base">{fokontanyName || 'Non spécifié'}</span>
                         <span className="text-sm text-gray-500">(-23.352776, 43.684839)</span>
                       </div>
-                      
                     </div>
-                    
                   </div>
                 </div>
               </div>
 
-              {/* Etape 1 : Lot - MODIFIÉ */}
+              {/* Etape 1 : Lot et nouveaux champs */}
               {addStep === 1 && (
                 <div className="space-y-5">
-                  {/* Champs Lot sans titre */}
+                  {/* Champ Lot */}
                   <div>
                     <input
                       type="text"
                       value={addressDetails.lot}
                       onChange={(e) => handleAddressDetailsChange('lot', e.target.value)}
-                      placeholder="Numéro de lot"
+                      placeholder="Numéro de lot *"
                       className={`w-full px-4 py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formError ? "border-red-500" : "border-gray-300"}`}
                       style={{ height: '42px', fontSize: '14px' }}
                     />
@@ -2559,6 +2724,35 @@ export default function Interface({ user }) {
                         {formError}
                       </p>
                     )}
+                  </div>
+
+                  {/* NOUVEAUX CHAMPS OPTIONNELS : Nom de la résidence et Propriétaire */}
+                  <div className="space-y-4">
+                    {/* Champ Nom de la résidence */}
+                    <div>
+                      <input
+                        type="text"
+                        value={addressDetails.nomResidence || ''}
+                        onChange={(e) => handleAddressDetailsChange('nomResidence', e.target.value)}
+                        placeholder="Nom de la résidence (optionnel)"
+                        className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        style={{ height: '42px', fontSize: '14px' }}
+                      />
+                      <p className="text-xs text-gray-500 mt-1 ml-1">Ex: Villa Rose, Résidence du Soleil, etc.</p>
+                    </div>
+
+                    {/* Champ Nom du propriétaire */}
+                    <div>
+                      <input
+                        type="text"
+                        value={addressDetails.nomProprietaire || ''}
+                        onChange={(e) => handleAddressDetailsChange('nomProprietaire', e.target.value)}
+                        placeholder="Nom du propriétaire (optionnel)"
+                        className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        style={{ height: '42px', fontSize: '14px' }}
+                      />
+                      <p className="text-xs text-gray-500 mt-1 ml-1">Propriétaire principal de la résidence</p>
+                    </div>
                   </div>
 
                   {/* Section pour ajouter un résident directement */}
@@ -2606,7 +2800,7 @@ export default function Interface({ user }) {
                                 </button>
                               </div>
 
-                              {/* Champs de saisie - SEXE AVANT DATE DE NAISSANCE */}
+                              {/* Champs de saisie */}
                               <div className="space-y-3">
                                 {/* Nom et Prénom */}
                                 <div className="grid grid-cols-2 gap-3">
@@ -2632,10 +2826,10 @@ export default function Interface({ user }) {
                                   </div>
                                 </div>
 
-                                {/* Sexe et Date de naissance - SEXE EN PREMIER */}
+                                {/* Sexe et Date de naissance */}
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
-                                    {/* Section Sexe avec boutons radio horizontaux - EN BLEU */}
+                                    {/* Section Sexe avec boutons radio horizontaux */}
                                     <div className="flex flex-col">
                                       <label className="text-xs text-gray-700 font-medium mb-1">Sexe:</label>
                                       <div className="flex items-center space-x-3">
@@ -2678,7 +2872,7 @@ export default function Interface({ user }) {
                                   </div>
                                 </div>
 
-                                {/* CIN (seulement si 18 ans ou plus) et Téléphone */}
+                                {/* CIN et Téléphone */}
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
                                     {showCinField ? (
@@ -2802,7 +2996,7 @@ export default function Interface({ user }) {
               )}
             </div>
 
-            {/* Footer avec boutons Annuler et Enregistrer - TOUJOURS VISIBLE */}
+            {/* Footer avec boutons Annuler et Enregistrer */}
             <div className="border-t border-gray-200 px-6 py-4 flex justify-end space-x-4 bg-white" style={{ paddingTop: '16px', paddingBottom: '16px' }}>
               <button
                 onClick={handleCancelToSelection}
@@ -2826,7 +3020,7 @@ export default function Interface({ user }) {
 
       {/* === SIDEBAR GAUCHE === */}
       <div className="absolute top-6 left-6 z-40 sidebar-container">
-        <div className="bg-white/30 hover:bg-white/50 rounded-2xl shadow-lg border border-gray-200/60 backdrop-blur-sm hover:border-gray-300/80 transition-all duration-300 ease-out overflow-hidden"
+        <div className="bg-gray-300/20 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200/60 hover:bg-gray-400/30 hover:backdrop-blur-md hover:border-gray-400/30 transition-all duration-300 ease-out overflow-hidden group"
           style={{
             width: "260px",
             minHeight: "400px",
@@ -2839,7 +3033,7 @@ export default function Interface({ user }) {
             disabled={isAddAddressModalOpen}
             className={`w-full flex items-center px-4 py-3 transition-all duration-200 ${isAddAddressModalOpen
               ? 'cursor-not-allowed opacity-70'
-              : 'hover:bg-gray-100/50'
+              : 'hover:bg-gray-100'
               }`}
             style={{ height: "44px" }}
           >
@@ -2873,11 +3067,11 @@ export default function Interface({ user }) {
                 data-menu-button
                 onClick={handleMenuButtonClick}
                 disabled={isAddAddressModalOpen}
-                className={`w-full flex items-center justify-between rounded-xl transition-all duration-200 mb-2 ${isAddAddressModalOpen
+                className={`w-full flex items-center justify-between rounded-xl transition-all duration-200 mb-2 group-hover:bg-gray-100 ${isAddAddressModalOpen
                   ? 'cursor-not-allowed opacity-70'
                   : menuDropdownOpen
-                  ? "bg-gray-100/80"
-                  : "hover:bg-gray-100/50"
+                  ? "bg-gray-100"
+                  : "hover:bg-gray-100"
                   }`}
                 style={{
                   padding: "10px 12px",
@@ -2885,8 +3079,8 @@ export default function Interface({ user }) {
                 }}
               >
                 <div className="flex items-center gap-3">
-                  <Menu size={18} className={isAddAddressModalOpen ? "text-gray-400" : "text-gray-700"} />
-                  <span style={{
+                  <Menu size={18} className={`${isAddAddressModalOpen ? "text-gray-400" : "text-gray-700"} group-hover:text-gray-900`} />
+                  <span className="group-hover:text-gray-900" style={{
                     fontSize: "14px",
                     fontWeight: 500,
                     color: isAddAddressModalOpen ? "#9ca3af" : "#374151"
@@ -2894,7 +3088,7 @@ export default function Interface({ user }) {
                 </div>
                 <ChevronDown 
                   size={16} 
-                  className={`transition-transform duration-200 ${menuDropdownOpen ? 'rotate-180' : ''}`}
+                  className={`transition-transform duration-200 ${menuDropdownOpen ? 'rotate-180' : ''} group-hover:text-gray-700`}
                   style={{ color: isAddAddressModalOpen ? "#9ca3af" : "#6b7280" }}
                 />
               </button>
@@ -2906,8 +3100,8 @@ export default function Interface({ user }) {
                   <button
                     onClick={handleResidenceClick}
                     className={`w-full flex items-center rounded-xl transition-all duration-200 ${showResidence
-                      ? "bg-gray-100/80 border border-gray-200"
-                      : "hover:bg-gray-100/50"
+                      ? "bg-gray-100 border border-gray-200"
+                      : "hover:bg-gray-100"
                       }`}
                     style={{
                       height: "44px",
@@ -2933,8 +3127,8 @@ export default function Interface({ user }) {
                   <button
                     onClick={handleStatistiqueClick}
                     className={`w-full flex items-center rounded-xl transition-all duration-200 ${showStatistique
-                      ? "bg-gray-100/80 border border-gray-200"
-                      : "hover:bg-gray-100/50"
+                      ? "bg-gray-100 border border-gray-200"
+                      : "hover:bg-gray-100"
                       }`}
                     style={{
                       height: "44px",
@@ -2961,8 +3155,8 @@ export default function Interface({ user }) {
                     <button
                       onClick={handlePendingResidencesClick}
                       className={`w-full flex items-center rounded-xl transition-all duration-200 ${showPendingResidences
-                        ? "bg-gray-100/80 border border-gray-200"
-                        : "hover:bg-gray-100/50"
+                        ? "bg-gray-100 border border-gray-200"
+                        : "hover:bg-gray-100"
                         }`}
                       style={{
                         height: "44px",
@@ -2994,7 +3188,7 @@ export default function Interface({ user }) {
       {/* === PAGES ÉLARGIES (positionnées parallèlement à la barre de recherche) === */}
       {/* Page Résidence */}
       {showResidence && (
-        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-gray-400/30 backdrop-blur-sm rounded-3xl overflow-hidden border border-white"
           style={{
             height: "calc(92vh - 28px)",
             bottom: "4px"
@@ -3004,13 +3198,16 @@ export default function Interface({ user }) {
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             onViewOnMap={handleViewOnMap}
+            detailMode={residenceDetailMode}
+            onEnterDetail={handleEnterResidenceDetail}
+            onExitDetail={handleExitResidenceDetail}
           />
         </div>
       )}
 
       {/* Page Statistique */}
       {showStatistique && (
-        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-gray-400/30 backdrop-blur-sm rounded-3xl overflow-hidden border border-white"
           style={{
             height: "calc(92vh - 28px)",
             bottom: "4px"
@@ -3021,7 +3218,7 @@ export default function Interface({ user }) {
 
       {/* Page Utilisateur */}
       {showUserPage && (
-        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-gray-400/30 backdrop-blur-sm rounded-3xl overflow-hidden border border-white"
           style={{
             height: "calc(92vh - 28px)",
             bottom: "4px"
@@ -3038,7 +3235,7 @@ export default function Interface({ user }) {
 
       {/* Page Demandes en attente */}
       {showPendingResidences && currentUser?.role === 'secretaire' && (
-        <div className="absolute top-20 left-[320px] right-4 z-30 bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
+        <div className="absolute top-20 left-[320px] right-4 z-30 bg-gray-400/30 backdrop-blur-sm rounded-3xl overflow-hidden border border-white"
           style={{
             height: "calc(92vh - 28px)",
             bottom: "4px"

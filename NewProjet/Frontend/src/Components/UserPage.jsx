@@ -227,9 +227,14 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      {/* Overlay qui assombrit la page entière avec bg-black/20 comme dans ResidencePage */}
       {showPasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div className="fixed inset-0 z-40 bg-black/20"></div>
+      )}
+
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="relative w-full max-w-md mx-auto">
             {message && (
               <div className="mb-4 relative z-10">
@@ -252,105 +257,111 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
             )}
 
             <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-500 to-purple-600 py-6 px-6">
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold text-white">
-                    {t('passwordChangeTitle')}
+              {/* En-tête avec icône clé centrée */}
+              <div className="py-8 px-6">
+                <div className="flex flex-col items-center">
+                  <h2 className="text-2xl font-bold text-gray-900 text-center">
+                    Modification du mot de passe
                   </h2>
                 </div>
               </div>
 
-              <div className="p-6">
-                <form onSubmit={handlePasswordSubmit} className="space-y-3">
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div className="px-6 pb-6">
+                <form onSubmit={handlePasswordSubmit} className="space-y-5">
+                  {/* Section information - sans fond bleu */}
+                  <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
                     <div className="flex items-start space-x-3">
-                      <Lock className="text-blue-500 w-5 h-5 flex-shrink-0 mt-0.5" />
+                      <Lock className="text-gray-600 w-5 h-5 flex-shrink-0 mt-0.5 mt-4" />
                       <div>
-                        <p className="text-blue-800 text-sm font-medium">{t('secureProcess')}</p>
-                        <p className="text-blue-700 text-xs mt-1">
-                          {t('secureProcessDesc')}
+                        <p className="text-gray-800 text-sm font-medium">Processus sécurisé</p>
+                        <p className="text-gray-600 text-xs mt-1">
+                          Pour votre sécurité, la modification du mot de passe nécessite une validation en plusieurs étapes.
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="group">
-                    <label className="text-gray-800 text-sm font-medium mb-2 block">{t('oldPassword')}</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-600 group-focus-within:text-blue-500 transition-colors">
-                        <Lock className="h-5 w-5" />
+                  {/* Champs sans labels */}
+                  <div className="space-y-4">
+                    {/* Ancien mot de passe */}
+                    <div className="group">
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+                          <Lock className="h-5 w-5" />
+                        </div>
+                        <input
+                          type="password"
+                          value={passwordData.oldPassword}
+                          onChange={(e) => handlePasswordChange('oldPassword', e.target.value)}
+                          className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          placeholder="Mot de passe actuel"
+                          required
+                          disabled={loading}
+                        />
                       </div>
-                      <input
-                        type="password"
-                        value={passwordData.oldPassword}
-                        onChange={(e) => handlePasswordChange('oldPassword', e.target.value)}
-                        className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder={t('oldPasswordPlaceholder')}
-                        required
-                        disabled={loading}
-                      />
+                    </div>
+
+                    {/* Nouveau mot de passe */}
+                    <div className="group">
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+                          <Lock className="h-5 w-5" />
+                        </div>
+                        <input
+                          type="password"
+                          value={passwordData.newPassword}
+                          onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
+                          className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          placeholder="Nouveau mot de passe"
+                          required
+                          minLength={6}
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Confirmer mot de passe */}
+                    <div className="group">
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+                          <Lock className="h-5 w-5" />
+                        </div>
+                        <input
+                          type="password"
+                          value={passwordData.confirmPassword}
+                          onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
+                          className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          placeholder="Confirmer le nouveau mot de passe"
+                          required
+                          minLength={6}
+                          disabled={loading}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="group">
-                    <label className="text-gray-800 text-sm font-medium mb-2 block">{t('newPassword')}</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-600 group-focus-within:text-blue-500 transition-colors">
-                        <Lock className="h-5 w-5" />
-                      </div>
-                      <input
-                        type="password"
-                        value={passwordData.newPassword}
-                        onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
-                        className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder={t('newPasswordPlaceholder')}
-                        required
-                        minLength={6}
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="group">
-                    <label className="text-gray-800 text-sm font-medium mb-2 block">{t('confirmPassword')}</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-600 group-focus-within:text-blue-500 transition-colors">
-                        <Lock className="h-5 w-5" />
-                      </div>
-                      <input
-                        type="password"
-                        value={passwordData.confirmPassword}
-                        onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
-                        className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder={t('confirmPasswordPlaceholder')}
-                        required
-                        minLength={6}
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex space-x-3 pt-4 mb-3">
+                  {/* Boutons d'action - gris et bleu */}
+                  <div className="flex space-x-3 pt-2">
                     <button
                       type="button"
                       onClick={handleCloseModal}
                       disabled={loading}
-                      className="flex-1 bg-gray-500 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-xl font-semibold hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {t('cancel')}
+                      Annuler
                     </button>
                     <button
                       type="submit"
                       disabled={loading}
-                      className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading ? (
                         <div className="flex items-center justify-center space-x-2">
                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          <span>{t('sending')}</span>
+                          <span>Envoi en cours...</span>
                         </div>
                       ) : (
-                        t('sendRequest')
+                        'Envoyer la demande'
                       )}
                     </button>
                   </div>
@@ -361,12 +372,13 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
         </div>
       )}
 
-      <div className="flex-1 bg-white p-8 md:p-10">
+      {/* Contenu principal - PAS MODIFIÉ, pas de brightness-75 */}
+      <div className="p-8 md:p-10">
         {/* En-tête avec bouton retour et titre sur la même ligne */}
         <div className="flex items-center mb-5">
           <button
             onClick={handleGoBack}
-            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors mr-4 flex-shrink-0"
+            className="w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:shadow-lg transition-all duration-200 mr-4 flex-shrink-0"
             aria-label="Retour"
           >
             <ArrowLeft size={20} />
@@ -425,7 +437,7 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
               title={t('profilePhoto') || 'Changer la photo'}
               type="button"
             >
-              <Camera size={18} />
+              <Camera size={15} />
             </button>
             
             <input
@@ -442,7 +454,7 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
             <h2 className="text-xl md:text-2xl font-semibold text-gray-900">
               {userData?.nom_complet || "Chargement..."}
             </h2>
-            <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full capitalize">
+            <span className="text-gray-600 text-sm font-medium px-3 py-1 rounded-full capitalize">
               {userData?.role || "Utilisateur"}
             </span>
           </div>
@@ -458,28 +470,28 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
           </div>
         </div>
 
-        {/* Section Sécurité - Titre centré */}
-        <div className="mb-3">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900 text-center mb-5">
+        {/* Section Sécurité - Centrée */}
+        <div className="mb-3 flex flex-col items-center">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-5">
             Sécurité
           </h2>
           
-          <div className="flex justify-center">
+          <div className="w-full max-w-xl">
             <button
               onClick={handleChangePassword}
-              className="w-400 max-w-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-2xl transition-all duration-200 flex items-center space-x-4 mx-auto"
+              className="w-full bg-gray-50 transition-all duration-200 flex items-center space-x-4 p-4 rounded-2xl border border-gray-200"
             >
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 md:w-14 md:h-14 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Lock className="text-blue-600 w-6 h-6 md:w-7 md:h-7" />
+                <div className="w-14 h-14 rounded-full flex items-center justify-center">
+                  <Lock className="text-black w-5 h-5" />
                 </div>
               </div>
               <div className="flex-1 text-left">
                 <h3 className="font-bold text-gray-900 text-lg mb-1">
-                  {t('changePassword') || 'MOT DE PASSE'}
+                  MOT DE PASSE
                 </h3>
                 <p className="text-gray-600 text-sm">
-                  {t('passwordChangeDescription') || 'Mettez à jour votre mot de passe pour sécuriser votre compte'}
+                  Mettre a jour securite
                 </p>
               </div>
               <div className="flex-shrink-0">
@@ -493,18 +505,18 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
           </div>
         </div>
 
-        {/* Bouton Déconnexion - Visible en bas de page */}
+        {/* Bouton Déconnexion - Centré */}
         <div className="mt-5 flex justify-center">
           <button
             onClick={handleLogout}
-            className="flex items-center justify-center space-x-3 text-red-600 hover:text-red-700 font-medium py-3 px-4 rounded-lg hover:bg-red-50 transition-colors border border-red-200"
+            className="flex items-center justify-center space-x-3 text-red-600 hover:text-red-700 font-medium py-3 px-4 rounded-2xl hover:bg-red-50 transition-colors border border-red-200 max-w-xl"
           >
             <LogOut size={20} />
-            <span className="font-semibold">{t('logout') || 'Déconnexion'}</span>
+            <span className="font-semibold">Déconnexion</span>
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
