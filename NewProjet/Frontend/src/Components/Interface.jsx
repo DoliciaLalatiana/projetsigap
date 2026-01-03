@@ -27,6 +27,8 @@ import {
   ChevronUp,
   Menu,
   Circle,
+  Map,
+  Eye,
 } from "lucide-react";
 
 // Import des composants Google Maps
@@ -295,6 +297,39 @@ export default function Interface({ user }) {
     } else {
       return { url, scaledSize: { width: color === "yellow" ? 40 : 32, height: color === "yellow" ? 40 : 32 } };
     }
+  };
+
+  // Fonction pour obtenir l'initiale de l'utilisateur
+  const getUserInitial = () => {
+    if (!currentUser) return "U";
+    
+    // Essayer d'abord le prénom (first_name)
+    if (currentUser.first_name && currentUser.first_name.trim()) {
+      return currentUser.first_name.charAt(0).toUpperCase();
+    }
+    
+    // Sinon essayer de décomposer le nom complet
+    if (currentUser.nom_complet) {
+      const parts = currentUser.nom_complet.trim().split(/\s+/);
+      if (parts.length > 0) {
+        // Prendre la première partie (probablement le prénom si format "Prénom Nom")
+        return parts[0].charAt(0).toUpperCase();
+      }
+      return currentUser.nom_complet.charAt(0).toUpperCase();
+    }
+    
+    // Sinon essayer le nom d'utilisateur
+    if (currentUser.username && currentUser.username.trim()) {
+      return currentUser.username.charAt(0).toUpperCase();
+    }
+    
+    // Sinon essayer le nom
+    if (currentUser.nom && currentUser.nom.trim()) {
+      return currentUser.nom.charAt(0).toUpperCase();
+    }
+    
+    // Par défaut
+    return "U";
   };
 
   // FONCTION : Récupérer TOUTES les notifications (pour le comptage total)
@@ -633,6 +668,79 @@ export default function Interface({ user }) {
     }
   };
 
+  // NOUVELLE FONCTION : Pour gérer l'affichage d'une résidence sur la carte depuis la recherche
+  const handleViewOnMapFromSearch = (result) => {
+    console.log('[INTERFACE] Affichage résidence sur carte depuis recherche:', result);
+
+    setShowSearchResults(false);
+    setSearchQuery("");
+
+    if (map) {
+      setPreviousZoom(map.getZoom());
+      setPreviousCenter(map.getCenter());
+    }
+
+    if (result.type === 'residence') {
+      if (result.lat && result.lng) {
+        const lat = parseFloat(result.lat);
+        const lng = parseFloat(result.lng);
+
+        console.log('[INTERFACE] Centrage sur:', { lat, lng });
+
+        map.panTo({ lat: parseFloat(lat), lng: parseFloat(lng) });
+        map.setZoom(18);
+
+        setClickedResidenceId(result.id);
+
+        if (!residences.some(r => r.id === result.id)) {
+          setResidences(prev => [result, ...prev]);
+        }
+
+        // Fermer toutes les pages pour voir la carte
+        setShowResidence(false);
+        setShowStatistique(false);
+        setShowUserPage(false);
+        setShowPendingResidences(false);
+        setUserPageState({ showPasswordModal: false });
+      } else {
+        alert("Cette résidence n'a pas de coordonnées géographiques enregistrées");
+      }
+    } else if (result.type === 'person') {
+      // Si c'est une personne, trouver sa résidence
+      if (result.residences && result.residences.length > 0) {
+        // Chercher la première résidence avec des coordonnées
+        const residenceWithCoords = result.residences.find(r => r.lat && r.lng);
+
+        if (residenceWithCoords) {
+          const lat = parseFloat(residenceWithCoords.lat);
+          const lng = parseFloat(residenceWithCoords.lng);
+
+          console.log('[INTERFACE] Centrage sur résidence de la personne:', { lat, lng });
+
+          map.panTo({ lat, lng });
+          map.setZoom(18);
+
+          setClickedResidenceId(residenceWithCoords.id);
+
+          if (!residences.some(r => r.id === residenceWithCoords.id)) {
+            setResidences(prev => [residenceWithCoords, ...prev]);
+          }
+
+          // Fermer toutes les pages pour voir la carte
+          setShowResidence(false);
+          setShowStatistique(false);
+          setShowUserPage(false);
+          setShowPendingResidences(false);
+          setUserPageState({ showPasswordModal: false });
+        } else {
+          alert("Cette personne n'a pas d'adresse avec coordonnées géographiques");
+        }
+      } else {
+        alert("Cette personne n'a pas d'adresse associée");
+      }
+    }
+  };
+
   // Nouvelle fonction pour gérer les résultats de type personne
   const handlePersonSearchResult = (result) => {
     console.log("Personne sélectionnée:", result);
@@ -652,7 +760,7 @@ export default function Interface({ user }) {
     }
   };
 
-  // Composant pour afficher les résultats de recherche - MODIFIÉ POUR DÉSACTIVER SUR RÉSIDENCE
+  // Composant pour afficher les résultats de recherche - MODIFIÉ POUR INCLURE LE BOUTON "VOIR SUR LA CARTE"
   const SearchResultsModal = () => {
     // NE PAS AFFICHER LES SUGGESTIONS QUAND LA PAGE RÉSIDENCE EST OUVERTE
     if (showResidence || !showSearchResults || searchResults.length === 0) return null;
@@ -681,64 +789,81 @@ export default function Interface({ user }) {
               className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-all duration-200"
               onClick={() => handleSearchResultClick(result)}
             >
-              {result.type === 'residence' && (
-                <div>
-                  <div className="flex items-center mb-2">
-                    <MapPin size={16} className="text-blue-500 mr-2 flex-shrink-0" />
-                    <h4 className="font-medium text-sm text-gray-800">
-                      {result.lot || 'Lot non spécifié'}
-                    </h4>
-                    <span className="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full flex-shrink-0">
-                      Adresse
-                    </span>
-                  </div>
-                  {result.quartier && (
-                    <p className="text-xs text-gray-600 mb-1">
-                      <span className="font-medium">Quartier:</span> {result.quartier}
-                    </p>
-                  )}
-                  {result.ville && (
-                    <p className="text-xs text-gray-600">
-                      <span className="font-medium">Ville:</span> {result.ville}
-                    </p>
-                  )}
-                  {result.proprietaires && result.proprietaires.length > 0 && (
-                    <p className="text-xs text-gray-600 mt-1">
-                      <span className="font-medium">Propriétaire(s):</span> {result.proprietaires.map(p => p.nom).join(', ')}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {result.type === 'person' && (
-                <div>
-                  <div className="flex items-center mb-2">
-                    <User size={16} className="text-green-500 mr-2 flex-shrink-0" />
-                    <h4 className="font-medium text-sm text-gray-800">
-                      {result.nom} {result.prenom}
-                    </h4>
-                    <span className="ml-2 text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full flex-shrink-0">
-                      Personne
-                    </span>
-                  </div>
-                  {result.residences && result.residences.length > 0 && (
-                    <div className="mt-2">
-                      <p className="text-xs text-gray-500 font-medium mb-1">Adresse(s):</p>
-                      {result.residences.slice(0, 2).map((residence, idx) => (
-                        <p key={idx} className="text-xs text-gray-600">
-                          • {residence.lot || 'Lot non spécifié'} - {residence.quartier}
-                        </p>
-                      ))}
-                      {result.residences.length > 2 && (
-                        <p className="text-xs text-gray-400 mt-1">
-                          +{result.residences.length - 2} autre(s) adresse(s)
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  {result.type === 'residence' && (
+                    <div>
+                      <div className="flex items-center mb-2">
+                        <MapPin size={16} className="text-blue-500 mr-2 flex-shrink-0" />
+                        <h4 className="font-medium text-sm text-gray-800">
+                          {result.lot || 'Lot non spécifié'}
+                        </h4>
+                        <span className="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full flex-shrink-0">
+                          Adresse
+                        </span>
+                      </div>
+                      {result.quartier && (
+                        <p className="text-xs text-gray-600 mb-1">
+                          <span className="font-medium">Quartier:</span> {result.quartier}
                         </p>
                       )}
+                      {result.ville && (
+                        <p className="text-xs text-gray-600">
+                          <span className="font-medium">Ville:</span> {result.ville}
+                        </p>
+                      )}
+                      {result.proprietaires && result.proprietaires.length > 0 && (
+                        <p className="text-xs text-gray-600 mt-1">
+                          <span className="font-medium">Propriétaire(s):</span> {result.proprietaires.map(p => p.nom).join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {result.type === 'person' && (
+                    <div>
+                      <div className="flex items-center mb-2">
+                        <User size={16} className="text-green-500 mr-2 flex-shrink-0" />
+                        <h4 className="font-medium text-sm text-gray-800">
+                          {result.nom} {result.prenom}
+                        </h4>
+                        <span className="ml-2 text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full flex-shrink-0">
+                          Personne
+                        </span>
+                      </div>
+                      {result.residences && result.residences.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs text-gray-500 font-medium mb-1">Adresse(s):</p>
+                          {result.residences.slice(0, 2).map((residence, idx) => (
+                            <p key={idx} className="text-xs text-gray-600">
+                              • {residence.lot || 'Lot non spécifié'} - {residence.quartier}
+                            </p>
+                          ))}
+                          {result.residences.length > 2 && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              +{result.residences.length - 2} autre(s) adresse(s)
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-              )}
+                
+                {/* BOUTON "VOIR SUR LA CARTE" */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleViewOnMapFromSearch(result);
+                  }}
+                  className="ml-2 flex items-center text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  title="Voir sur la carte"
+                >
+                  <Map size={14} className="mr-1" />
+                  Carte
+                </button>
               </div>
+            </div>
           ))}
         </div>
       </div>
@@ -1578,7 +1703,7 @@ export default function Interface({ user }) {
     setAddStep(1);
   };
 
-  /* Confirmation finale: envoi résidence + residents si fournis */
+  /* Confirmation finale: envoi résidence + residents si fournis - CORRIGÉE */
   const handleConfirmSave = async () => {
     if (!addressDetails.lot || !addressDetails.lot.trim()) {
       setModalError('Lot requis');
@@ -1595,8 +1720,8 @@ export default function Interface({ user }) {
     try {
       const token = localStorage.getItem('token');
 
-      // CORRECTION : Préparer le payload avec les bonnes clés pour le backend
-      const payload = {
+      // ÉTAPE 1: Créer la résidence d'abord
+      const residencePayload = {
         lot: addressDetails.lot.trim(),
         quartier: addressDetails.quartier || null,
         ville: addressDetails.ville || null,
@@ -1606,91 +1731,119 @@ export default function Interface({ user }) {
         created_by: currentUser?.id || null
       };
 
-      // CORRECTION : Transformer les résidents dans le format attendu par le backend
-      const residentsToSend = [];
-      for (const r of newResidents) {
-        if (!r.nom?.trim() && !r.prenom?.trim()) continue;
+      console.log('Étape 1: Création résidence', residencePayload);
 
-        // Construire le nom_complet au format attendu par le backend
-        const nomComplet = `${r.nom.trim()}${r.prenom ? ' ' + r.prenom.trim() : ''}`.trim();
-
-        // Gérer l'âge et le CIN
-        const age = calculateAgeFromDate(r.birthdate);
-        let cinVal = null;
-        if (age === null) {
-          cinVal = null;
-        } else if (age < 18) {
-          cinVal = null; // CORRECTION : null pour les mineurs, pas 0
-        } else {
-          cinVal = (r.cin && r.cin !== 'Mineur') ? String(r.cin).replace(/\D/g, '').slice(0, 12) : null;
-        }
-
-        // CORRECTION CRITIQUE : Convertir "masculin"/"feminin" en "homme"/"femme"
-        const genre = r.sexe === 'masculin' ? 'homme' : (r.sexe === 'feminin' ? 'femme' : 'homme');
-
-        residentsToSend.push({
-          nom_complet: nomComplet,
-          date_naissance: r.birthdate || null,
-          cin: cinVal,
-          genre: genre, // CORRECTION ICI
-          telephone: r.phone || null
-        });
-      }
-
-      if (residentsToSend.length > 0) {
-        payload.residents = residentsToSend;
-      }
-
-      console.log('Payload envoyé au backend:', JSON.stringify(payload, null, 2));
-
-      const resp = await fetch(`${API_BASE}/api/residences`, {
+      const residenceResp = await fetch(`${API_BASE}/api/residences`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(residencePayload)
       });
 
-      if (!resp.ok) {
-        const body = await resp.text().catch(() => null);
-        let errorMessage = 'Erreur de sauvegarde';
+      if (!residenceResp.ok) {
+        const body = await residenceResp.text().catch(() => null);
+        let errorMessage = 'Erreur de sauvegarde de la résidence';
         try {
           if (body) {
             const errorJson = JSON.parse(body);
             errorMessage = errorJson.error || errorJson.message || body;
           }
         } catch (e) {
-          errorMessage = body || 'Erreur de sauvegarde';
+          errorMessage = body || 'Erreur de sauvegarde de la résidence';
         }
         throw new Error(errorMessage);
       }
 
-      const result = await resp.json();
+      const residenceResult = await residenceResp.json();
+      console.log('Résidence créée:', residenceResult);
 
-      // Si requires_approval: notification message sinon ajout direct
-      if (result.requires_approval) {
+      // Stocker l'ID de la résidence créée
+      const residenceId = residenceResult.id;
+
+      // ÉTAPE 2: Ajouter les personnes (si fournies) avec l'ID de résidence
+      if (newResidents.length > 0) {
+        console.log('Étape 2: Ajout des personnes', newResidents.length);
+        
+        // Filtrer les personnes valides (avec nom et prénom)
+        const validResidents = newResidents.filter(r => 
+          r.nom?.trim() && r.prenom?.trim()
+        );
+
+        if (validResidents.length > 0) {
+          // Créer les personnes une par une
+          for (const r of validResidents) {
+            const nomComplet = `${r.nom.trim()}${r.prenom ? ' ' + r.prenom.trim() : ''}`.trim();
+            
+            // Calculer l'âge
+            const age = calculateAgeFromDate(r.birthdate);
+            let cinVal = null;
+            if (age === null) {
+              cinVal = null;
+            } else if (age < 18) {
+              cinVal = null;
+            } else {
+              cinVal = (r.cin && r.cin !== 'Mineur') ? String(r.cin).replace(/\D/g, '').slice(0, 12) : null;
+            }
+
+            // Convertir le sexe pour l'API
+            const genre = r.sexe === 'masculin' ? 'homme' : (r.sexe === 'feminin' ? 'femme' : 'homme');
+
+            const personPayload = {
+              residence_id: residenceId, // Utiliser l'ID de la résidence créée
+              nom_complet: nomComplet,
+              date_naissance: r.birthdate || null,
+              cin: cinVal,
+              genre: genre,
+              telephone: r.phone || null
+            };
+
+            console.log('Ajout personne:', personPayload);
+
+            const personResp = await fetch(`${API_BASE}/api/persons`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+              },
+              body: JSON.stringify(personPayload)
+            });
+
+            if (!personResp.ok) {
+              console.warn(`Échec ajout personne: ${nomComplet}`);
+              // Continuer avec les autres personnes même si une échoue
+            }
+          }
+          console.log('Personnes ajoutées avec succès');
+        }
+      }
+
+      // Mise à jour de l'interface
+      const newResidence = {
+        id: residenceId,
+        lot: residenceResult.lot,
+        quartier: residenceResult.quartier,
+        ville: residenceResult.ville,
+        fokontany: residenceResult.fokontany,
+        lat: residenceResult.lat,
+        lng: residenceResult.lng,
+        created_by: residenceResult.created_by,
+        created_at: residenceResult.created_at,
+        is_active: residenceResult.is_active
+      };
+
+      // Ajouter à la liste locale
+      setResidences(prev => [newResidence, ...(prev || [])]);
+
+      // Message de succès
+      if (residenceResult.requires_approval) {
         alert('Résidence soumise pour approbation.');
       } else {
-        // Ajouter la résidence à la liste locale
-        const newResidence = {
-          id: result.id,
-          lot: result.lot,
-          quartier: result.quartier,
-          ville: result.ville,
-          fokontany: result.fokontany,
-          lat: result.lat,
-          lng: result.lng,
-          created_by: result.created_by,
-          created_at: result.created_at,
-          is_active: result.is_active
-        };
-
-        setResidences(prev => [newResidence, ...(prev || [])]);
         alert('Résidence enregistrée avec succès');
       }
 
-      // Reset modal
+      // Reset du modal
       setAddressDetails({ lot: '', quartier: '', ville: '' });
       setSelectedAddress('');
       setSelectedLocation(null);
@@ -2231,7 +2384,7 @@ export default function Interface({ user }) {
               <span className="text-sm font-medium" style={{ color: isAddAddressModalOpen ? '#9ca3af' : '#374151' }}>{i18n.language === 'fr' ? 'FR' : 'MG'}</span>
             </button>
 
-            {/* Bouton Profil */}
+            {/* Bouton Profil - MODIFICATION: Icône remplacée par un cercle avec la première lettre du prénom */}
             <button
               onClick={handleUserIconClick}
               disabled={isAddAddressModalOpen}
@@ -2241,7 +2394,11 @@ export default function Interface({ user }) {
                 }`}
               title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : "Profil"}
             >
-              <User size={20} className={`${isAddAddressModalOpen ? 'text-gray-400' : 'text-gray-600 hover:text-gray-800 transition-all duration-300'}`} />
+              <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center">
+                <span className="text-xs font-bold text-white">
+                  {getUserInitial()}
+                </span>
+              </div>
             </button>
           </div>
         </div>
@@ -2839,7 +2996,7 @@ export default function Interface({ user }) {
       {showResidence && (
         <div className="absolute top-20 left-[320px] right-4 z-30 bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
           style={{
-            height: "calc(100vh - 28px)",
+            height: "calc(92vh - 28px)",
             bottom: "4px"
           }}>
           <ResidencePage
@@ -2855,7 +3012,7 @@ export default function Interface({ user }) {
       {showStatistique && (
         <div className="absolute top-20 left-[320px] right-4 z-30 bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
           style={{
-            height: "calc(100vh - 28px)",
+            height: "calc(92vh - 28px)",
             bottom: "4px"
           }}>
           <Statistique onBack={handleCloseStatistique} />
@@ -2866,7 +3023,7 @@ export default function Interface({ user }) {
       {showUserPage && (
         <div className="absolute top-20 left-[320px] right-4 z-30 bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
           style={{
-            height: "calc(100vh - 28px)",
+            height: "calc(92vh - 28px)",
             bottom: "4px"
           }}>
           <UserPage
@@ -2883,7 +3040,7 @@ export default function Interface({ user }) {
       {showPendingResidences && currentUser?.role === 'secretaire' && (
         <div className="absolute top-20 left-[320px] right-4 z-30 bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200/60"
           style={{
-            height: "calc(100vh - 28px)",
+            height: "calc(92vh - 28px)",
             bottom: "4px"
           }}>
           <PendingResidences
@@ -3061,8 +3218,8 @@ const normalizeCoordinates = (input) => {
     // Fonction récursive pour trouver l'anneau de coordonnées
     const findRing = (d) => {
       if (!Array.isArray(d) || d.length === 0) return null;
-      if (Array.isArray(d[0]) && Array.isArray(d[0][0]) && Array.isArray(d[0][0][0])) return d[0][0];
-      if (Array.isArray(d[0]) && Array.isArray(d[0][0]) && typeof d[0][0][0] === "number") return d[0];
+      if (Array.isArray(d[0] && d[0][0]) && Array.isArray(d[0][0][0])) return d[0][0];
+      if (Array.isArray(d[0] && d[0][0]) && typeof d[0][0][0] === "number") return d[0];
       if (Array.isArray(d[0]) && typeof d[0][0] === "number" && typeof d[0][1] === "number") return d;
       for (const el of d) {
         const candidate = findRing(el);
