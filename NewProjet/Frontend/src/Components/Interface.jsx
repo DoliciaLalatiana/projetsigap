@@ -662,6 +662,9 @@ export default function Interface({ user }) {
       setShowUserPage(false);
       setShowPendingResidences(false);
       setUserPageState({ showPasswordModal: false });
+      
+      // Fermer aussi le menu déroulant
+      setMenuDropdownOpen(false);
 
     } else {
       alert("Cette résidence n'a pas de coordonnées géographiques enregistrées");
@@ -693,7 +696,8 @@ export default function Interface({ user }) {
 
         console.log('[INTERFACE] Centrage sur:', { lat, lng });
 
-        map.panTo({ lat: parseFloat(lat), lng: parseFloat(lng) });
+        // Centrer la carte sur les coordonnées
+        map.panTo({ lat: lat, lng: lng });
         map.setZoom(18);
 
         setClickedResidenceId(result.id);
@@ -708,6 +712,10 @@ export default function Interface({ user }) {
         setShowUserPage(false);
         setShowPendingResidences(false);
         setUserPageState({ showPasswordModal: false });
+        
+        // Fermer aussi le menu déroulant
+        setMenuDropdownOpen(false);
+        
       } else {
         alert("Cette résidence n'a pas de coordonnées géographiques enregistrées");
       }
@@ -738,6 +746,9 @@ export default function Interface({ user }) {
           setShowUserPage(false);
           setShowPendingResidences(false);
           setUserPageState({ showPasswordModal: false });
+          
+          // Fermer aussi le menu déroulant
+          setMenuDropdownOpen(false);
         } else {
           alert("Cette personne n'a pas d'adresse avec coordonnées géographiques");
         }
@@ -766,13 +777,32 @@ export default function Interface({ user }) {
     }
   };
 
-  // Composant pour afficher les résultats de recherche - MODIFIÉ POUR INCLURE LE BOUTON "VOIR SUR LA CARTE"
+  // Composant pour afficher les résultats de recherche - MODIFIÉ POUR INCLURE LE BOUTON "VOIR SUR LA CARTE" ET PLACÉ EN BAS DE LA BARRE
   const SearchResultsModal = () => {
     // NE PAS AFFICHER LES SUGGESTIONS QUAND LA PAGE RÉSIDENCE EST OUVERTE
     if (showResidence || !showSearchResults || searchResults.length === 0) return null;
 
+    // Calculer la position juste en dessous de la barre de recherche
+    const searchBar = document.querySelector('.search-bar-container');
+    let topPosition = 80; // Position par défaut
+    let leftPosition = 320; // Position par défaut
+
+    if (searchBar) {
+      const rect = searchBar.getBoundingClientRect();
+      topPosition = rect.bottom + 5; // 5px en dessous de la barre
+      leftPosition = rect.left;
+    }
+
     return (
-      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-40 w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
+      <div 
+        className="fixed z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto"
+        style={{
+          top: `${topPosition}px`,
+          left: `${leftPosition}px`,
+          width: '480px',
+          maxWidth: '480px'
+        }}
+      >
         <div className="p-4 border-b border-gray-200">
           <div className="flex justify-between items-center">
             <h3 className="font-semibold text-gray-800">Résultats de recherche</h3>
@@ -856,17 +886,17 @@ export default function Interface({ user }) {
                   )}
                 </div>
                 
-                {/* BOUTON "VOIR SUR LA CARTE" */}
+                {/* BOUTON "VOIR SUR LA CARTE" - MODIFIÉ AVEC NOUVEAU STYLE */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleViewOnMapFromSearch(result);
                   }}
-                  className="ml-2 flex items-center text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className="ml-2 flex items-center text-xs px-3 py-1.5 bg-white text-gray-800 border border-gray-800 rounded-lg hover:bg-gray-50 transition-colors"
                   title="Voir sur la carte"
                 >
                   <Map size={14} className="mr-1" />
-                  Carte
+                  Voir sur carte
                 </button>
               </div>
             </div>
@@ -1217,6 +1247,11 @@ export default function Interface({ user }) {
       setShowUserPage(false);
       setUserPageState({ showPasswordModal: false });
       
+      // RÉINITIALISER LA RECHERCHE
+      setSearchQuery("");
+      setSearchResults([]);
+      setShowSearchResults(false);
+      
       // Si on avait une page principale avant, la rouvrir
       const lastMainPage = navigationHistory[navigationHistory.length - 1];
       if (lastMainPage) {
@@ -1248,6 +1283,11 @@ export default function Interface({ user }) {
     else if (showResidence || showStatistique || showPendingResidences) {
       console.log('CAS 4: Fermeture vers carte depuis page principale');
       
+      // RÉINITIALISER LA RECHERCHE
+      setSearchQuery("");
+      setSearchResults([]);
+      setShowSearchResults(false);
+      
       // Fermer la page actuelle
       setShowResidence(false);
       setShowStatistique(false);
@@ -1268,8 +1308,6 @@ export default function Interface({ user }) {
     else {
       console.log('CAS 5: Déjà sur la carte');
     }
-    
-    setShowSearchResults(false);
   };
 
   // NOUVEAU : Fonction pour ajouter une page à l'historique de navigation
@@ -1298,10 +1336,15 @@ export default function Interface({ user }) {
     setMenuDropdownOpen(!menuDropdownOpen);
   };
 
-  // MODIFICATION : Gestionnaires de clic sur les items du menu avec historique
+  // MODIFICATION : Gestionnaires de clic sur les items du menu avec historique ET RÉINITIALISATION DE RECHERCHE
   const handleResidenceClick = () => {
     const newShowResidence = !showResidence;
     setShowResidence(newShowResidence);
+    
+    // RÉINITIALISER LA RECHERCHE
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowSearchResults(false);
     
     if (newShowResidence) {
       // Ajouter à l'historique si on ouvre une nouvelle page
@@ -1320,8 +1363,6 @@ export default function Interface({ user }) {
     }
     
     setShowNotifications(false);
-    setShowSearchResults(false);
-    setSearchResults([]);
     setClickedResidenceId(null);
     setResidenceToSelect(null);
     
@@ -1342,10 +1383,15 @@ export default function Interface({ user }) {
     }
   };
 
-  // MODIFICATION : Gestionnaire de clic sur Statistique avec historique
+  // MODIFICATION : Gestionnaire de clic sur Statistique avec historique ET RÉINITIALISATION DE RECHERCHE
   const handleStatistiqueClick = () => {
     const newShowStatistique = !showStatistique;
     setShowStatistique(newShowStatistique);
+    
+    // RÉINITIALISER LA RECHERCHE
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowSearchResults(false);
     
     if (newShowStatistique) {
       // Ajouter à l'historique si on ouvre une nouvelle page
@@ -1360,7 +1406,6 @@ export default function Interface({ user }) {
     }
     
     setShowNotifications(false);
-    setShowSearchResults(false);
     setClickedResidenceId(null);
     setResidenceToSelect(null);
     
@@ -1381,10 +1426,15 @@ export default function Interface({ user }) {
     }
   };
 
-  // MODIFICATION : Gestionnaire de clic sur l'icône utilisateur avec historique
+  // MODIFICATION : Gestionnaire de clic sur l'icône utilisateur avec historique ET RÉINITIALISATION DE RECHERCHE
   const handleUserIconClick = () => {
     const newShowUserPage = !showUserPage;
     setShowUserPage(newShowUserPage);
+    
+    // RÉINITIALISER LA RECHERCHE
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowSearchResults(false);
     
     if (newShowUserPage) {
       setUserPageState({ showPasswordModal: false });
@@ -1409,15 +1459,19 @@ export default function Interface({ user }) {
     }
     
     setShowNotifications(false);
-    setShowSearchResults(false);
     setClickedResidenceId(null);
     setResidenceToSelect(null);
   };
 
-  // MODIFICATION : Gestionnaire de clic sur Demandes (pour secrétaire) avec historique
+  // MODIFICATION : Gestionnaire de clic sur Demandes (pour secrétaire) avec historique ET RÉINITIALISATION DE RECHERCHE
   const handlePendingResidencesClick = () => {
     const newShowPending = !showPendingResidences;
     setShowPendingResidences(newShowPending);
+
+    // RÉINITIALISER LA RECHERCHE
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowSearchResults(false);
 
     if (newShowPending) {
       // Ajouter à l'historique si on ouvre une nouvelle page
@@ -1433,7 +1487,6 @@ export default function Interface({ user }) {
     }
 
     setShowNotifications(false);
-    setShowSearchResults(false);
     setClickedResidenceId(null);
 
     if (isSelectingLocation || showAddAddress) {
@@ -2438,7 +2491,7 @@ export default function Interface({ user }) {
       )}
 
       {/* Barre de recherche fixe à gauche */}
-      <div className="absolute top-6 left-[320px] z-40">
+      <div className="absolute top-6 left-[320px] z-40 search-bar-container">
         <div className="w-96">
           <div className={`
             rounded-full flex items-center px-6 py-1.5 w-100 border 
@@ -2883,7 +2936,7 @@ export default function Interface({ user }) {
                                         onChange={(e) => handlePersonChange(idx, 'cin', e.target.value)} 
                                         className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
                                         style={{ height: '36px', fontSize: '12px' }}
-                                      />
+                                    />
                                     ) : p.birthdate ? (
                                       <input 
                                         type="text" 

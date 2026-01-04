@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Key, LogOut, User, X, Lock, ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import ReactDOM from 'react-dom';
 
 const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
   const [profileImage, setProfileImage] = useState(null);
@@ -222,158 +223,168 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
   };
 
   const handleGoBack = () => {
-    // Logique pour revenir en arrière si nécessaire
     console.log('Retour en arrière');
+  };
+
+  // Composant Modal pour le mot de passe
+  const PasswordModal = () => {
+    if (!showPasswordModal) return null;
+
+    return ReactDOM.createPortal(
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        {/* Overlay qui couvre TOUTE la page - header, sidebar et contenu */}
+        <div 
+          className="absolute inset-0 bg-black/20"
+          onClick={handleCloseModal}
+        />
+        
+        {/* Modal centré */}
+        <div className="relative w-full max-w-md mx-auto z-50">
+          {message && (
+            <div className="mb-4 relative z-10">
+              <div className={`p-4 rounded-xl backdrop-blur-sm ${
+                message.includes('succès') || message.includes('envoyée') || message.includes('soa aman-tsara') || message.includes('nalefa')
+                  ? 'bg-green-50/80 border border-green-200/60 text-green-800' 
+                  : 'bg-red-50/80 border border-red-200/60 text-red-800'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span>{message}</span>
+                  <button 
+                    onClick={() => setMessage('')}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            {/* En-tête avec icône clé centrée */}
+            <div className="py-8 px-6">
+              <div className="flex flex-col items-center">
+                <h2 className="text-2xl font-bold text-gray-900 text-center">
+                  Modification du mot de passe
+                </h2>
+              </div>
+            </div>
+
+            <div className="px-6 pb-6">
+              <form onSubmit={handlePasswordSubmit} className="space-y-5" onClick={(e) => e.stopPropagation()}>
+                {/* Section information - sans fond bleu */}
+                <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                  <div className="flex items-start space-x-3">
+                    <Lock className="text-gray-600 w-5 h-5 flex-shrink-0 mt-0.5 mt-4" />
+                    <div>
+                      <p className="text-gray-800 text-sm font-medium">Processus sécurisé</p>
+                      <p className="text-gray-600 text-xs mt-1">
+                        Pour votre sécurité, la modification du mot de passe nécessite une validation en plusieurs étapes.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Champs sans labels */}
+                <div className="space-y-4">
+                  {/* Ancien mot de passe */}
+                  <div className="group">
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+                        <Lock className="h-5 w-5" />
+                      </div>
+                      <input
+                        type="password"
+                        value={passwordData.oldPassword}
+                        onChange={(e) => handlePasswordChange('oldPassword', e.target.value)}
+                        className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        placeholder="Mot de passe actuel"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Nouveau mot de passe */}
+                  <div className="group">
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+                        <Lock className="h-5 w-5" />
+                      </div>
+                      <input
+                        type="password"
+                        value={passwordData.newPassword}
+                        onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
+                        className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        placeholder="Nouveau mot de passe"
+                        required
+                        minLength={6}
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Confirmer mot de passe */}
+                  <div className="group">
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+                        <Lock className="h-5 w-5" />
+                      </div>
+                      <input
+                        type="password"
+                        value={passwordData.confirmPassword}
+                        onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
+                        className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        placeholder="Confirmer le nouveau mot de passe"
+                        required
+                        minLength={6}
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Boutons d'action - gris et bleu */}
+                <div className="flex space-x-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    disabled={loading}
+                    className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-xl font-semibold hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Envoi en cours...</span>
+                      </div>
+                    ) : (
+                      'Envoyer la demande'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
   };
 
   return (
     <>
-      {/* Overlay qui assombrit la page entière avec bg-black/20 comme dans ResidencePage */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 z-40 bg-black/20"></div>
-      )}
+      {/* Modal de mot de passe (rendu dans le body) */}
+      <PasswordModal />
 
-      {showPasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="relative w-full max-w-md mx-auto">
-            {message && (
-              <div className="mb-4 relative z-10">
-                <div className={`p-4 rounded-xl backdrop-blur-sm ${
-                  message.includes('succès') || message.includes('envoyée') || message.includes('soa aman-tsara') || message.includes('nalefa')
-                    ? 'bg-green-50/80 border border-green-200/60 text-green-800' 
-                    : 'bg-red-50/80 border border-red-200/60 text-red-800'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <span>{message}</span>
-                    <button 
-                      onClick={() => setMessage('')}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-              {/* En-tête avec icône clé centrée */}
-              <div className="py-8 px-6">
-                <div className="flex flex-col items-center">
-                  <h2 className="text-2xl font-bold text-gray-900 text-center">
-                    Modification du mot de passe
-                  </h2>
-                </div>
-              </div>
-
-              <div className="px-6 pb-6">
-                <form onSubmit={handlePasswordSubmit} className="space-y-5">
-                  {/* Section information - sans fond bleu */}
-                  <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
-                    <div className="flex items-start space-x-3">
-                      <Lock className="text-gray-600 w-5 h-5 flex-shrink-0 mt-0.5 mt-4" />
-                      <div>
-                        <p className="text-gray-800 text-sm font-medium">Processus sécurisé</p>
-                        <p className="text-gray-600 text-xs mt-1">
-                          Pour votre sécurité, la modification du mot de passe nécessite une validation en plusieurs étapes.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Champs sans labels */}
-                  <div className="space-y-4">
-                    {/* Ancien mot de passe */}
-                    <div className="group">
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
-                          <Lock className="h-5 w-5" />
-                        </div>
-                        <input
-                          type="password"
-                          value={passwordData.oldPassword}
-                          onChange={(e) => handlePasswordChange('oldPassword', e.target.value)}
-                          className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                          placeholder="Mot de passe actuel"
-                          required
-                          disabled={loading}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Nouveau mot de passe */}
-                    <div className="group">
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
-                          <Lock className="h-5 w-5" />
-                        </div>
-                        <input
-                          type="password"
-                          value={passwordData.newPassword}
-                          onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
-                          className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                          placeholder="Nouveau mot de passe"
-                          required
-                          minLength={6}
-                          disabled={loading}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Confirmer mot de passe */}
-                    <div className="group">
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
-                          <Lock className="h-5 w-5" />
-                        </div>
-                        <input
-                          type="password"
-                          value={passwordData.confirmPassword}
-                          onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
-                          className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                          placeholder="Confirmer le nouveau mot de passe"
-                          required
-                          minLength={6}
-                          disabled={loading}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Boutons d'action - gris et bleu */}
-                  <div className="flex space-x-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={handleCloseModal}
-                      disabled={loading}
-                      className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-xl font-semibold hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Annuler
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {loading ? (
-                        <div className="flex items-center justify-center space-x-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          <span>Envoi en cours...</span>
-                        </div>
-                      ) : (
-                        'Envoyer la demande'
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Contenu principal - PAS MODIFIÉ, pas de brightness-75 */}
-      <div className="p-8 md:p-10">
+      {/* Contenu principal */}
+      <div className={`p-8 md:p-10 ${showPasswordModal ? 'brightness-75' : ''}`}>
         {/* En-tête avec bouton retour et titre sur la même ligne */}
         <div className="flex items-center mb-5">
           <button

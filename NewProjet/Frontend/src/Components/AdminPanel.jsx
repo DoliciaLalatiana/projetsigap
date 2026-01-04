@@ -295,15 +295,15 @@ const AdminPanel = ({ onLogout, currentUser }) => {
 
   const getRoleBadge = (role) => {
     const roles = {
-      admin: { color: 'from-purple-500 to-pink-500', text: 'Administrateur' },
-      secretaire: { color: 'from-blue-500 to-cyan-500', text: 'Secrétaire' },
-      agent: { color: 'from-green-500 to-emerald-500', text: 'Agent' }
+      admin: { color: 'bg-gray-800 text-white', text: 'Administrateur' },
+      secretaire: { color: 'bg-gray-600 text-white', text: 'Secrétaire' },
+      agent: { color: 'bg-gray-400 text-gray-900', text: 'Agent' }
     };
     return roles[role] || roles.agent;
   };
 
   const getStatusBadge = (isActive) => ({
-    color: isActive ? 'from-green-500 to-emerald-500' : 'from-red-500 to-pink-500',
+    color: isActive ? 'bg-gray-300 text-gray-800' : 'bg-gray-700 text-white',
     text: isActive ? 'Actif' : 'Inactif'
   });
 
@@ -311,20 +311,20 @@ const AdminPanel = ({ onLogout, currentUser }) => {
   const totalDemands = resetRequests.length + passwordChangeRequests.length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200/30">
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 shadow-sm">
+      <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200/60 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-3 rounded-2xl shadow-lg">
+              <div className="bg-gradient-to-br from-gray-600 to-gray-800 p-3 rounded-2xl shadow-lg">
                 <Shield className="text-white w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-black bg-clip-text text-transparent">
                   Administration SIGAP
                 </h1>
-                <p className="text-slate-600 text-sm flex items-center space-x-1">
+                <p className="text-black text-sm flex items-center space-x-1">
                   <UserCheck className="w-4 h-4" />
                   <span>Connecté en tant que {currentUser?.nom_complet}</span>
                 </p>
@@ -332,18 +332,19 @@ const AdminPanel = ({ onLogout, currentUser }) => {
             </div>
             
             <div className="flex items-center space-x-3">
-              <button className="relative p-2 text-slate-600 hover:text-slate-800 transition-colors">
+              <button className="relative p-2 text-gray-600 hover:text-gray-800 transition-colors">
                 <Bell className="w-5 h-5" />
                 {totalDemands > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                  <span className="absolute -top-1 -right-1 bg-gray-800 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
                     {totalDemands}
                   </span>
                 )}
               </button>
               
+              {/* Bouton Déconnexion - Gris avec border rouge par défaut, rouge au hover */}
               <button
                 onClick={onLogout}
-                className="flex items-center space-x-2 bg-gradient-to-r from-red-500 to-pink-600 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                className="flex items-center space-x-2 bg-gray-300 text-black  hover:text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 border-2 border-gray-300 hover:bg-red-600 hover:border-red-600"
               >
                 <LogOut size={16} />
                 <span>Déconnexion</span>
@@ -354,9 +355,9 @@ const AdminPanel = ({ onLogout, currentUser }) => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="bg-white/60 backdrop-blur-lg border-b border-slate-200/40">
+      <div className="bg-white/60 backdrop-blur-lg border-b border-gray-200/40">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex space-x-1 bg-slate-100/50 rounded-2xl p-1.5 w-fit">
+          <div className="flex space-x-1 bg-gray-100/50 rounded-2xl p-1.5 w-fit">
             {[
               { id: 'users', icon: Users, label: 'Utilisateurs', count: users.length },
               { id: 'demandes', icon: Key, label: 'Demandes', count: totalDemands }
@@ -366,8 +367,8 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                   activeTab === tab.id
-                    ? 'bg-white text-slate-800 shadow-lg shadow-blue-500/10'
-                    : 'text-slate-600 hover:text-slate-800 hover:bg-white/50'
+                    ? 'bg-white text-gray-800 shadow-lg shadow-gray-500/10'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-white/50'
                 }`}
               >
                 <tab.icon size={18} />
@@ -375,8 +376,8 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                 {tab.count > 0 && (
                   <span className={`px-2 py-1 text-xs rounded-full ${
                     activeTab === tab.id 
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-slate-300 text-slate-700'
+                      ? 'bg-gray-700 text-white' 
+                      : 'bg-gray-300 text-gray-700'
                   }`}>
                     {tab.count}
                   </span>
@@ -394,10 +395,10 @@ const AdminPanel = ({ onLogout, currentUser }) => {
             {/* Header avec recherche et actions */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                   Gestion des Utilisateurs
                 </h2>
-                <p className="text-slate-600 mt-1">
+                <p className="text-gray-600 mt-1">
                   {users.length} utilisateur(s) dans le système
                 </p>
               </div>
@@ -405,19 +406,19 @@ const AdminPanel = ({ onLogout, currentUser }) => {
               <div className="flex items-center space-x-3">
                 {/* Barre de recherche */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type="text"
                     placeholder="Rechercher un utilisateur..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 w-64"
+                    className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 transition-all duration-200 w-64"
                   />
                 </div>
                 
                 <button
                   onClick={() => setShowUserForm(true)}
-                  className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                  className="flex items-center space-x-2 bg-gradient-to-r from-gray-700 to-gray-900 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
                 >
                   <UserPlus size={18} />
                   <span>Nouvel Utilisateur</span>
@@ -426,12 +427,12 @@ const AdminPanel = ({ onLogout, currentUser }) => {
             </div>
 
             {/* Tableau des utilisateurs */}
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-200/60 overflow-hidden">
               {filteredUsers.length === 0 ? (
                 <div className="text-center py-12">
-                  <Users className="mx-auto text-slate-300 w-16 h-16 mb-4" />
-                  <p className="text-slate-500 text-lg">Aucun utilisateur trouvé</p>
-                  <p className="text-slate-400 text-sm mt-1">
+                  <Users className="mx-auto text-gray-300 w-16 h-16 mb-4" />
+                  <p className="text-gray-500 text-lg">Aucun utilisateur trouvé</p>
+                  <p className="text-gray-400 text-sm mt-1">
                     {searchTerm ? 'Essayez de modifier vos critères de recherche' : 'Commencez par créer un nouvel utilisateur'}
                   </p>
                 </div>
@@ -439,69 +440,71 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-slate-200/60 bg-slate-50/50">
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700 uppercase tracking-wider">
+                      <tr className="border-b border-gray-200/60 bg-gray-50/50">
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-black uppercase tracking-wider">
                           Utilisateur
                         </th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-black uppercase tracking-wider">
                           Rôle
                         </th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-black uppercase tracking-wider">
                           Statut
                         </th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-black uppercase tracking-wider">
                           Date de création
                         </th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-black uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200/40">
+                    <tbody className="divide-y divide-gray-200/40">
                       {filteredUsers.map((user) => {
                         const roleBadge = getRoleBadge(user.role);
                         const statusBadge = getStatusBadge(user.is_active);
                         
                         return (
-                          <tr key={user.id} className="hover:bg-slate-50/30 transition-colors duration-150">
+                          <tr key={user.id} className="hover:bg-gray-50/30 transition-colors duration-150">
                             <td className="px-6 py-4">
                               <div className="flex items-center space-x-3">
-                                <div className="bg-gradient-to-br from-slate-100 to-slate-200 p-2 rounded-xl">
-                                  <UserCheck className="w-4 h-4 text-slate-600" />
+                                <div className="bg-gradient-to-br from-gray-100 to-gray-200 p-2 rounded-xl">
+                                  <UserCheck className="w-4 h-4 text-gray-600" />
                                 </div>
                                 <div>
-                                  <div className="font-semibold text-slate-800">{user.nom_complet}</div>
-                                  <div className="text-slate-600 text-sm">@{user.username}</div>
-                                  <div className="text-slate-400 text-xs">{user.immatricule}</div>
+                                  <div className="font-semibold text-gray-800">{user.nom_complet}</div>
+                                  <div className="text-gray-600 text-sm">@{user.username}</div>
+                                  <div className="text-gray-400 text-xs">{user.immatricule}</div>
                                 </div>
                               </div>
                             </td>
                             <td className="px-6 py-4">
-                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${roleBadge.color} text-white shadow-sm`}>
+                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${roleBadge.color} shadow-sm`}>
                                 {roleBadge.text}
                               </span>
                             </td>
                             <td className="px-6 py-4">
-                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${statusBadge.color} text-white shadow-sm`}>
+                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusBadge.color} shadow-sm`}>
                                 {statusBadge.text}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-slate-600 text-sm">
+                            <td className="px-6 py-4 text-gray-600 text-sm">
                               {new Date(user.created_at).toLocaleDateString('fr-FR')}
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center space-x-2">
+                                {/* Bouton Activer/Désactiver - Gris */}
                                 <button
                                   onClick={() => handleDeactivateUser(user.id, user.is_active)}
                                   className={`p-2 rounded-lg transition-all duration-200 ${
                                     user.is_active 
-                                      ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' 
-                                      : 'bg-green-100 text-green-600 hover:bg-green-200'
+                                      ? 'bg-gray-300 text-gray-700 hover:bg-gray-400' 
+                                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
                                   }`}
                                   title={user.is_active ? 'Désactiver' : 'Activer'}
                                 >
                                   <Power size={16} />
                                 </button>
+                                {/* Bouton Supprimer - Rouge */}
                                 <button
                                   onClick={() => handleDeleteUser(user.id)}
                                   className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all duration-200"
@@ -526,16 +529,16 @@ const AdminPanel = ({ onLogout, currentUser }) => {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                   Demandes en Attente
                 </h2>
-                <p className="text-slate-600 mt-1">
+                <p className="text-gray-600 mt-1">
                   {totalDemands} demande(s) nécessitent votre attention
                 </p>
               </div>
               <button
                 onClick={fetchAllRequests}
-                className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                className="flex items-center space-x-2 bg-gradient-to-r from-gray-700 to-gray-900 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
               >
                 <RefreshCw size={16} />
                 <span>Actualiser</span>
@@ -545,8 +548,8 @@ const AdminPanel = ({ onLogout, currentUser }) => {
             {/* Demandes de réinitialisation */}
             {resetRequests.length > 0 && (
               <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-slate-700 flex items-center space-x-2">
-                  <Key className="w-5 h-5 text-orange-500" />
+                <h3 className="text-xl font-semibold text-gray-700 flex items-center space-x-2">
+                  <Key className="w-5 h-5 text-gray-600" />
                   <span>Demandes de Réinitialisation ({resetRequests.length})</span>
                 </h3>
                 <div className="grid gap-4">
@@ -554,24 +557,24 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                     const roleBadge = getRoleBadge(request.role);
                     
                     return (
-                      <div key={request.id} className="bg-white rounded-2xl shadow-lg border border-orange-200/60 p-6 hover:shadow-xl transition-all duration-200">
+                      <div key={request.id} className="bg-white rounded-2xl shadow-lg border border-gray-200/60 p-6 hover:shadow-xl transition-all duration-200">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4">
-                            <div className="bg-gradient-to-br from-orange-100 to-orange-50 p-3 rounded-xl">
-                              <Key className="w-6 h-6 text-orange-500" />
+                            <div className="bg-gradient-to-br from-gray-100 to-gray-50 p-3 rounded-xl">
+                              <Key className="w-6 h-6 text-gray-600" />
                             </div>
                             <div>
-                              <h3 className="font-semibold text-slate-800 text-lg">
-                                <span className="text-orange-600 font-bold">🔐 {request.nom_complet}</span> demande la réinitialisation de son mot de passe
+                              <h3 className="font-semibold text-gray-800 text-lg">
+                                <span className="text-gray-800 font-bold">🔐 {request.nom_complet}</span> demande la réinitialisation de son mot de passe
                               </h3>
-                              <div className="flex items-center space-x-4 mt-2 text-sm text-slate-600">
+                              <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
                                 <span><strong>Immatricule:</strong> {request.immatricule}</span>
                                 <span><strong>Username:</strong> @{request.username}</span>
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${roleBadge.color} text-white`}>
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${roleBadge.color}`}>
                                   {roleBadge.text}
                                 </span>
                               </div>
-                              <div className="flex items-center space-x-1 mt-1 text-slate-500 text-xs">
+                              <div className="flex items-center space-x-1 mt-1 text-gray-500 text-xs">
                                 <Clock className="w-3 h-3" />
                                 <span>Demandé le {new Date(request.created_at).toLocaleDateString('fr-FR')} à {new Date(request.created_at).toLocaleTimeString('fr-FR')}</span>
                               </div>
@@ -580,7 +583,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                           
                           <button
                             onClick={() => handleApproveReset(request.id)}
-                            className="flex items-center space-x-2 bg-gradient-to-r from-orange-500 to-red-600 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                            className="flex items-center space-x-2 bg-gradient-to-r from-gray-700 to-gray-900 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
                           >
                             <CheckCircle size={16} />
                             <span>Générer nouveau mot de passe</span>
@@ -596,8 +599,8 @@ const AdminPanel = ({ onLogout, currentUser }) => {
             {/* Demandes de changement de mot de passe */}
             {passwordChangeRequests.length > 0 && (
               <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-slate-700 flex items-center space-x-2">
-                  <Lock className="w-5 h-5 text-blue-500" />
+                <h3 className="text-xl font-semibold text-gray-700 flex items-center space-x-2">
+                  <Lock className="w-5 h-5 text-gray-600" />
                   <span>Demandes de Changement de Mot de Passe ({passwordChangeRequests.length})</span>
                 </h3>
                 <div className="grid gap-4">
@@ -605,24 +608,24 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                     const roleBadge = getRoleBadge(request.role);
                     
                     return (
-                      <div key={request.id} className="bg-white rounded-2xl shadow-lg border border-blue-200/60 p-6 hover:shadow-xl transition-all duration-200">
+                      <div key={request.id} className="bg-white rounded-2xl shadow-lg border border-gray-200/60 p-6 hover:shadow-xl transition-all duration-200">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4">
-                            <div className="bg-gradient-to-br from-blue-100 to-blue-50 p-3 rounded-xl">
-                              <Lock className="w-6 h-6 text-blue-500" />
+                            <div className="bg-gradient-to-br from-gray-100 to-gray-50 p-3 rounded-xl">
+                              <Lock className="w-6 h-6 text-gray-600" />
                             </div>
                             <div>
-                              <h3 className="font-semibold text-slate-800 text-lg">
-                                <span className="text-blue-600 font-bold">🔄 {request.nom_complet}</span> veut personnaliser son mot de passe
+                              <h3 className="font-semibold text-gray-800 text-lg">
+                                <span className="text-gray-800 font-bold">🔄 {request.nom_complet}</span> veut personnaliser son mot de passe
                               </h3>
-                              <div className="flex items-center space-x-4 mt-2 text-sm text-slate-600">
+                              <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
                                 <span><strong>Immatricule:</strong> {request.immatricule}</span>
                                 <span><strong>Username:</strong> @{request.username}</span>
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${roleBadge.color} text-white`}>
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${roleBadge.color}`}>
                                   {roleBadge.text}
                                 </span>
                               </div>
-                              <div className="flex items-center space-x-1 mt-1 text-slate-500 text-xs">
+                              <div className="flex items-center space-x-1 mt-1 text-gray-500 text-xs">
                                 <Clock className="w-3 h-3" />
                                 <span>Demandé le {new Date(request.created_at).toLocaleDateString('fr-FR')} à {new Date(request.created_at).toLocaleTimeString('fr-FR')}</span>
                               </div>
@@ -631,7 +634,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                           
                           <button
                             onClick={() => handleApprovePasswordChange(request.id)}
-                            className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-cyan-600 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                            className="flex items-center space-x-2 bg-gradient-to-r from-gray-700 to-gray-900 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
                           >
                             <CheckCircle size={16} />
                             <span>Approuver le changement</span>
@@ -646,12 +649,12 @@ const AdminPanel = ({ onLogout, currentUser }) => {
 
             {/* Aucune demande */}
             {totalDemands === 0 && (
-              <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-12 text-center">
-                <div className="bg-gradient-to-br from-green-100 to-green-50 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-10 h-10 text-green-500" />
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-200/60 p-12 text-center">
+                <div className="bg-gradient-to-br from-gray-100 to-gray-50 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-10 h-10 text-gray-500" />
                 </div>
-                <h3 className="text-xl font-semibold text-slate-800 mb-2">Aucune demande en attente</h3>
-                <p className="text-slate-600">Toutes les demandes ont été traitées.</p>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Aucune demande en attente</h3>
+                <p className="text-gray-600">Toutes les demandes ont été traitées.</p>
               </div>
             )}
           </div>
@@ -663,18 +666,18 @@ const AdminPanel = ({ onLogout, currentUser }) => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md transform animate-scaleIn">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-slate-800">Nouvel Utilisateur</h3>
+              <h3 className="text-xl font-bold text-gray-800">Nouvel Utilisateur</h3>
               <button
                 onClick={() => setShowUserForm(false)}
-                className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
               >
-                <span className="text-slate-400 hover:text-slate-600">✕</span>
+                <span className="text-gray-400 hover:text-gray-600">✕</span>
               </button>
             </div>
             
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Immatricule *
                 </label>
                 <input
@@ -682,12 +685,12 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                   value={newUser.immatricule}
                   onChange={(e) => setNewUser({...newUser, immatricule: e.target.value})}
                   required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
                   placeholder="Ex: AGENT001"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Nom Complet *
                 </label>
                 <input
@@ -695,18 +698,18 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                   value={newUser.nom_complet}
                   onChange={(e) => setNewUser({...newUser, nom_complet: e.target.value})}
                   required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
                   placeholder="Ex: Jean Rakoto"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Rôle
                 </label>
                 <select
                   value={newUser.role}
                   onChange={(e) => setNewUser({...newUser, role: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
                 >
                   <option value="agent">Agent</option>
                   <option value="secretaire">Secrétaire</option>
@@ -715,20 +718,20 @@ const AdminPanel = ({ onLogout, currentUser }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Code Fokontany (optionnel)
                 </label>
                 <input
                   type="text"
                   value={newUser.fokontany_code || ''}
                   onChange={(e) => setNewUser({...newUser, fokontany_code: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
                   placeholder="Ex: TSIMENATSE_001"
                 />
-                <p className="text-xs text-slate-400 mt-1">Si l'utilisateur est un agent/secrétaire, renseignez le code du fokontany auquel il appartient.</p>
+                <p className="text-xs text-gray-400 mt-1">Si l'utilisateur est un agent/secrétaire, renseignez le code du fokontany auquel il appartient.</p>
               </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-blue-700 text-sm">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <p className="text-gray-700 text-sm">
                   <strong>Note:</strong> Le nom d'utilisateur sera généré automatiquement à partir de l'immatricule et un mot de passe aléatoire sera créé.
                 </p>
               </div>
@@ -737,14 +740,14 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                   type="button"
                   onClick={() => setShowUserForm(false)}
                   disabled={loading}
-                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2 px-4 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-colors disabled:opacity-50 flex items-center justify-center"
+                  className="flex-1 bg-gradient-to-r from-gray-700 to-gray-900 text-white py-2 px-4 rounded-lg font-semibold hover:from-gray-800 hover:to-gray-950 transition-colors disabled:opacity-50 flex items-center justify-center"
                 >
                   {loading ? (
                     <div className="flex items-center space-x-2">
