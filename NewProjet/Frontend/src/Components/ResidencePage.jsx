@@ -20,18 +20,19 @@ import {
   Upload,
   Trash2,
   Image as ImageIcon,
+  Plus,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 
-// Composant modal pour l'agrandissement d'image
 const ImageModal = ({ 
   isOpen, 
   onClose, 
   images, 
   currentIndex, 
   onNext, 
-  onPrev 
+  onPrev,
+  onAddImage
 }) => {
   const [isMounted, setIsMounted] = useState(false);
 
@@ -48,304 +49,116 @@ const ImageModal = ({
     }
   };
 
+  const handleAddImageClick = () => {
+    if (onAddImage) {
+      onAddImage();
+    }
+  };
+
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* Overlay avec assombrissement */}
+      {/* Overlay sombre comme pour le modal Ajouter un résident */}
       <div 
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/20"
         onClick={handleOverlayClick}
       />
       
-      {/* Modal d'image */}
+      {/* Conteneur principal avec hauteur réduite */}
       <div 
-        className="relative bg-white rounded-lg overflow-hidden w-[80vw] max-w-4xl h-auto max-h-[85vh] flex flex-col"
+        className="relative rounded-xl overflow-hidden shadow-2xl bg-black"
         onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: '85vw',
+          maxHeight: '75vh',
+          height: 'auto',
+          width: 'auto'
+        }}
       >
-        {/* Header du modal */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
-          <div className="text-sm text-gray-600">
-            Image {currentIndex + 1} sur {images.length}
-          </div>
+        {/* Image principale */}
+        <img
+          src={images[currentIndex]}
+          alt={`Image ${currentIndex + 1}`}
+          className="max-w-full max-h-[75vh] object-contain"
+        />
+
+        {/* Boutons flottants sur l'image - en haut à droite */}
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <button
+            onClick={handleAddImageClick}
+            className="flex items-center justify-center hover:bg-white/90 rounded-full transition-all duration-200"
+            style={{ 
+              width: '36px', 
+              height: '36px',
+              color: '#374151',
+              backgroundColor: 'rgba(243, 244, 246, 0.9)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+              border: '1px solid rgba(209, 213, 219, 0.5)'
+            }}
+            title="Ajouter une image"
+          >
+            <Plus size={18} />
+          </button>
+          
           <button
             onClick={onClose}
-            className="flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors"
+            className="flex items-center justify-center hover:bg-white/90 rounded-full transition-all duration-200"
             style={{ 
-              width: '32px', 
-              height: '32px',
-              color: '#374151'
+              width: '36px', 
+              height: '36px',
+              color: '#374151',
+              backgroundColor: 'rgba(243, 244, 246, 0.9)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+              border: '1px solid rgba(209, 213, 219, 0.5)'
             }}
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* Contenu de l'image */}
-        <div className="flex-1 relative flex items-center justify-center p-4 bg-gray-900">
-          <img
-            src={images[currentIndex]}
-            alt={`Image ${currentIndex + 1}`}
-            className="max-w-full max-h-[calc(85vh-80px)] object-contain"
-          />
-
-          {/* Flèches de navigation */}
-          {images.length > 1 && (
-            <>
-              <button
-                onClick={onPrev}
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm"
-                style={{ 
-                  width: '40px', 
-                  height: '40px'
-                }}
-              >
-                <ChevronLeft size={24} />
-              </button>
-              <button
-                onClick={onNext}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm"
-                style={{ 
-                  width: '40px', 
-                  height: '40px'
-                }}
-              >
-                <ChevronRight size={24} />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-};
-
-// NOUVEAU COMPOSANT : Modal pour ajouter des photos
-const AddPhotosModal = ({
-  isOpen,
-  onClose,
-  onUpload,
-  selectedResidence,
-  photoInputRef
-}) => {
-  const [isMounted, setIsMounted] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [previewUrls, setPreviewUrls] = useState([]);
-
-  useEffect(() => {
-    setIsMounted(true);
-    return () => setIsMounted(false);
-  }, []);
-
-  useEffect(() => {
-    if (selectedFiles.length > 0) {
-      const urls = selectedFiles.map(file => URL.createObjectURL(file));
-      setPreviewUrls(urls);
-      
-      // Cleanup preview URLs
-      return () => {
-        urls.forEach(url => URL.revokeObjectURL(url));
-      };
-    } else {
-      setPreviewUrls([]);
-    }
-  }, [selectedFiles]);
-
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      setSelectedFiles(files);
-    }
-  };
-
-  const handleRemoveFile = (index) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleUpload = async () => {
-    if (selectedFiles.length === 0 || !selectedResidence) return;
-    
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      selectedFiles.forEach(file => {
-        formData.append("photos", file);
-      });
-
-      const resp = await fetch(
-        `${API_BASE}/api/residences/${selectedResidence.id}/photos`,
-        {
-          method: "POST",
-          headers: localStorage.getItem("token")
-            ? {
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-              }
-            : {},
-          body: formData,
-        }
-      );
-
-      if (!resp.ok) {
-        const errorText = await resp.text();
-        console.warn("upload photos response not ok", resp.status, errorText);
-        throw new Error("Erreur upload photos");
-      }
-
-      const result = await resp.json();
-      
-      if (onUpload && result.photos && result.photos.length > 0) {
-        onUpload(result.photos);
-      }
-      
-      setSelectedFiles([]);
-      setPreviewUrls([]);
-      onClose();
-      
-    } catch (err) {
-      console.warn("Erreur lors de l'upload des photos:", err);
-      alert("Erreur lors de l'upload des photos");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setSelectedFiles([]);
-    setPreviewUrls([]);
-    onClose();
-  };
-
-  const handleClickAddPhotos = () => {
-    if (photoInputRef.current) {
-      photoInputRef.current.click();
-    }
-  };
-
-  if (!isMounted || !isOpen) return null;
-
-  return ReactDOM.createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* Overlay */}
-      <div 
-        className="absolute inset-0 bg-black/20"
-        onClick={handleCancel}
-      />
-      
-      {/* Modal */}
-      <div 
-        className="relative bg-gray-100 rounded-3xl shadow-2xl w-[500px] h-auto max-h-[600px] overflow-hidden flex flex-col transform transition-all ml-24"
-        style={{
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5">
-          <h2 className="text-xl font-bold text-gray-800">
-            Ajouter des photos à la résidence
-          </h2>
-          <button
-            onClick={handleCancel}
-            className="flex items-center justify-center hover:bg-gray-200 rounded-full transition-colors p-2 shadow-2xl"
-            style={{ 
-              width: '40px', 
-              height: '40px',
-              backgroundColor: 'white',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-            }}
-          >
-            <X size={20} className="text-gray-600" />
-          </button>
+        {/* Indicateur "1/1" sur l'image - en bas à GAUCHE */}
+        <div className="absolute bottom-4 left-4 text-gray-800 text-sm rounded-full px-3 py-1.5 font-medium"
+          style={{
+            backgroundColor: 'rgba(243, 244, 246, 0.9)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+            border: '1px solid rgba(209, 213, 219, 0.5)'
+          }}
+        >
+          {currentIndex + 1}/{images.length}
         </div>
 
-        {/* Contenu */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="space-y-4">
-            {/* Bouton pour sélectionner des fichiers */}
-            <div
-              onClick={handleClickAddPhotos}
-              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 transition-colors"
-              style={{ backgroundColor: 'white' }}
+        {/* Boutons de navigation sur l'image - SUPERPOSÉS DIRECTEMENT */}
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={onPrev}
+              className="absolute top-1/2 left-4 transform -translate-y-1/2 flex items-center justify-center hover:bg-white/90 rounded-full transition-all duration-200"
+              style={{ 
+                width: '44px', 
+                height: '44px',
+                color: '#374151', /* Icônes blanches */
+                backgroundColor: 'rgba(243, 244, 243, 0.9)', /* Fond semi-transparent blanc */
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
+                border: '1px solid rgba(209, 213, 219, 0.5)'
+              }}
             >
-              <Upload size={32} className="mx-auto mb-3 text-gray-400" />
-              <p className="text-gray-600 font-medium">
-                Cliquez pour sélectionner des photos
-              </p>
-              <p className="text-gray-500 text-sm mt-1">
-                PNG, JPG, JPEG jusqu'à 10MB
-              </p>
-              <input
-                type="file"
-                ref={photoInputRef}
-                className="hidden"
-                accept="image/*"
-                multiple
-                onChange={handleFileSelect}
-              />
-            </div>
-
-            {/* Prévisualisation des photos sélectionnées */}
-            {previewUrls.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-medium text-gray-700">
-                  Photos à uploader ({selectedFiles.length})
-                </h3>
-                <div className="grid grid-cols-3 gap-2">
-                  {previewUrls.map((url, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={url}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg"
-                      />
-                      <button
-                        onClick={() => handleRemoveFile(index)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                      <div className="text-xs text-gray-500 truncate mt-1">
-                        {selectedFiles[index].name}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Information sur la résidence */}
-            <div className="bg-white rounded-lg p-4">
-              <h4 className="font-medium text-gray-700 mb-2">Résidence concernée :</h4>
-              <p className="text-gray-800 font-semibold">{selectedResidence?.name}</p>
-              <p className="text-gray-600 text-sm">{selectedResidence?.adresse}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex space-x-3 px-6 py-4 border-gray-300 bg-gray-100">
-          <button
-            onClick={handleCancel}
-            className="flex-1 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-xs py-2.5"
-            style={{
-              maxWidth: '200px',
-              borderColor: '#E5E7EB'
-            }}
-            disabled={isUploading}
-          >
-            Annuler
-          </button>
-          <button
-            onClick={handleUpload}
-            disabled={selectedFiles.length === 0 || isUploading}
-            className="flex-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-xs py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              maxWidth: '200px'
-            }}
-          >
-            {isUploading ? 'Upload en cours...' : 'Uploader les photos'}
-          </button>
-        </div>
+              <ChevronLeft size={24} />
+            </button>
+            <button
+              onClick={onNext}
+              className="absolute top-1/2 right-4 transform -translate-y-1/2 flex items-center justify-center shadow-2xl hover:bg-white/90 rounded-full transition-all duration-200"
+              style={{ 
+                width: '44px', 
+                height: '44px',
+                color: '#374151', /* Icônes blanches */
+                backgroundColor: 'rgba(243, 244, 246, 0.9)', /* Fond semi-transparent blanc */
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
+                border: '1px solid rgba(209, 213, 219, 0.5)'
+              }}
+            >
+              <ChevronRight size={24} />
+            </button>
+          </>
+        )}
       </div>
     </div>,
     document.body
@@ -384,7 +197,6 @@ const AddResidentModal = ({
     }
   }, [isOpen]);
 
-  // Fonctions pour la date
   const formatPartialDate = (rawValue) => {
     let result = rawValue;
     if (rawValue.length > 2) {
@@ -784,13 +596,11 @@ const AddResidentModal = ({
 
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* Overlay avec diminution de luminosité */}
       <div 
         className="absolute inset-0 bg-black/20"
         onClick={handleCancel}
       />
       
-      {/* Modal principal - MODIFIÉ POUR ARRONDI ET COULEUR GRIS CLAIR */}
       <div 
         className="relative bg-gray-100 rounded-3xl shadow-2xl w-[480px] h-auto max-h-[600px] overflow-hidden flex flex-col transform transition-all ml-24"
         style={{
@@ -798,7 +608,6 @@ const AddResidentModal = ({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header du modal - MODIFIÉ POUR LE BOUTON X AVEC SHADOW */}
         <div className="flex items-center justify-between px-6 py-5">
           <h2 className="text-xl font-bold text-gray-800">
             Ajouter un résident
@@ -817,11 +626,8 @@ const AddResidentModal = ({
           </button>
         </div>
 
-        {/* Contenu du modal */}
         <div className="flex-1 overflow-y-auto px-6 py-4 ml-4">
-          {/* Formulaire avec champs en blanc */}
           <div className="space-y-4">
-            {/* Champ Nom */}
             <div>
               <input
                 ref={nomInputRef}
@@ -849,7 +655,6 @@ const AddResidentModal = ({
               />
             </div>
 
-            {/* Champ Prénom */}
             <div>
               <input
                 ref={prenomInputRef}
@@ -877,7 +682,6 @@ const AddResidentModal = ({
               />
             </div>
 
-            {/* Sélection Sexe - Radio boutons en couleur bleu */}
             <div className="pl-4">
               <div className="mb-2 text-sm font-medium text-gray-700">
                 Sexe
@@ -894,7 +698,7 @@ const AddResidentModal = ({
                     }
                     className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                     style={{
-                      accentColor: '#3B82F6' // Couleur bleue pour les radios
+                      accentColor: '#3B82F6'
                     }}
                   />
                   <span className="text-gray-700 text-sm">Masculin</span>
@@ -910,7 +714,7 @@ const AddResidentModal = ({
                     }
                     className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                     style={{
-                      accentColor: '#3B82F6' // Couleur bleue pour les radios
+                      accentColor: '#3B82F6'
                     }}
                   />
                   <span className="text-gray-700 text-sm">Féminin</span>
@@ -918,7 +722,6 @@ const AddResidentModal = ({
               </div>
             </div>
 
-            {/* Champ Date de naissance */}
             <div>
               <input
                 ref={dateNaissanceInputRef}
@@ -949,7 +752,6 @@ const AddResidentModal = ({
               )}
             </div>
 
-            {/* Section CIN (conditionnelle pour majeurs) */}
             {estMajeurFromInput() && (
               <div className="animate-fadeIn">
                 <input
@@ -982,7 +784,6 @@ const AddResidentModal = ({
               </div>
             )}
 
-            {/* Champ Téléphone */}
             <div>
               <input
                 ref={telephoneInputRef}
@@ -1012,7 +813,6 @@ const AddResidentModal = ({
           </div>
         </div>
 
-        {/* Footer avec boutons */}
         <div className="flex space-x-3 px-6 py-4 border-gray-300 bg-gray-100">
           <button
             onClick={handleCancel}
@@ -1040,7 +840,7 @@ const AddResidentModal = ({
   );
 };
 
-// NOUVEAU COMPOSANT : RésidentsList pour afficher directement les résidents
+// Composant pour afficher directement les résidents
 const ResidentsList = ({ 
   residents, 
   onBackToResidences, 
@@ -1051,18 +851,15 @@ const ResidentsList = ({
   const [currentPage, setCurrentPage] = useState(1);
   const residentsPerPage = 10;
   
-  // Pagination
   const indexOfLastResident = currentPage * residentsPerPage;
   const indexOfFirstResident = indexOfLastResident - residentsPerPage;
   const currentResidents = residents.slice(indexOfFirstResident, indexOfLastResident);
   const totalPages = Math.ceil(residents.length / residentsPerPage);
 
-  // Fonction pour formater le genre
   const formatGenre = (genre) => {
     return genre === "homme" ? "Masculin" : "Féminin";
   };
 
-  // Fonction pour extraire le nom et prénom
   const extractNomPrenom = (nomComplet) => {
     if (!nomComplet) return { nom: "", prenom: "" };
     const parts = nomComplet.split(" ");
@@ -1073,7 +870,6 @@ const ResidentsList = ({
     };
   };
 
-  // Fonction pour formater la date
   const formatDateHyphen = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -1083,7 +879,6 @@ const ResidentsList = ({
     return `${day}-${month}-${year}`;
   };
 
-  // Fonction pour trouver la résidence d'un résident
   const findResidenceForResident = (residentId) => {
     const resident = residents.find(r => r.id === residentId);
     if (resident && resident.residence_id) {
@@ -1095,7 +890,6 @@ const ResidentsList = ({
   return (
     <div className="w-full">
       <div className="h-full flex flex-col p-6 space-y-6 min-h-screen" style={{ padding: '24px 32px' }}>
-        {/* Titre et bouton retour */}
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <button
@@ -1122,7 +916,6 @@ const ResidentsList = ({
           </div>
         </div>
 
-        {/* Statistiques */}
         <div>
           <div className="grid grid-cols-4 gap-5">
             <div 
@@ -1171,7 +964,6 @@ const ResidentsList = ({
           </div>
         </div>
 
-        {/* Tableau des résidents */}
         <div className="flex-1 mb-4">
           <div 
             className="bg-white rounded-2xl flex flex-col"
@@ -1185,7 +977,6 @@ const ResidentsList = ({
               overflow: 'hidden'
             }}
           >
-            {/* En-tête du tableau */}
             <div className="flex-shrink-0 mb-1">
               <div className="flex items-center" style={{ height: '48px' }}>
                 <div style={{ width: '60px', padding: '0 12px' }}>
@@ -1294,7 +1085,6 @@ const ResidentsList = ({
               </div>
             </div>
 
-            {/* Corps du tableau */}
             <div className="flex-1 overflow-hidden">
               {currentResidents.length === 0 ? (
                 <div className="h-full flex items-center justify-center" style={{ minHeight: '300px' }}>
@@ -1398,7 +1188,6 @@ const ResidentsList = ({
               )}
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex-shrink-0 pt-2" style={{ paddingTop: '16px' }}>
                 <div className="flex items-center justify-center">
@@ -1500,7 +1289,6 @@ export default function ResidencePage({
   onEnterDetail,
   onExitDetail,
 }) {
-  // residences list - initialiser avec un tableau vide au lieu des mocks
   const [resList, setResList] = useState([]);
   const [selectedResidence, setSelectedResidence] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -1522,48 +1310,26 @@ export default function ResidencePage({
     sexe: "homme",
   });
 
-  // NOUVEAU ÉTAT : Mode de recherche (résidences vs résidents)
-  const [searchMode, setSearchMode] = useState("residences"); // "residences" ou "residents"
-  
-  // NOUVEAU ÉTAT : Résidents filtrés par recherche
+  const [searchMode, setSearchMode] = useState("residences");
   const [filteredResidents, setFilteredResidents] = useState([]);
-
-  // ÉTAT POUR GÉRER LA DATE DE NAISSANCE AVEC FORMAT VISIBLE
   const [dateInput, setDateInput] = useState("");
-
-  // ÉTAT POUR GÉRER L'ERREUR DE DATE
   const [dateError, setDateError] = useState("");
-
-  // NOUVEAUX ÉTATS : Pour stocker les résidents de toutes les résidences
   const [allResidents, setAllResidents] = useState([]);
-
-  // NOUVEAUX ÉTATS POUR LA GESTION DES PHOTOS
   const [isPhotoExpanded, setIsPhotoExpanded] = useState(false);
   const [isFullScreenPhoto, setIsFullScreenPhoto] = useState(false);
-
-  // ÉTAT POUR LE MODAL D'AJOUT DE RÉSIDENT
   const [showAddResidentModal, setShowAddResidentModal] = useState(false);
-
-  // NOUVEAU ÉTAT POUR LE MODAL D'AJOUT DE PHOTOS
-  const [showAddPhotosModal, setShowAddPhotosModal] = useState(false);
-
-  // ÉTAT POUR LE MODAL D'IMAGE
   const [showImageModal, setShowImageModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  // Références pour les inputs du formulaire
   const nomInputRef = useRef(null);
   const prenomInputRef = useRef(null);
   const dateNaissanceInputRef = useRef(null);
   const cinInputRef = useRef(null);
   const telephoneInputRef = useRef(null);
   const sexeSelectRef = useRef(null);
-
-  // Référence pour l'input de photo
   const photoInputRef = useRef(null);
-
-  // Référence pour suivre si le composant est monté
   const isMountedRef = useRef(true);
+  const [residentPage, setResidentPage] = useState(1);
+  const [residentsPerPageInModal] = useState(4);
 
   // LOAD residences from backend on mount
   useEffect(() => {
@@ -1580,7 +1346,7 @@ export default function ResidencePage({
 
         const normalized = (rows || []).map((r) => ({
           id: r.id,
-          name: r.name || r.lot || `Lot ${r.id}`,
+          name: r.nom_residence || r.name || r.lot || `Lot ${r.id}`,
           photos: Array.isArray(r.photos)
             ? r.photos
                 .filter((photo) => photo && photo.trim() !== "")
@@ -1605,7 +1371,9 @@ export default function ResidencePage({
           lot: r.lot || "",
           quartier: r.quartier || "",
           ville: r.ville || "",
-          proprietaire: r.proprietaire || "",
+          proprietaire: r.nom_proprietaire || r.proprietaire || "",
+          nom_residence: r.nom_residence || "",
+          nom_proprietaire: r.nom_proprietaire || "",
           totalResidents: r.total_residents || 0,
           hommes: r.hommes || 0,
           femmes: r.femmes || 0,
@@ -1654,7 +1422,6 @@ export default function ResidencePage({
         });
         if (resp.ok) {
           const persons = await resp.json();
-          // Formater les résidents
           const formattedPersons = (persons || []).map((person) => ({
             id: person.id,
             nomComplet: person.nom_complet || "",
@@ -1681,12 +1448,10 @@ export default function ResidencePage({
     fetchAllResidents();
   }, []);
 
-  // NOUVEAU EFFET : Lorsque la recherche change, filtrer les résidents
   useEffect(() => {
     if (searchQuery && searchQuery.trim() !== "") {
       const searchTerm = searchQuery.toLowerCase().trim();
       
-      // Filtrer les résidents
       const filtered = allResidents.filter((resident) => {
         const nomComplet = resident.nomComplet?.toLowerCase() || "";
         const nom = resident.nom?.toLowerCase() || "";
@@ -1705,20 +1470,17 @@ export default function ResidencePage({
       
       setFilteredResidents(filtered);
       
-      // Si on trouve des résidents, passer en mode "residents"
       if (filtered.length > 0) {
         setSearchMode("residents");
       } else {
         setSearchMode("residences");
       }
     } else {
-      // Si pas de recherche, revenir au mode résidences
       setSearchMode("residences");
       setFilteredResidents([]);
     }
   }, [searchQuery, allResidents]);
 
-  // Calculer les statistiques
   const calculateStatistics = () => {
     const totalResidences = resList.length;
     const residentsInResidences = allResidents.filter((person) =>
@@ -1748,7 +1510,6 @@ export default function ResidencePage({
 
   const statistics = calculateStatistics();
 
-  // Helper pour les headers avec token
   const getHeaders = () => {
     const token = localStorage.getItem("token");
     return token
@@ -1756,7 +1517,6 @@ export default function ResidencePage({
       : { "Content-Type": "application/json" };
   };
 
-  // Charger les photos d'une résidence
   const loadResidencePhotos = async (residenceId) => {
     try {
       const resp = await fetch(
@@ -1898,35 +1658,10 @@ export default function ResidencePage({
     }
   };
 
-  // NOUVELLE FONCTION : Pour gérer l'upload de photos depuis le modal
-  const handleUploadPhotos = (newPhotos) => {
-    const newPhotoUrls = newPhotos.map((photo) => {
-      if (photo.url.startsWith("http")) {
-        return photo.url;
-      }
-      return `${API_BASE}${photo.url.startsWith("/") ? "" : "/"}${photo.url}`;
-    });
-
-    setSelectedResidence((prev) => ({
-      ...prev,
-      photos: [...(prev.photos || []), ...newPhotoUrls],
-    }));
-
-    setResList((list) =>
-      list.map((r) =>
-        r.id === selectedResidence.id ? { 
-          ...r, 
-          photos: [...(r.photos || []), ...newPhotoUrls] 
-        } : r
-      )
-    );
-  };
-
   const handleViewDetails = async (residence) => {
     try {
       console.log("Opening details for residence:", residence.id);
       
-      // NOUVEAU : Entrer en mode détail
       if (onEnterDetail) {
         onEnterDetail();
       }
@@ -1958,7 +1693,6 @@ export default function ResidencePage({
         is_proprietaire: p.is_proprietaire || false,
       }));
 
-      // Calculer le nombre réel de résidents
       const totalRealResidents = normalizedPersons.length;
       const hommesReal = normalizedPersons.filter(
         (person) =>
@@ -1973,6 +1707,10 @@ export default function ResidencePage({
           person.genre === "female"
       ).length;
 
+      // RÉCUPÉRER LE NOM DE LA RÉSIDENCE ET LE PROPRIÉTAIRE
+      const nomResidence = residence.nom_residence || residence.nomResidence || residence.name || residence.lot || "";
+      const nomProprietaire = residence.nom_proprietaire || residence.nomProprietaire || residence.proprietaire || "";
+
       setSelectedResidence({
         ...base,
         photos: photos,
@@ -1980,6 +1718,11 @@ export default function ResidencePage({
         totalResidents: totalRealResidents,
         hommes: hommesReal,
         femmes: femmesReal,
+        // S'assurer que les champs sont bien définis
+        name: nomResidence,
+        proprietaire: nomProprietaire,
+        nom_residence: nomResidence,
+        nom_proprietaire: nomProprietaire
       });
 
       setIsPhotoExpanded(false);
@@ -1988,7 +1731,6 @@ export default function ResidencePage({
       setShowModal(true);
     } catch (e) {
       console.error("Error loading residence details:", e);
-      // Fallback au minimum
       const totalRealResidents = residence.residents ? residence.residents.length : 0;
       const hommesReal = residence.residents ? residence.residents.filter(
         (person) =>
@@ -2003,6 +1745,9 @@ export default function ResidencePage({
           person.genre === "female"
       ).length : 0;
 
+      const nomResidence = residence.nom_residence || residence.nomResidence || residence.name || residence.lot || "";
+      const nomProprietaire = residence.nom_proprietaire || residence.nomProprietaire || residence.proprietaire || "";
+
       setSelectedResidence({
         ...residence,
         photos: residence.photos || [],
@@ -2010,6 +1755,10 @@ export default function ResidencePage({
         totalResidents: totalRealResidents,
         hommes: hommesReal,
         femmes: femmesReal,
+        name: nomResidence,
+        proprietaire: nomProprietaire,
+        nom_residence: nomResidence,
+        nom_proprietaire: nomProprietaire
       });
       setShowModal(true);
     }
@@ -2036,7 +1785,6 @@ export default function ResidencePage({
     setDateInput("");
     setDateError("");
     
-    // NOUVEAU : Sortir du mode détail quand on ferme le modal
     if (onExitDetail) {
       onExitDetail();
     }
@@ -2057,7 +1805,6 @@ export default function ResidencePage({
     setDateError("");
   };
 
-  // Fonctions pour le carrousel d'images
   const handleNextImage = useCallback(() => {
     if (selectedResidence?.photos && selectedResidence.photos.length > 0) {
       setCurrentImageIndex((prev) =>
@@ -2083,16 +1830,17 @@ export default function ResidencePage({
     setShowImageModal(false);
   };
 
-  // NOUVELLE FONCTION : Ouvrir le modal d'ajout de photos
-  const handleOpenAddPhotosModal = () => {
-    setShowAddPhotosModal(true);
+  const handleAddImageInModal = () => {
+    console.log("Ouvrir le sélecteur de fichiers ou le formulaire d'ajout");
+    
+    if (photoInputRef.current) {
+      photoInputRef.current.click();
+    }
   };
 
-  // NOUVELLE FONCTION : Fermer le modal d'ajout de photos
-  const handleCloseAddPhotosModal = () => {
-    setShowAddPhotosModal(false);
+  const handleDirectPhotoUpload = () => {
     if (photoInputRef.current) {
-      photoInputRef.current.value = "";
+      photoInputRef.current.click();
     }
   };
 
@@ -2115,7 +1863,6 @@ export default function ResidencePage({
     }
   };
 
-  // Save edited residents
   const handleSaveEdit = async () => {
     if (!selectedResidence) return;
     try {
@@ -2178,7 +1925,6 @@ export default function ResidencePage({
 
       const created = await resp.json();
 
-      // Mettre à jour les statistiques
       const updatedResidents = [
         ...(selectedResidence?.residents || []),
         {
@@ -2213,7 +1959,6 @@ export default function ResidencePage({
         femmes: femmesReal,
       }));
 
-      // Ajouter aux résidents globaux
       setAllResidents((prev) => [
         ...prev,
         {
@@ -2275,7 +2020,6 @@ export default function ResidencePage({
     setDateError("");
   };
 
-  // Fonction pour extraire le nom et prénom du nom complet
   const extractNomPrenom = (nomComplet) => {
     if (!nomComplet) return { nom: "", prenom: "" };
     const parts = nomComplet.split(" ");
@@ -2286,12 +2030,10 @@ export default function ResidencePage({
     };
   };
 
-  // Fonction pour retourner à la liste des résidences
   const handleBackToResidences = () => {
     setSearchMode("residences");
   };
 
-  // Filtrage et tri des résidences (recherche dans les résidences)
   const searchInResidences = () => {
     if (!searchQuery || searchQuery.trim() === "") {
       return resList;
@@ -2306,6 +2048,8 @@ export default function ResidencePage({
       const ville = residence.ville?.toLowerCase() || "";
       const adresse = residence.adresse?.toLowerCase() || "";
       const proprietaire = residence.proprietaire?.toLowerCase() || "";
+      const nomResidence = residence.nom_residence?.toLowerCase() || "";
+      const nomProprietaire = residence.nom_proprietaire?.toLowerCase() || "";
 
       return (
         name.includes(searchTerm) ||
@@ -2313,7 +2057,9 @@ export default function ResidencePage({
         quartier.includes(searchTerm) ||
         ville.includes(searchTerm) ||
         adresse.includes(searchTerm) ||
-        proprietaire.includes(searchTerm)
+        proprietaire.includes(searchTerm) ||
+        nomResidence.includes(searchTerm) ||
+        nomProprietaire.includes(searchTerm)
       );
     });
   };
@@ -2339,7 +2085,6 @@ export default function ResidencePage({
       }
     });
 
-  // Calcul de la pagination pour les résidences
   const indexOfLastResidence = currentPage * residencesPerPage;
   const indexOfFirstResidence = indexOfLastResidence - residencesPerPage;
   const currentResidences = filteredResidences.slice(
@@ -2348,9 +2093,6 @@ export default function ResidencePage({
   );
   const totalPages = Math.ceil(filteredResidences.length / residencesPerPage);
 
-  // Pagination pour les résidents dans le modal
-  const [residentPage, setResidentPage] = useState(1);
-  const residentsPerPageInModal = 10;
   const indexOfLastResident = residentPage * residentsPerPageInModal;
   const indexOfFirstResident = indexOfLastResident - residentsPerPageInModal;
   const currentResidentsInModal = selectedResidence?.residents
@@ -2360,7 +2102,6 @@ export default function ResidencePage({
     ? Math.ceil(selectedResidence.residents.length / residentsPerPageInModal)
     : 0;
 
-  // Fonctions de pagination
   const nextPage = () => {
     if (currentPage < totalPages) {
       setCurrentPage(currentPage + 1);
@@ -2384,7 +2125,6 @@ export default function ResidencePage({
     }
   };
 
-  // Fonction utilitaire pour calculer l'âge
   const calculerAge = (dateNaissance) => {
     const today = new Date();
     const birthDate = new Date(dateNaissance);
@@ -2401,12 +2141,10 @@ export default function ResidencePage({
     return age;
   };
 
-  // Fonction utilitaire pour vérifier si majeur
   const estMajeur = (dateNaissance) => {
     return calculerAge(dateNaissance) >= 18;
   };
 
-  // Fonction pour formater la date en format "jj-mm-aaaa"
   const formatDateHyphen = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -2416,12 +2154,10 @@ export default function ResidencePage({
     return `${day}-${month}-${year}`;
   };
 
-  // Fonction pour formater le genre
   const formatGenre = (genre) => {
     return genre === "homme" ? "Masculin" : "Féminin";
   };
 
-  // Composant pour afficher un résident dans la liste - MODIFIÉ
   const ResidentRow = ({ resident }) => {
     const { nom, prenom } = extractNomPrenom(resident.nomComplet);
     const isMineur = resident.dateNaissance && !estMajeur(resident.dateNaissance);
@@ -2470,7 +2206,6 @@ export default function ResidencePage({
     );
   };
 
-  // Composant pour l'en-tête de la liste des résidents - MODIFIÉ
   const ResidentListHeader = () => (
     <thead className="bg-gray-50 sticky top-0 z-10">
       <tr>
@@ -2496,7 +2231,6 @@ export default function ResidencePage({
     </thead>
   );
 
-  // AFFICHER LA LISTE DES RÉSIDENTS SI ON EST EN MODE RECHERCHE
   if (searchMode === "residents" && searchQuery && searchQuery.trim() !== "") {
     return (
       <ResidentsList 
@@ -2509,21 +2243,17 @@ export default function ResidencePage({
     );
   }
 
-  // SINON, AFFICHER LA LISTE DES RÉSIDENCES
   return (
     <>
       <div className="h-full flex">
-        {/* Section principale - cachée quand le modal est ouvert */}
         {!showModal && (
           <div className="w-full">
-            {/* Conteneur principal SANS fond semi-transparent */}
             <div 
               className="h-full flex flex-col p-6 space-y-6 min-h-screen"
               style={{ 
                 padding: '24px 32px'
               }}
             >
-              {/* Titre principal seulement - SUPPRESSION DE LA BARRE DE RECHERCHE */}
               <div className="flex items-center justify-between">
                 <h1 
                   className="text-black"
@@ -2535,13 +2265,10 @@ export default function ResidencePage({
                 >
                   Liste des Résidences
                 </h1>
-                {/* Barre de recherche SUPPRIMÉE - utilisation de la barre de recherche principale de l'interface */}
               </div>
 
-              {/* Section des cartes statistiques - TOUJOURS VISIBLE */}
               <div>
                 <div className="grid grid-cols-4 gap-5">
-                  {/* Carte 1: Nombre total de résidences */}
                   <div 
                     className="flex items-center p-4"
                     style={{
@@ -2586,7 +2313,6 @@ export default function ResidencePage({
                     </div>
                   </div>
 
-                  {/* Carte 2: Nombre total de résidents */}
                   <div 
                     className="flex items-center p-4"
                     style={{
@@ -2631,7 +2357,6 @@ export default function ResidencePage({
                     </div>
                   </div>
 
-                  {/* Carte 3: Hommes */}
                   <div 
                     className="flex items-center p-4"
                     style={{
@@ -2676,7 +2401,6 @@ export default function ResidencePage({
                     </div>
                   </div>
 
-                  {/* Carte 4: Femmes */}
                   <div 
                     className="flex items-center p-4"
                     style={{
@@ -2723,13 +2447,12 @@ export default function ResidencePage({
                 </div>
               </div>
 
-              {/* Conteneur principal du tableau avec spécifications exactes */}
               <div className="flex-1 mb-4">
                 <div 
                   className="bg-white rounded-2xl flex flex-col"
                   style={{
                     width: '100%',
-                    minHeight: 'calc(4 * 68px + 48px + 2px + 20px + 48px)', // 4 lignes + header + pagination + padding + margin
+                    minHeight: 'calc(4 * 68px + 48px + 2px + 20px + 48px)',
                     borderRadius: '22px',
                     backgroundColor: '#FFFFFF',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
@@ -2737,7 +2460,6 @@ export default function ResidencePage({
                     overflow: 'hidden'
                   }}
                 >
-                  {/* En-tête du tableau */}
                   <div className="flex-shrink-0 mb-1">
                     <div className="flex items-center" style={{ height: '48px' }}>
                       <div style={{ width: '40px', padding: '0 12px' }}>
@@ -2807,12 +2529,11 @@ export default function ResidencePage({
                     </div>
                   </div>
 
-                  {/* Corps du tableau - EXACTEMENT 4 LIGNES de 72px */}
                   <div className="flex-1 overflow-hidden">
                     {currentResidences.length === 0 ? (
                       <div 
                         className="h-full flex items-center justify-center"
-                        style={{ minHeight: '280px' }} // 4 * 72px
+                        style={{ minHeight: '280px' }}
                       >
                         <div className="text-center">
                           <div 
@@ -2933,7 +2654,7 @@ export default function ResidencePage({
                                       color: '#000000'
                                     }}
                                   >
-                                    {residence.name}
+                                    {residence.nom_residence || residence.name}
                                   </div>
                                   <div 
                                     className="text-gray-600"
@@ -2953,7 +2674,7 @@ export default function ResidencePage({
                                           color: '#6B7280'
                                         }}
                                       >
-                                        {residence.proprietaire}
+                                        {residence.nom_proprietaire || residence.proprietaire}
                                       </span>
                                     </div>
                                   )}
@@ -3044,7 +2765,6 @@ export default function ResidencePage({
                     )}
                   </div>
 
-                  {/* Pagination centrée - TOUJOURS VISIBLE à l'intérieur du conteneur */}
                   <div className="flex-shrink-0 pt-2" style={{ paddingTop: '16px' }}>
                     <div className="flex items-center justify-center">
                       <div 
@@ -3057,7 +2777,6 @@ export default function ResidencePage({
                           justifyContent: 'center'
                         }}
                       >
-                        {/* Bouton précédent - 36px */}
                         <button
                           onClick={prevPage}
                           disabled={currentPage === 1}
@@ -3072,11 +2791,9 @@ export default function ResidencePage({
                           <ChevronLeft size={16} style={{ color: '#000000' }} />
                         </button>
 
-                        {/* Numéros de page - 32px */}
                         <div className="flex items-center space-x-2">
                           {[...Array(totalPages)].map((_, i) => {
                             const pageNum = i + 1;
-                            // Afficher seulement les pages pertinentes
                             if (
                               pageNum === 1 ||
                               pageNum === totalPages ||
@@ -3123,7 +2840,6 @@ export default function ResidencePage({
                           })}
                         </div>
 
-                        {/* Bouton suivant - 36px */}
                         <button
                           onClick={nextPage}
                           disabled={currentPage === totalPages}
@@ -3146,11 +2862,9 @@ export default function ResidencePage({
           </div>
         )}
 
-        {/* Modal de détails */}
         {showModal && selectedResidence && (
           <div className="w-full">
             <div className="h-full flex flex-col p-6">
-              {/* Header avec bouton retour et titre */}
               <div className="mb-6">
                 <div className="flex items-center">
                   <button
@@ -3172,29 +2886,11 @@ export default function ResidencePage({
                       color: '#000000'
                     }}
                   >
-                    {selectedResidence.lot || selectedResidence.name}
+                    {selectedResidence.nom_residence || selectedResidence.name || selectedResidence.lot}
                   </h1>
-                  
-                  {/* BOUTON POUR AJOUTER DES PHOTOS */}
-                  <div className="ml-auto">
-                    <button
-                      onClick={handleOpenAddPhotosModal}
-                      className="flex items-center justify-center bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors"
-                      style={{
-                        height: '42px',
-                        borderRadius: '24px',
-                        padding: '0 16px',
-                        fontSize: '14.5px'
-                      }}
-                    >
-                      <Camera size={16} className="mr-2" />
-                      Ajouter des photos
-                    </button>
-                  </div>
                 </div>
               </div>
 
-              {/* Grand bloc rectangulaire avec coins arrondis */}
               <div 
                 className="mb-6 bg-white rounded-2xl p-6"
                 style={{
@@ -3206,48 +2902,105 @@ export default function ResidencePage({
                 }}
               >
                 <div className="flex h-full">
-                  {/* Image rectangulaire gris clair avec coins arrondis - côté gauche - AGRANDIE */}
                   <div 
                     className="mr-6 flex-shrink-0 cursor-pointer relative group"
-                    onClick={() => selectedResidence.photos && selectedResidence.photos.length > 0 && handleOpenImageModal(0)}
+                    onClick={() => {
+                      if (!selectedResidence.photos || selectedResidence.photos.length === 0) {
+                        handleDirectPhotoUpload();
+                      } 
+                      else {
+                        handleOpenImageModal(currentPhotoIndex);
+                      }
+                    }}
                     style={{
                       width: '130px',
                       height: '130px',
                       borderRadius: '12px',
-                      backgroundColor: selectedResidence.photos && selectedResidence.photos.length > 0 ? 'transparent' : '#E5E7EB',
-                      overflow: 'hidden'
+                      backgroundColor: (!selectedResidence.photos || selectedResidence.photos.length === 0) ? '#E5E7EB' : 'transparent',
+                      overflow: 'hidden',
+                      position: 'relative',
+                      transition: 'background-color 0.2s ease'
                     }}
                   >
                     {selectedResidence.photos && selectedResidence.photos.length > 0 ? (
                       <>
                         <img
-                          src={selectedResidence.photos[0]}
-                          alt={selectedResidence.name}
+                          src={selectedResidence.photos[currentPhotoIndex]}
+                          alt={`Photo ${currentPhotoIndex + 1} de ${selectedResidence.name}`}
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             console.warn(
                               "Image failed to load in details:",
-                              selectedResidence.photos[0]
+                              selectedResidence.photos[currentPhotoIndex]
                             );
                             e.target.style.display = "none";
                             e.target.parentElement.classList.add("flex", "items-center", "justify-center", "bg-gray-200");
                           }}
                         />
-                        {/* Overlay au survol */}
+                        
+                        {selectedResidence.photos.length > 1 && (
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePrevImage();
+                              }}
+                              className="absolute left-2 top-1/2 transform -translate-y-1/2 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm opacity-0 group-hover:opacity-100"
+                              style={{ 
+                                width: '28px', 
+                                height: '28px'
+                              }}
+                            >
+                              <ChevronLeft size={16} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleNextImage();
+                              }}
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm opacity-0 group-hover:opacity-100"
+                              style={{ 
+                                width: '28px', 
+                                height: '28px'
+                              }}
+                            >
+                              <ChevronRight size={16} />
+                            </button>
+                            
+                            <div className="absolute bottom-2 left-0 right-0 flex justify-center space-x-1">
+                              {selectedResidence.photos.map((_, index) => (
+                                <div
+                                  key={index}
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    index === currentPhotoIndex 
+                                      ? 'bg-white' 
+                                      : 'bg-white/50'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </>
+                        )}
+                        
+                        <div className="absolute top-2 right-2 bg-black/60 text-white text-xs rounded-full px-2 py-1 backdrop-blur-sm">
+                          {currentPhotoIndex + 1}/{selectedResidence.photos.length}
+                        </div>
+                        
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                           <Eye size={24} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                       </>
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Home size={32} style={{ color: '#9CA3AF' }} />
+                      <div className="w-full h-full flex flex-col items-center justify-center">
+                        <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center mb-3">
+                          <Camera size={24} style={{ color: '#6B7280' }} />
+                        </div>
+                        
                       </div>
                     )}
                   </div>
 
-                  {/* Conteneur pour les informations de résidence et propriétaire côte à côte */}
                   <div className="flex-1 flex">
-                    {/* Informations de la résidence - côté gauche */}
                     <div className="flex-1 pr-8 flex flex-col justify-between">
                       <div>
                         <h2 
@@ -3258,10 +3011,9 @@ export default function ResidencePage({
                             color: '#000000'
                           }}
                         >
-                          {selectedResidence.name}
+                          {selectedResidence.nom_residence || selectedResidence.name || "Nom non spécifié"}
                         </h2>
                         
-                        {/* Deuxième ligne - avec icône */}
                         <div className="flex items-center mb-2">
                           <MapPin size={14} className="text-gray-500 mr-2" style={{ color: '#6B7280' }} />
                           <span 
@@ -3275,7 +3027,6 @@ export default function ResidencePage({
                           </span>
                         </div>
                         
-                        {/* Troisième ligne - avec icône */}
                         <div className="flex items-center mb-2">
                           <Users size={14} className="text-gray-500 mr-2" style={{ color: '#6B7280' }} />
                           <span 
@@ -3289,7 +3040,6 @@ export default function ResidencePage({
                           </span>
                         </div>
                         
-                        {/* Quatrième ligne - répartition SANS border-t et avec simple "•" */}
                         <div className="flex items-center pt-2">
                           <div className="flex items-center mr-4">
                             <span 
@@ -3318,7 +3068,6 @@ export default function ResidencePage({
                       </div>
                     </div>
 
-                    {/* Informations du propriétaire - côté droit */}
                     <div className="flex-1 pl-8 border-l border-gray-200 flex flex-col justify-between" style={{ borderLeftColor: '#E5E7EB' }}>
                       <div>
                         <h2 
@@ -3332,7 +3081,6 @@ export default function ResidencePage({
                           Propriétaire
                         </h2>
                         
-                        {/* Nom du propriétaire */}
                         <div className="flex items-center mb-2">
                           <User size={14} className="text-gray-500 mr-2" style={{ color: '#6B7280' }} />
                           <span 
@@ -3342,11 +3090,10 @@ export default function ResidencePage({
                               color: '#374151'
                             }}
                           >
-                            {selectedResidence.proprietaire || "Non spécifié"}
+                            {selectedResidence.nom_proprietaire || selectedResidence.proprietaire || "Non spécifié"}
                           </span>
                         </div>
                         
-                        {/* Téléphone du propriétaire */}
                         {selectedResidence.telephone && (
                           <div className="flex items-center mb-2">
                             <Phone size={14} className="text-gray-500 mr-2" style={{ color: '#6B7280' }} />
@@ -3355,8 +3102,8 @@ export default function ResidencePage({
                               style={{ 
                                 fontSize: '14px',
                                 color: '#374151'
-                            }}
-                          >
+                              }}
+                            >
                               {selectedResidence.telephone}
                             </span>
                           </div>
@@ -3367,102 +3114,6 @@ export default function ResidencePage({
                 </div>
               </div>
 
-              {/* GALLERIE DE PHOTOS SUPPLEMENTAIRES SI IL Y EN A */}
-              {selectedResidence.photos && selectedResidence.photos.length > 1 && (
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 
-                      className="font-semibold text-black"
-                      style={{ 
-                        fontSize: '16px',
-                        fontWeight: '600',
-                        color: '#000000'
-                      }}
-                    >
-                      Photos de la résidence ({selectedResidence.photos.length})
-                    </h3>
-                  </div>
-                  <div className="grid grid-cols-4 gap-4">
-                    {selectedResidence.photos.slice(1).map((photo, index) => (
-                      <div 
-                        key={index + 1}
-                        className="relative group cursor-pointer"
-                        onClick={() => handleOpenImageModal(index + 1)}
-                      >
-                        <div 
-                          className="rounded-lg overflow-hidden"
-                          style={{
-                            width: '100%',
-                            height: '120px',
-                            backgroundColor: '#F3F4F6'
-                          }}
-                        >
-                          <img
-                            src={photo}
-                            alt={`Photo ${index + 2} de ${selectedResidence.name}`}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              console.warn("Image failed to load in gallery:", photo);
-                              e.target.style.display = "none";
-                              e.target.parentElement.classList.add("flex", "items-center", "justify-center", "bg-gray-200");
-                            }}
-                          />
-                        </div>
-                        {/* Bouton de suppression */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (confirm("Voulez-vous vraiment supprimer cette photo ?")) {
-                              handleDeletePhoto(index + 1);
-                            }
-                          }}
-                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          style={{
-                            width: '28px',
-                            height: '28px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                        {/* Overlay au survol */}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded-lg"></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* RÉCUPÉRATION DES DONNÉES - Exemple de fonction pour extraire les noms */}
-              {(() => {
-                // Fonction pour récupérer les noms de la résidence et du propriétaire
-                const residenceName = selectedResidence.name || "";
-                const proprietaireName = selectedResidence.proprietaire || "";
-                
-                // Vous pouvez utiliser ces données comme bon vous semble
-                console.log("Nom de la résidence:", residenceName);
-                console.log("Nom du propriétaire:", proprietaireName);
-                
-                // Exemple d'utilisation: enregistrer dans une variable ou passer à une fonction
-                const residenceData = {
-                  residenceName: residenceName,
-                  proprietaireName: proprietaireName,
-                  // Autres données que vous voulez récupérer
-                  adresse: selectedResidence.adresse || "",
-                  totalResidents: selectedResidence.totalResidents || 0,
-                  hommes: selectedResidence.hommes || 0,
-                  femmes: selectedResidence.femmes || 0
-                };
-                
-                // Vous pouvez utiliser residenceData comme vous le souhaitez
-                // Par exemple, l'envoyer à une API, l'afficher, etc.
-                
-                return null; // Ne rien rendre dans le DOM
-              })()}
-
-              {/* En-tête de la liste des résidents avec bouton ajouter - même ligne, pas de background */}
               <div className="mb-4 flex items-center justify-between">
                 <div 
                   className="font-semibold"
@@ -3489,47 +3140,51 @@ export default function ResidencePage({
                 </button>
               </div>
 
-              {/* Section tableau des résidents AVEC SCROLL - MODIFIÉ */}
               <div className="flex-1 flex flex-col bg-white rounded-2xl overflow-hidden">
-                {/* En-tête fixe */}
                 <div className="flex-shrink-0">
                   <table className="w-full">
                     <ResidentListHeader />
                   </table>
                 </div>
 
-                {/* Corps du tableau avec scroll - MODIFIÉ */}
-                {selectedResidence.residents && selectedResidence.residents.length > 0 ? (
-                  <div className="flex-1 overflow-y-auto">
-                    <table className="w-full">
-                      <tbody>
-                        {currentResidentsInModal.map((resident) => (
+                <div className="flex-1">
+                  <table className="w-full">
+                    <tbody>
+                      {currentResidentsInModal.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" className="px-4 py-16 text-center">
+                            <div className="text-center">
+                              <Users className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                              <div 
+                                className="text-gray-500 mb-4"
+                                style={{ 
+                                  fontSize: '14px',
+                                  color: '#6B7280'
+                                }}
+                              >
+                                Aucun résident enregistré
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        currentResidentsInModal.map((resident) => (
                           <ResidentRow
                             key={resident.id}
                             resident={resident}
                           />
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center p-8">
-                    <div className="text-center">
-                      <Users className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                      <div 
-                        className="text-gray-500 mb-4"
-                        style={{ 
-                          fontSize: '14px',
-                          color: '#6B7280'
-                        }}
-                      >
-                        Aucun résident enregistré
-                      </div>
-                    </div>
-                  </div>
-                )}
+                        ))
+                      )}
+                      
+                      {Array.from({ length: Math.max(0, residentsPerPageInModal - currentResidentsInModal.length) }).map((_, index) => (
+                        <tr key={`empty-${index}`} className="border-b border-gray-200" style={{ height: '60px' }}>
+                          <td colSpan="6" className="px-4 py-3 bg-white"></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-                {/* Pagination pour les résidents - FIXE EN BAS */}
                 {totalResidentPages > 1 && (
                   <div className="flex-shrink-0 px-6 py-4 border-t border-gray-200 bg-white">
                     <div className="flex items-center justify-center space-x-2">
@@ -3613,7 +3268,6 @@ export default function ResidencePage({
           </div>
         )}
 
-        {/* Input caché pour sélectionner des photos */}
         <input
           type="file"
           ref={photoInputRef}
@@ -3624,7 +3278,6 @@ export default function ResidencePage({
         />
       </div>
 
-      {/* MODAL POUR AGRANDIR L'IMAGE */}
       <ImageModal
         isOpen={showImageModal}
         onClose={handleCloseImageModal}
@@ -3632,9 +3285,9 @@ export default function ResidencePage({
         currentIndex={currentImageIndex}
         onNext={handleNextImage}
         onPrev={handlePrevImage}
+        onAddImage={handleAddImageInModal}
       />
 
-      {/* MODAL POUR AJOUTER UN RÉSIDENT */}
       <AddResidentModal
         isOpen={showAddResidentModal}
         onClose={handleCloseAddResidentModal}
@@ -3650,15 +3303,6 @@ export default function ResidencePage({
         dateNaissanceInputRef={dateNaissanceInputRef}
         cinInputRef={cinInputRef}
         telephoneInputRef={telephoneInputRef}
-      />
-
-      {/* NOUVEAU MODAL POUR AJOUTER DES PHOTOS */}
-      <AddPhotosModal
-        isOpen={showAddPhotosModal}
-        onClose={handleCloseAddPhotosModal}
-        onUpload={handleUploadPhotos}
-        selectedResidence={selectedResidence}
-        photoInputRef={photoInputRef}
       />
     </>
   );

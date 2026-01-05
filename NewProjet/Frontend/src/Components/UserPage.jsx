@@ -520,7 +520,7 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
         <div className="mt-5 flex justify-center">
           <button
             onClick={handleLogout}
-            className="flex items-center justify-center space-x-3 text-red-600 hover:text-red-700 font-medium py-3 px-4 rounded-2xl hover:bg-red-50 transition-colors border border-red-200 max-w-xl"
+            className="flex items-center justify-center space-x-3 text-red-600 hover:text-white font-medium py-3 px-4 rounded-2xl hover:bg-red-600 transition-colors border border-red-200 max-w-xl"
           >
             <LogOut size={20} />
             <span className="font-semibold">Déconnexion</span>

@@ -13,7 +13,9 @@ import {
   UserCheck,
   Clock,
   Lock,
-  RefreshCw
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 // base API pour Vite
@@ -32,6 +34,8 @@ const AdminPanel = ({ onLogout, currentUser }) => {
   });
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(4);
 
   useEffect(() => {
     if (activeTab === 'users') {
@@ -287,11 +291,23 @@ const AdminPanel = ({ onLogout, currentUser }) => {
     }
   };
 
+  // Filtrage des utilisateurs
   const filteredUsers = users.filter(user =>
     user.nom_complet.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.immatricule.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Pagination des utilisateurs
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+
+  // Réinitialiser à la première page quand on change de recherche
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const getRoleBadge = (role) => {
     const roles = {
@@ -344,7 +360,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
               {/* Bouton Déconnexion - Gris avec border rouge par défaut, rouge au hover */}
               <button
                 onClick={onLogout}
-                className="flex items-center space-x-2 bg-gray-300 text-black  hover:text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 border-2 border-gray-300 hover:bg-red-600 hover:border-red-600"
+                className="flex items-center space-x-2 text-red-600  hover:text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 border-2 border-red-200 hover:bg-red-600 hover:border-red-600"
               >
                 <LogOut size={16} />
                 <span>Déconnexion</span>
@@ -399,7 +415,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                   Gestion des Utilisateurs
                 </h2>
                 <p className="text-gray-600 mt-1">
-                  {users.length} utilisateur(s) dans le système
+                  {filteredUsers.length} utilisateur(s) trouvé(s) • Page {currentPage} sur {totalPages}
                 </p>
               </div>
               
@@ -428,7 +444,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
 
             {/* Tableau des utilisateurs */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-200/60 overflow-hidden">
-              {filteredUsers.length === 0 ? (
+              {currentUsers.length === 0 ? (
                 <div className="text-center py-12">
                   <Users className="mx-auto text-gray-300 w-16 h-16 mb-4" />
                   <p className="text-gray-500 text-lg">Aucun utilisateur trouvé</p>
@@ -459,7 +475,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200/40">
-                      {filteredUsers.map((user) => {
+                      {currentUsers.map((user) => {
                         const roleBadge = getRoleBadge(user.role);
                         const statusBadge = getStatusBadge(user.is_active);
                         
@@ -522,6 +538,93 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                 </div>
               )}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex-shrink-0 pt-2" style={{ paddingTop: '16px' }}>
+                <div className="flex items-center justify-center">
+                  <div className="flex items-center space-x-2 bg-white rounded-full px-4 py-2"
+                    style={{
+                      borderRadius: '999px',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                      height: '40px',
+                      width: '220px',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '999px',
+                        borderColor: '#D1D5DB'
+                      }}
+                    >
+                      <ChevronLeft size={16} style={{ color: '#000000' }} />
+                    </button>
+
+                    <div className="flex items-center space-x-2">
+                      {[...Array(totalPages)].map((_, i) => {
+                        const pageNum = i + 1;
+                        if (
+                          pageNum === 1 ||
+                          pageNum === totalPages ||
+                          (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                        ) {
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`flex items-center justify-center font-medium transition-colors ${
+                                currentPage === pageNum
+                                  ? "bg-gray-900 text-white"
+                                  : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
+                              }`}
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                                borderColor: '#D1D5DB'
+                              }}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        } else if (
+                          pageNum === currentPage - 2 ||
+                          pageNum === currentPage + 2
+                        ) {
+                          return (
+                            <span className="text-gray-400" style={{ fontSize: '14px', color: '#6B7280' }}>
+                              ...
+                            </span>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '999px',
+                        borderColor: '#D1D5DB'
+                      }}
+                    >
+                      <ChevronRight size={16} style={{ color: '#000000' }} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

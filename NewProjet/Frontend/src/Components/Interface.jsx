@@ -64,15 +64,12 @@ const ANDABOLY_CENTER = {
 
 // Fonction utilitaire pour vérifier si un point est dans un polygon
 const isPointInPolygon = (point, polygon) => {
-  // Orientation correcte: x = longitude, y = latitude
-  // Vérifications de sécurité des paramètres
   if (!point || !polygon || !Array.isArray(polygon) || polygon.length === 0) return false;
 
   const x = Number(point.lng), y = Number(point.lat);
   if (Number.isNaN(x) || Number.isNaN(y)) return false;
 
   let inside = false;
-  // Algorithme du ray casting pour déterminer si un point est dans un polygon
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const xi = Number(polygon[i].lng), yi = Number(polygon[i].lat);
     const xj = Number(polygon[j].lng), yj = Number(polygon[j].lat);
@@ -101,17 +98,14 @@ const formatNotificationDate = (dateString) => {
     notificationDate.getDate()
   );
 
-  // Si la notification est d'aujourd'hui, affiche uniquement l'heure
   if (notificationDay.getTime() === today.getTime()) {
     const hours = notificationDate.getHours().toString().padStart(2, '0');
     const minutes = notificationDate.getMinutes().toString().padStart(2, '0');
     return `${hours}:${minutes}`;
   }
-  // Si la notification est d'hier
   else if (notificationDay.getTime() === yesterday.getTime()) {
     return "Hier";
   }
-  // Pour les dates plus anciennes
   else {
     const day = notificationDate.getDate().toString().padStart(2, '0');
     const month = (notificationDate.getMonth() + 1).toString().padStart(2, '0');
@@ -123,7 +117,6 @@ const formatNotificationDate = (dateString) => {
 // Fonction utilitaire pour gérer les réponses API
 const handleApiResponse = async (response) => {
   if (response.status === 401) {
-    // Token invalide
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.location.href = '/login';
@@ -144,131 +137,70 @@ const handleApiResponse = async (response) => {
 
 // Composant principal Interface
 export default function Interface({ user }) {
-  // Hook de navigation React Router
   const navigate = useNavigate();
-
-  // Hook de traduction
   const { t, i18n } = useTranslation();
-
-  // État pour le menu dropdown (notifications, etc.)
   const [openDropdown, setOpenDropdown] = useState(false);
-
-  // NOUVEAU ÉTAT : menu déroulant "MENU" en bas de SIGAP
   const [menuDropdownOpen, setMenuDropdownOpen] = useState(false);
-
-  // État pour la requête de recherche
   const [searchQuery, setSearchQuery] = useState("");
-
-  // NOUVEAUX ÉTATS POUR LA RECHERCHE
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
-
-  // États pour gérer l'affichage des différentes pages
   const [showStatistique, setShowStatistique] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-
-  // État pour l'utilisateur courant
   const [currentUser, setCurrentUser] = useState(user);
-
-  // États pour contrôler l'affichage des différentes sections
   const [showResidence, setShowResidence] = useState(false);
   const [showUserPage, setShowUserPage] = useState(false);
   const [showPendingResidences, setShowPendingResidences] = useState(false);
-
-  // États pour la gestion de l'ajout d'adresse
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState("");
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [isSelectingLocation, setIsSelectingLocation] = useState(false);
-
-  // États pour la gestion de la carte Google Maps
   const [map, setMap] = useState(null);
   const [mapType, setMapType] = useState("satellite");
   const [mapLoaded, setMapLoaded] = useState(false);
-
-  // État pour les détails de l'adresse - MODIFIÉ POUR INCLURE LES NOUVEAUX CHAMPS
   const [addressDetails, setAddressDetails] = useState({
     lot: "",
-    nomResidence: "", // NOUVEAU CHAMP
-    nomProprietaire: "", // NOUVEAU CHAMP
+    nomResidence: "",
+    nomProprietaire: "",
     quartier: "",
     ville: ""
   });
-
-  // État pour indiquer si une adresse a été sélectionnée
   const [hasSelectedAddress, setHasSelectedAddress] = useState(false);
-
-  // NOUVEAUX ÉTATS : pour gérer l'interaction avec le polygon
   const [isPolygonHovered, setIsPolygonHovered] = useState(false);
-
-  // NOUVEL ÉTAT : pour gérer le statut du message (normal ou erreur)
-  const [messageStatus, setMessageStatus] = useState("normal"); // "normal" ou "error"
-
-  // NOUVEL ÉTAT : pour gérer l'erreur de validation du formulaire
+  const [messageStatus, setMessageStatus] = useState("normal");
   const [formError, setFormError] = useState("");
-
-  // état pour la page utilisateur (modal changement mot de passe)
   const [userPageState, setUserPageState] = useState({ showPasswordModal: false });
-
-  // ÉTATS POUR LES NOTIFICATIONS - MIS À JOUR
   const [notifications, setNotifications] = useState([]);
-  const [totalNotificationsCount, setTotalNotificationsCount] = useState(0); // Total des notifications
+  const [totalNotificationsCount, setTotalNotificationsCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
-
-  // NOUVEL ÉTAT : pour gérer la résidence cliquée (modal de détail)
   const [clickedResidenceId, setClickedResidenceId] = useState(null);
-
-  // NOUVEAUX ÉTATS : pour sauvegarder le niveau de zoom avant la sélection d'adresse
   const [previousZoom, setPreviousZoom] = useState(null);
   const [previousCenter, setPreviousCenter] = useState(null);
-
-  // NOUVEAUX ÉTATS : pour sauvegarder le niveau de zoom avant le clic sur une résidence
   const [zoomBeforeResidenceClick, setZoomBeforeResidenceClick] = useState(null);
   const [centerBeforeResidenceClick, setCenterBeforeResidenceClick] = useState(null);
-
-  // NOUVEL ÉTAT : pour indiquer si la carte doit être zoomée sur la zone limite
   const [shouldZoomToPolygon, setShouldZoomToPolygon] = useState(true);
-
-  // NOUVEL ÉTAT : pour contrôler si le modal d'ajout d'adresse est ouvert
   const [isAddAddressModalOpen, setIsAddAddressModalOpen] = useState(false);
-
-  // NOUVEL ÉTAT : pour gérer la couleur du marqueur de localisation
-  const [selectedMarkerColor, setSelectedMarkerColor] = useState("yellow"); // "yellow" (avant confirmation), "green" (après confirmation)
-
-  // NOUVEL ÉTAT : pour la position du modal
+  const [selectedMarkerColor, setSelectedMarkerColor] = useState("yellow");
   const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
-
-  // NOUVEL ÉTAT : pour stocker l'ID de la résidence à sélectionner dans PendingResidences
   const [residenceToSelect, setResidenceToSelect] = useState(null);
-
-  // NOUVEAUX ÉTATS : pour gérer le scroll des champs résidents
   const [residentFieldsScrollable, setResidentFieldsScrollable] = useState(false);
-
-  // RÉFÉRENCES POUR LA NAVIGATION HIÉRARCHIQUE
-  const [navigationHistory, setNavigationHistory] = useState([]); // Historique de navigation
-  const [residenceDetailMode, setResidenceDetailMode] = useState(false); // Mode détail dans la page Résidence
-
-  // Références pour les éléments DOM
-  const dropdownRef = useRef(null);
-  const searchRef = useRef(null);
-  const addAddressRef = useRef(null);
-  const menuDropdownRef = useRef(null); // NOUVELLE RÉFÉRENCE : pour le menu déroulant "MENU"
-  const residentFieldsRef = useRef(null); // Référence pour les champs résidents
-
-  // --- NOUVEAUX ÉTATS : fokontany récupéré depuis le backend ---
+  const [residenceDetailMode, setResidenceDetailMode] = useState(false);
   const [fokontanyPolygon, setFokontanyPolygon] = useState(null);
   const [fokontanyCenter, setFokontanyCenter] = useState(null);
   const [fokontanyName, setFokontanyName] = useState(null);
   const [residences, setResidences] = useState([]);
-
-  // NOUVEAUX ÉTATS POUR LE MODAL MULTI-ÉTAPES D'AJOUT DE RÉSIDENCE
-  const [addStep, setAddStep] = useState(1); // 1 = lot, 2 = personnes optionnelles
-  const [newResidents, setNewResidents] = useState([]); // liste personnes temporaires
+  const [addStep, setAddStep] = useState(1);
+  const [newResidents, setNewResidents] = useState([]);
   const [savingResidence, setSavingResidence] = useState(false);
   const [modalError, setModalError] = useState('');
+  const [selectedResidenceFromSearch, setSelectedResidenceFromSearch] = useState(null);
 
-  // Fonction pour créer une icône SVG personnalisée pour les marqueurs
+  const dropdownRef = useRef(null);
+  const searchRef = useRef(null);
+  const addAddressRef = useRef(null);
+  const menuDropdownRef = useRef(null);
+  const residentFieldsRef = useRef(null);
+
   const createCustomMarkerIcon = (color) => {
     let svg = '';
 
@@ -305,40 +237,32 @@ export default function Interface({ user }) {
     }
   };
 
-  // Fonction pour obtenir l'initiale de l'utilisateur
   const getUserInitial = () => {
     if (!currentUser) return "U";
     
-    // Essayer d'abord le prénom (first_name)
     if (currentUser.first_name && currentUser.first_name.trim()) {
       return currentUser.first_name.charAt(0).toUpperCase();
     }
     
-    // Sinon essayer de décomposer le nom complet
     if (currentUser.nom_complet) {
       const parts = currentUser.nom_complet.trim().split(/\s+/);
       if (parts.length > 0) {
-        // Prendre la première partie (probablement le prénom si format "Prénom Nom")
         return parts[0].charAt(0).toUpperCase();
       }
       return currentUser.nom_complet.charAt(0).toUpperCase();
     }
     
-    // Sinon essayer le nom d'utilisateur
     if (currentUser.username && currentUser.username.trim()) {
       return currentUser.username.charAt(0).toUpperCase();
     }
     
-    // Sinon essayer le nom
     if (currentUser.nom && currentUser.nom.trim()) {
       return currentUser.nom.charAt(0).toUpperCase();
     }
     
-    // Par défaut
     return "U";
   };
 
-  // FONCTION : Récupérer TOUTES les notifications (pour le comptage total)
   const fetchAllNotifications = async () => {
     try {
       console.log('[NOTIF] fetchAllNotifications: starting...');
@@ -361,25 +285,22 @@ export default function Interface({ user }) {
       if (data) {
         console.log('[NOTIF] Total notifications received:', data.length);
 
-        // Filtrer les notifications non lues
         const unreadNotifications = data.filter(notif => !notif.is_read);
         console.log('[NOTIF] Unread notifications:', unreadNotifications.length);
 
-        setNotifications(unreadNotifications); // Stocke les non lues pour l'affichage
-        setTotalNotificationsCount(unreadNotifications.length); // Compteur basé sur les non lues
+        setNotifications(unreadNotifications);
+        setTotalNotificationsCount(unreadNotifications.length);
       }
     } catch (error) {
       console.error('[NOTIF] Error loading notifications:', error);
     }
   };
 
-  // FONCTION : Marquer une notification comme lue et la supprimer IMMÉDIATEMENT
   const markAsRead = async (notificationId) => {
     try {
       console.log('[NOTIF] markAsRead for notification:', notificationId);
       const token = localStorage.getItem('token');
 
-      // Appel API pour marquer comme lue
       const response = await fetch(`${API_BASE}/api/notifications/${notificationId}/read`, {
         method: 'PATCH',
         headers: {
@@ -391,17 +312,14 @@ export default function Interface({ user }) {
       if (response.ok) {
         console.log('[NOTIF] Notification marked as read:', notificationId);
 
-        // SUPPRIME IMMÉDIATEMENT la notification de la liste locale
         setNotifications(prevNotifications =>
           prevNotifications.filter(notification => notification.id !== notificationId)
         );
 
-        // Met à jour le compteur total
         setTotalNotificationsCount(prev => Math.max(0, prev - 1));
 
       } else if (response.status === 404) {
         console.warn('[NOTIF] Route not found, notification might be deleted already');
-        // Supprime quand même de la liste locale
         setNotifications(prevNotifications =>
           prevNotifications.filter(notification => notification.id !== notificationId)
         );
@@ -411,7 +329,6 @@ export default function Interface({ user }) {
       }
     } catch (error) {
       console.error('[NOTIF] Error marking as read:', error);
-      // En cas d'erreur, supprime quand même de la liste locale pour l'UI
       setNotifications(prevNotifications =>
         prevNotifications.filter(notification => notification.id !== notificationId)
       );
@@ -419,14 +336,12 @@ export default function Interface({ user }) {
     }
   };
 
-  // Fonction pour vérifier et effacer les notifications des résidences approuvées
   const checkAndClearApprovedResidenceNotifications = async () => {
     try {
       console.log('[NOTIF] checkAndClearApprovedResidenceNotifications: starting...');
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // Récupère les résidences approuvées
       const residencesResponse = await fetch(`${API_BASE}/api/residences?status=approved`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -441,7 +356,6 @@ export default function Interface({ user }) {
         if (currentUser?.role === 'secretaire' && approvedResidences.length > 0) {
           console.log('[NOTIF] User is secretaire, refreshing notifications');
 
-          // Rafraîchir les notifications
           await fetchAllNotifications();
         }
       }
@@ -450,7 +364,6 @@ export default function Interface({ user }) {
     }
   };
 
-  // GESTIONNAIRE : Clic sur une notification - VERSION SIMPLIFIÉE
   const handleNotificationClick = async (notification) => {
     console.log('=== CLIC SUR NOTIFICATION ===');
     console.log('Notification complète:', notification);
@@ -458,31 +371,24 @@ export default function Interface({ user }) {
     console.log('Message:', notification.message);
     console.log('Type:', notification.type);
 
-    // Marque comme lue IMMÉDIATEMENT
     await markAsRead(notification.id);
 
-    // Ferme le panneau de notifications
     setShowNotifications(false);
 
-    // SI L'UTILISATEUR EST SECRÉTAIRE, AFFICHE LES RÉSIDENCES EN ATTENTE
     if (currentUser?.role === 'secretaire') {
       console.log('[NOTIF] Ouverture page PendingResidences pour secrétaire');
 
-      // Ouvrir la page PendingResidences
       setShowPendingResidences(true);
       setShowResidence(false);
       setShowStatistique(false);
       setShowUserPage(false);
       setUserPageState({ showPasswordModal: false });
 
-      // Extraire l'ID de résidence du message ou metadata
       let residenceId = null;
 
-      // Essayer d'extraire l'ID de différentes manières
       if (notification.related_entity_id) {
         residenceId = notification.related_entity_id;
       } else if (notification.message) {
-        // Essayer d'extraire l'ID du message
         const idMatch = notification.message.match(/ID[:\s]*(\d+)/i) ||
           notification.message.match(/residence[:\s]*(\d+)/i);
         if (idMatch) {
@@ -492,14 +398,12 @@ export default function Interface({ user }) {
 
       console.log('[NOTIF] Extracted residenceId:', residenceId);
 
-      // Stocker l'ID de la résidence pour la sélection automatique
       if (residenceId) {
         setResidenceToSelect(residenceId);
       }
     }
   };
 
-  // Fonction pour récupérer les résidences
   const fetchResidences = async () => {
     try {
       console.log('[RES] fetchResidences: starting...');
@@ -526,7 +430,6 @@ export default function Interface({ user }) {
     }
   };
 
-  // Fonction pour effectuer une recherche - MODIFIÉE POUR DÉSACTIVER LES SUGGESTIONS SUR RÉSIDENCE
   const performSearch = async (query) => {
     if (query.trim() === '') {
       setSearchResults([]);
@@ -534,7 +437,6 @@ export default function Interface({ user }) {
       return;
     }
 
-    // DÉSACTIVER LES SUGGESTIONS QUAND LA PAGE RÉSIDENCE EST OUVERTE
     if (showResidence) {
       setShowSearchResults(false);
       setSearchResults([]);
@@ -551,7 +453,6 @@ export default function Interface({ user }) {
         return;
       }
 
-      // Effectuer la recherche via l'API
       const response = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -564,13 +465,10 @@ export default function Interface({ user }) {
         setSearchResults(data);
         setShowSearchResults(true);
 
-        // Si on est sur la page Résidence, passer les résultats
         if (showResidence) {
           console.log("Recherche dans les résidences:", data);
-          // DÉSACTIVER LES SUGGESTIONS POPUP SUR LA CARTE
           setShowSearchResults(false);
         } else if (!isAnyPageOpen) {
-          // Si on est sur la carte, on peut traiter les résultats
           console.log("Résultats de recherche sur carte:", data);
         }
       } else if (response.status === 401) {
@@ -585,7 +483,6 @@ export default function Interface({ user }) {
     }
   };
 
-  // Gestionnaire de soumission de recherche - MODIFIÉ POUR DÉSACTIVER LES SUGGESTIONS SUR RÉSIDENCE
   const handleSearchSubmit = (e) => {
     e.preventDefault();
 
@@ -594,14 +491,12 @@ export default function Interface({ user }) {
       return;
     }
 
-    // DÉSACTIVER LES SUGGESTIONS QUAND LA PAGE RÉSIDENCE EST OUVERTE
     if (showResidence) {
       setShowSearchResults(false);
       console.log("Recherche dans les résidences:", searchQuery);
       return;
     }
 
-    // Effectuer la recherche
     performSearch(searchQuery);
 
     if (showResidence) {
@@ -613,15 +508,12 @@ export default function Interface({ user }) {
     }
   };
 
-  // CORRECTION: Gestionnaire de clic sur un résultat de recherche amélioré
   const handleSearchResultClick = (result) => {
     console.log('=== CLIC SUR RÉSULTAT DE RECHERCHE ===', result);
 
-    // Fermer les résultats de recherche
     setShowSearchResults(false);
     setSearchQuery("");
 
-    // Gérer différents types de résultats
     if (result.type === 'residence') {
       handleResidenceSearchResult(result);
     } else if (result.type === 'person') {
@@ -629,55 +521,46 @@ export default function Interface({ user }) {
     }
   };
 
-  // Nouvelle fonction pour gérer les résultats de type résidence
   const handleResidenceSearchResult = (result) => {
-    // Vérifier si la résidence a des coordonnées
     if (result.lat && result.lng) {
       const lat = parseFloat(result.lat);
       const lng = parseFloat(result.lng);
 
-      // Sauvegarder l'état actuel de la carte si disponible
       if (map) {
         setPreviousZoom(map.getZoom());
         setPreviousCenter(map.getCenter());
       }
 
-      // Centrer et zoomer sur la résidence
       if (map) {
         map.panTo({ lat, lng });
         map.setZoom(18);
       }
 
-      // Mettre à jour l'ID de la résidence cliquée pour afficher l'info-bulle
       setClickedResidenceId(result.id);
+      setSelectedResidenceFromSearch(result);
 
-      // Ajouter à la liste des résidences si nécessaire
       if (!residences.some(r => r.id === result.id)) {
         setResidences(prev => [result, ...prev]);
       }
 
-      // Fermer toutes les pages pour voir la carte
       setShowResidence(false);
       setShowStatistique(false);
       setShowUserPage(false);
       setShowPendingResidences(false);
       setUserPageState({ showPasswordModal: false });
       
-      // Fermer aussi le menu déroulant
       setMenuDropdownOpen(false);
 
     } else {
       alert("Cette résidence n'a pas de coordonnées géographiques enregistrées");
     }
 
-    // Si on est sur la page Résidence, fermer la page
     if (showResidence) {
       console.log("Résidence sélectionnée:", result);
       setShowResidence(false);
     }
   };
 
-  // NOUVELLE FONCTION : Pour gérer l'affichage d'une résidence sur la carte depuis la recherche
   const handleViewOnMapFromSearch = (result) => {
     console.log('[INTERFACE] Affichage résidence sur carte depuis recherche:', result);
 
@@ -696,33 +579,29 @@ export default function Interface({ user }) {
 
         console.log('[INTERFACE] Centrage sur:', { lat, lng });
 
-        // Centrer la carte sur les coordonnées
         map.panTo({ lat: lat, lng: lng });
         map.setZoom(18);
 
         setClickedResidenceId(result.id);
+        setSelectedResidenceFromSearch(result);
 
         if (!residences.some(r => r.id === result.id)) {
           setResidences(prev => [result, ...prev]);
         }
 
-        // Fermer toutes les pages pour voir la carte
         setShowResidence(false);
         setShowStatistique(false);
         setShowUserPage(false);
         setShowPendingResidences(false);
         setUserPageState({ showPasswordModal: false });
         
-        // Fermer aussi le menu déroulant
         setMenuDropdownOpen(false);
         
       } else {
         alert("Cette résidence n'a pas de coordonnées géographiques enregistrées");
       }
     } else if (result.type === 'person') {
-      // Si c'est une personne, trouver sa résidence
       if (result.residences && result.residences.length > 0) {
-        // Chercher la première résidence avec des coordonnées
         const residenceWithCoords = result.residences.find(r => r.lat && r.lng);
 
         if (residenceWithCoords) {
@@ -735,19 +614,18 @@ export default function Interface({ user }) {
           map.setZoom(18);
 
           setClickedResidenceId(residenceWithCoords.id);
+          setSelectedResidenceFromSearch(residenceWithCoords);
 
           if (!residences.some(r => r.id === residenceWithCoords.id)) {
             setResidences(prev => [residenceWithCoords, ...prev]);
           }
 
-          // Fermer toutes les pages pour voir la carte
           setShowResidence(false);
           setShowStatistique(false);
           setShowUserPage(false);
           setShowPendingResidences(false);
           setUserPageState({ showPasswordModal: false });
           
-          // Fermer aussi le menu déroulant
           setMenuDropdownOpen(false);
         } else {
           alert("Cette personne n'a pas d'adresse avec coordonnées géographiques");
@@ -758,13 +636,10 @@ export default function Interface({ user }) {
     }
   };
 
-  // Nouvelle fonction pour gérer les résultats de type personne
   const handlePersonSearchResult = (result) => {
     console.log("Personne sélectionnée:", result);
 
-    // Si la personne a des résidences avec coordonnées, prendre la première
     if (result.residences && result.residences.length > 0) {
-      // Chercher la première résidence avec des coordonnées
       const residenceWithCoords = result.residences.find(r => r.lat && r.lng);
 
       if (residenceWithCoords) {
@@ -777,19 +652,16 @@ export default function Interface({ user }) {
     }
   };
 
-  // Composant pour afficher les résultats de recherche - MODIFIÉ POUR INCLURE LE BOUTON "VOIR SUR LA CARTE" ET PLACÉ EN BAS DE LA BARRE
   const SearchResultsModal = () => {
-    // NE PAS AFFICHER LES SUGGESTIONS QUAND LA PAGE RÉSIDENCE EST OUVERTE
     if (showResidence || !showSearchResults || searchResults.length === 0) return null;
 
-    // Calculer la position juste en dessous de la barre de recherche
     const searchBar = document.querySelector('.search-bar-container');
-    let topPosition = 80; // Position par défaut
-    let leftPosition = 320; // Position par défaut
+    let topPosition = 80;
+    let leftPosition = 320;
 
     if (searchBar) {
       const rect = searchBar.getBoundingClientRect();
-      topPosition = rect.bottom + 5; // 5px en dessous de la barre
+      topPosition = rect.bottom + 5;
       leftPosition = rect.left;
     }
 
@@ -886,7 +758,6 @@ export default function Interface({ user }) {
                   )}
                 </div>
                 
-                {/* BOUTON "VOIR SUR LA CARTE" - MODIFIÉ AVEC NOUVEAU STYLE */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -906,28 +777,23 @@ export default function Interface({ user }) {
     );
   };
 
-  // Effet pour charger les données au montage du composant
   useEffect(() => {
     console.log('[APP] Component mounted, loading data...');
 
-    // Charge les notifications et résidences
     fetchAllNotifications();
     fetchResidences();
 
-    // Intervalle pour actualiser les notifications toutes les 60 secondes
     const interval = setInterval(() => {
       console.log('[APP] Refreshing notifications...');
       fetchAllNotifications();
     }, 60000);
 
-    // Nettoyage à la désinstallation
     return () => {
       console.log('[APP] Component unmounting...');
       clearInterval(interval);
     };
   }, []);
 
-  // Effet pour charger les résidences quand le nom du fokontany change
   useEffect(() => {
     if (fokontanyName) {
       console.log('[APP] fokontanyName changed:', fokontanyName);
@@ -935,7 +801,6 @@ export default function Interface({ user }) {
     }
   }, [fokontanyName]);
 
-  // Effet pour nettoyer les notifications quand on affiche les résidences en attente
   useEffect(() => {
     if (showPendingResidences && currentUser?.role === 'secretaire') {
       console.log('[APP] Pending residences page opened, clearing notifications');
@@ -945,11 +810,9 @@ export default function Interface({ user }) {
     }
   }, [showPendingResidences]);
 
-  // Effet pour effectuer la recherche en temps réel - MODIFIÉ POUR DÉSACTIVER SUR RÉSIDENCE
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (searchQuery.trim() !== '') {
-        // NE PAS EFFECTUER DE RECHERCHE AVEC SUGGESTIONS SUR LA CARTE QUAND LA PAGE RÉSIDENCE EST OUVERTE
         if (showResidence) {
           setShowSearchResults(false);
           setSearchResults([]);
@@ -965,7 +828,6 @@ export default function Interface({ user }) {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery, showResidence]);
 
-  // Gestionnaires d'événements pour le polygon
   const handlePolygonMouseOver = (e) => {
     try {
       setIsPolygonHovered(true);
@@ -984,14 +846,12 @@ export default function Interface({ user }) {
     }
   };
 
-  // Fonction pour centrer et zoomer sur la zone limite
   const handleFocusOnPolygon = () => {
     if (!map) return;
     const polygon = (fokontanyPolygon && fokontanyPolygon.length) ? fokontanyPolygon : ANDABOLY_POLYGON;
     try {
       const bounds = new window.google.maps.LatLngBounds();
       polygon.forEach(p => bounds.extend(p));
-      // Ajoute une marge de 10%
       const ne = bounds.getNorthEast();
       const sw = bounds.getSouthWest();
       const latDiff = (ne.lat() - sw.lat()) * 0.1;
@@ -999,11 +859,9 @@ export default function Interface({ user }) {
       bounds.extend({ lat: ne.lat() + latDiff, lng: ne.lng() + lngDiff });
       bounds.extend({ lat: sw.lat() - latDiff, lng: sw.lng() - lngDiff });
       map.fitBounds(bounds);
-      // Écouteur pour limiter le zoom maximum
       if (window.google && window.google.maps && window.google.maps.event) {
         const listener = window.google.maps.event.addListener(map, 'bounds_changed', function () {
           try {
-            // Limite le zoom maximum à 18
             if (map.getZoom() > 18) map.setZoom(18);
           } catch (e) { }
           try { window.google.maps.event.removeListener(listener); } catch (e) { }
@@ -1014,7 +872,6 @@ export default function Interface({ user }) {
     }
   };
 
-  // Fonction pour calculer les limites d'un polygon
   const calculatePolygonBounds = (polygon) => {
     if (!polygon || polygon.length === 0) return null;
     try {
@@ -1027,13 +884,11 @@ export default function Interface({ user }) {
     }
   };
 
-  // Fonction pour calculer la vue optimale pour un polygon
   const calculateOptimalView = (polygon) => {
     if (!polygon || polygon.length === 0) {
       return { center: ANDABOLY_CENTER, zoom: 15 };
     }
 
-    // Calcule le centre du polygon
     const center = {
       lat: polygon.reduce((sum, point) => sum + point.lat, 0) / polygon.length,
       lng: polygon.reduce((sum, point) => sum + point.lng, 0) / polygon.length
@@ -1046,7 +901,6 @@ export default function Interface({ user }) {
       const latDiff = Math.abs(ne.lat() - sw.lat());
       const lngDiff = Math.abs(ne.lng() - sw.lng());
 
-      // Ajuste le zoom selon la taille du polygon
       let zoom = 18;
       const maxDiff = Math.max(latDiff, lngDiff);
 
@@ -1061,7 +915,6 @@ export default function Interface({ user }) {
     return { center, zoom: 17 };
   };
 
-  // Effet pour charger les données du fokontany depuis l'API
   useEffect(() => {
     const loadMyFokontany = async () => {
       try {
@@ -1086,7 +939,6 @@ export default function Interface({ user }) {
         console.log('[FOK] loadMyFokontany: parsed polygon length', poly ? poly.length : 0);
         setFokontanyPolygon(poly);
 
-        // Récupérer le nom du fokontany
         if (f.nom) {
           setFokontanyName(f.nom);
         }
@@ -1109,7 +961,6 @@ export default function Interface({ user }) {
     loadMyFokontany();
   }, []);
 
-  // Effet pour restaurer l'état depuis le localStorage
   useEffect(() => {
     const savedState = localStorage.getItem('interfaceState');
     if (savedState) {
@@ -1120,7 +971,6 @@ export default function Interface({ user }) {
     }
   }, []);
 
-  // Effet pour sauvegarder l'état dans le localStorage
   useEffect(() => {
     const state = {
       showResidence,
@@ -1130,6 +980,8 @@ export default function Interface({ user }) {
     };
     localStorage.setItem('interfaceState', JSON.stringify(state));
   }, [showResidence, showStatistique, showUserPage, showPendingResidences]);
+
+  const isAnyPageOpen = showResidence || showStatistique || showUserPage || showPendingResidences;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -1141,27 +993,21 @@ export default function Interface({ user }) {
         setShowSearchResults(false);
       }
 
-      // MODIFICATION CRITIQUE : Le menu ne se ferme que si on clique sur le bouton "MENU" lui-même
-      // Les clics ailleurs ne ferment pas le menu déroulant
       const menuButton = document.querySelector('[data-menu-button]');
       const menuDropdown = menuDropdownRef.current;
       
-      if (menuDropdownOpen && menuButton && menuButton.contains(event.target)) {
-        // C'est un clic sur le bouton menu, on laisse le toggle se faire dans handleMenuButtonClick
-        return;
+      if (menuDropdownOpen && menuDropdown && !menuDropdown.contains(event.target) && 
+          menuButton && !menuButton.contains(event.target)) {
+        if (!isAnyPageOpen) {
+          setMenuDropdownOpen(false);
+        }
       }
-      
-      // Ne rien faire pour les autres clics - le menu reste ouvert
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showSearchResults, menuDropdownOpen]);
+  }, [showSearchResults, menuDropdownOpen, isAnyPageOpen]);
 
-  // Vérifie si une page est ouverte
-  const isAnyPageOpen = showResidence || showStatistique || showUserPage || showPendingResidences;
-
-  // Effet pour réinitialiser la sélection d'adresse quand une page est ouverte
   useEffect(() => {
     if (isAnyPageOpen && isSelectingLocation) {
       setIsSelectingLocation(false);
@@ -1199,7 +1045,6 @@ export default function Interface({ user }) {
     }
   }, [isAnyPageOpen]);
 
-  // Fonction pour obtenir le placeholder du champ de recherche
   const getSearchPlaceholder = () => {
     if (showResidence) {
       return "Rechercher dans les résidences... (saisissez et appuyez sur Entrée)";
@@ -1210,10 +1055,8 @@ export default function Interface({ user }) {
     }
   };
 
-  // Vérifie si la recherche est désactivée
   const isSearchDisabled = showStatistique || showUserPage || showPendingResidences;
 
-  // Gestionnaire de déconnexion
   const handleLogout = () => {
     localStorage.removeItem('interfaceState');
     localStorage.removeItem("token");
@@ -1221,288 +1064,175 @@ export default function Interface({ user }) {
     window.location.href = "/login";
   };
 
-  // NOUVELLE FONCTION : Gestionnaire hiérarchique pour le bouton retour SIGAP
   const handleLogoClick = () => {
-    console.log('=== NAVIGATION HIÉRARCHIQUE ===');
+    console.log('=== NAVIGATION HIÉRARCHIQUE SIMPLIFIÉE ===');
     console.log('État actuel:', {
       showUserPage,
       showPasswordModal: userPageState.showPasswordModal,
       showResidence,
       showStatistique,
       showPendingResidences,
-      residenceDetailMode,
-      navigationHistory
+      residenceDetailMode
     });
 
-    // CAS 1: Modal changement de mot de passe ouvert
-    if (showUserPage && userPageState.showPasswordModal) {
+    if (userPageState.showPasswordModal) {
       console.log('CAS 1: Fermeture modal mot de passe');
       setUserPageState(prev => ({ ...prev, showPasswordModal: false }));
       return;
     }
     
-    // CAS 2: Page utilisateur principale ouverte
-    else if (showUserPage) {
+    if (showUserPage) {
       console.log('CAS 2: Retour carte depuis page utilisateur');
       setShowUserPage(false);
       setUserPageState({ showPasswordModal: false });
       
-      // RÉINITIALISER LA RECHERCHE
+      setMenuDropdownOpen(false);
+      
       setSearchQuery("");
       setSearchResults([]);
       setShowSearchResults(false);
-      
-      // Si on avait une page principale avant, la rouvrir
-      const lastMainPage = navigationHistory[navigationHistory.length - 1];
-      if (lastMainPage) {
-        console.log('Restauration page principale:', lastMainPage);
-        switch(lastMainPage) {
-          case 'residence':
-            setShowResidence(true);
-            break;
-          case 'statistique':
-            setShowStatistique(true);
-            break;
-          case 'pending':
-            setShowPendingResidences(true);
-            break;
-        }
-        setNavigationHistory(prev => prev.slice(0, -1));
-      }
       return;
     }
     
-    // CAS 3: Page Résidence en mode détail
-    else if (showResidence && residenceDetailMode) {
-      console.log('CAS 3: Retour de détail à liste des résidences');
-      setResidenceDetailMode(false);
+    if (showResidence && residenceDetailMode) {
+      console.log('CAS 3: Mode détail - Aucune action (rester sur le détail)');
       return;
     }
     
-    // CAS 4: Page principale (Résidence, Statistique, Demandes) en mode liste
-    else if (showResidence || showStatistique || showPendingResidences) {
-      console.log('CAS 4: Fermeture vers carte depuis page principale');
+    if (showResidence && !residenceDetailMode) {
+      console.log('CAS 4: Retour carte depuis liste des résidences');
       
-      // RÉINITIALISER LA RECHERCHE
-      setSearchQuery("");
-      setSearchResults([]);
-      setShowSearchResults(false);
-      
-      // Fermer la page actuelle
       setShowResidence(false);
+      setResidenceDetailMode(false);
+      
+      setMenuDropdownOpen(false);
+      
+      setSearchQuery("");
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+    
+    if (showStatistique) {
+      console.log('CAS 5: Retour carte depuis page Statistique');
       setShowStatistique(false);
+      
+      setMenuDropdownOpen(false);
+      
+      setSearchQuery("");
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+    
+    if (showPendingResidences) {
+      console.log('CAS 6: Retour carte depuis page Demandes en attente');
       setShowPendingResidences(false);
       setResidenceToSelect(null);
       
-      // Réinitialiser le mode détail
-      setResidenceDetailMode(false);
-      
-      // Fermer le menu déroulant
       setMenuDropdownOpen(false);
       
-      // Nettoyer l'historique de navigation
-      setNavigationHistory([]);
+      setSearchQuery("");
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
     }
     
-    // CAS 5: Déjà sur la carte, ne rien faire
-    else {
-      console.log('CAS 5: Déjà sur la carte');
-    }
+    console.log('CAS 7: Déjà sur la carte');
+    setMenuDropdownOpen(false);
   };
 
-  // NOUVEAU : Fonction pour ajouter une page à l'historique de navigation
-  const addToNavigationHistory = (page) => {
-    // Ne pas ajouter si on est déjà dans cette page
-    if (navigationHistory[navigationHistory.length - 1] !== page) {
-      setNavigationHistory(prev => [...prev, page]);
+  const openPage = (page) => {
+    console.log(`Ouverture page: ${page}`);
+    
+    setShowResidence(false);
+    setShowStatistique(false);
+    setShowUserPage(false);
+    setShowPendingResidences(false);
+    setUserPageState({ showPasswordModal: false });
+    setResidenceDetailMode(false);
+    
+    switch(page) {
+      case 'residence':
+        setShowResidence(true);
+        break;
+      case 'statistique':
+        setShowStatistique(true);
+        break;
+      case 'user':
+        setShowUserPage(true);
+        break;
+      case 'pending':
+        setShowPendingResidences(true);
+        break;
     }
-    console.log('Historique navigation:', navigationHistory);
+    
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowSearchResults(false);
   };
 
-  // NOUVELLE : Gestionnaire pour entrer dans le mode détail d'une résidence
   const handleEnterResidenceDetail = () => {
     console.log('Entrée en mode détail résidence');
     setResidenceDetailMode(true);
   };
 
-  // NOUVELLE : Gestionnaire pour sortir du mode détail d'une résidence
   const handleExitResidenceDetail = () => {
     console.log('Sortie du mode détail résidence');
     setResidenceDetailMode(false);
   };
 
-  // NOUVELLE : Gestionnaire de clic sur le bouton "MENU"
   const handleMenuButtonClick = () => {
-    setMenuDropdownOpen(!menuDropdownOpen);
+    console.log('Menu button clicked, current state:', menuDropdownOpen);
+    setMenuDropdownOpen(prev => !prev);
   };
 
-  // MODIFICATION : Gestionnaires de clic sur les items du menu avec historique ET RÉINITIALISATION DE RECHERCHE
   const handleResidenceClick = () => {
-    const newShowResidence = !showResidence;
-    setShowResidence(newShowResidence);
+    console.log('Residence clicked from menu');
     
-    // RÉINITIALISER LA RECHERCHE
-    setSearchQuery("");
-    setSearchResults([]);
-    setShowSearchResults(false);
-    
-    if (newShowResidence) {
-      // Ajouter à l'historique si on ouvre une nouvelle page
-      addToNavigationHistory('residence');
-      setShowStatistique(false);
-      setShowUserPage(false);
-      setShowPendingResidences(false);
-      setUserPageState({ showPasswordModal: false });
-      // Réinitialiser le mode détail quand on ouvre la page
-      setResidenceDetailMode(false);
-    } else {
-      // Si on ferme, supprimer de l'historique
-      setNavigationHistory(prev => prev.filter(p => p !== 'residence'));
-      // Réinitialiser le mode détail
-      setResidenceDetailMode(false);
-    }
-    
-    setShowNotifications(false);
-    setClickedResidenceId(null);
-    setResidenceToSelect(null);
-    
-    if (isSelectingLocation || showAddAddress) {
-      setIsSelectingLocation(false);
-      setShowAddAddress(false);
-      setSelectedLocation(null);
-      setSelectedAddress("");
-      setHasSelectedAddress(false);
-      setAddressDetails({
-        lot: "",
-        nomResidence: "",
-        nomProprietaire: "",
-        quartier: "",
-        ville: ""
-      });
-      setIsAddAddressModalOpen(false);
-    }
-  };
-
-  // MODIFICATION : Gestionnaire de clic sur Statistique avec historique ET RÉINITIALISATION DE RECHERCHE
-  const handleStatistiqueClick = () => {
-    const newShowStatistique = !showStatistique;
-    setShowStatistique(newShowStatistique);
-    
-    // RÉINITIALISER LA RECHERCHE
-    setSearchQuery("");
-    setSearchResults([]);
-    setShowSearchResults(false);
-    
-    if (newShowStatistique) {
-      // Ajouter à l'historique si on ouvre une nouvelle page
-      addToNavigationHistory('statistique');
-      setShowResidence(false);
-      setShowUserPage(false);
-      setShowPendingResidences(false);
-      setUserPageState({ showPasswordModal: false });
-    } else {
-      // Si on ferme, supprimer de l'historique
-      setNavigationHistory(prev => prev.filter(p => p !== 'statistique'));
-    }
-    
-    setShowNotifications(false);
-    setClickedResidenceId(null);
-    setResidenceToSelect(null);
-    
-    if (isSelectingLocation || showAddAddress) {
-      setIsSelectingLocation(false);
-      setShowAddAddress(false);
-      setSelectedLocation(null);
-      setSelectedAddress("");
-      setHasSelectedAddress(false);
-      setAddressDetails({
-        lot: "",
-        nomResidence: "",
-        nomProprietaire: "",
-        quartier: "",
-        ville: ""
-      });
-      setIsAddAddressModalOpen(false);
-    }
-  };
-
-  // MODIFICATION : Gestionnaire de clic sur l'icône utilisateur avec historique ET RÉINITIALISATION DE RECHERCHE
-  const handleUserIconClick = () => {
-    const newShowUserPage = !showUserPage;
-    setShowUserPage(newShowUserPage);
-    
-    // RÉINITIALISER LA RECHERCHE
-    setSearchQuery("");
-    setSearchResults([]);
-    setShowSearchResults(false);
-    
-    if (newShowUserPage) {
-      setUserPageState({ showPasswordModal: false });
-    }
-    
-    if (newShowUserPage) {
-      // Si on a une page principale ouverte, la sauvegarder dans l'historique
-      if (showResidence || showStatistique || showPendingResidences) {
-        let currentPage = '';
-        if (showResidence) currentPage = 'residence';
-        else if (showStatistique) currentPage = 'statistique';
-        else if (showPendingResidences) currentPage = 'pending';
-        
-        if (currentPage) {
-          addToNavigationHistory(currentPage);
-        }
+    if (showResidence) {
+      if (residenceDetailMode) {
+        setResidenceDetailMode(false);
+      } else {
+        setShowResidence(false);
+        setMenuDropdownOpen(false);
       }
-      
-      setShowResidence(false);
-      setShowStatistique(false);
-      setShowPendingResidences(false);
+    } else {
+      openPage('residence');
     }
-    
-    setShowNotifications(false);
-    setClickedResidenceId(null);
-    setResidenceToSelect(null);
   };
 
-  // MODIFICATION : Gestionnaire de clic sur Demandes (pour secrétaire) avec historique ET RÉINITIALISATION DE RECHERCHE
-  const handlePendingResidencesClick = () => {
-    const newShowPending = !showPendingResidences;
-    setShowPendingResidences(newShowPending);
-
-    // RÉINITIALISER LA RECHERCHE
-    setSearchQuery("");
-    setSearchResults([]);
-    setShowSearchResults(false);
-
-    if (newShowPending) {
-      // Ajouter à l'historique si on ouvre une nouvelle page
-      addToNavigationHistory('pending');
-      setShowResidence(false);
+  const handleStatistiqueClick = () => {
+    console.log('Statistique clicked from menu');
+    
+    if (showStatistique) {
       setShowStatistique(false);
+      setMenuDropdownOpen(false);
+    } else {
+      openPage('statistique');
+    }
+  };
+
+  const handlePendingResidencesClick = () => {
+    console.log('Pending residences clicked from menu');
+    
+    if (showPendingResidences) {
+      setShowPendingResidences(false);
+      setResidenceToSelect(null);
+      setMenuDropdownOpen(false);
+    } else {
+      openPage('pending');
+    }
+  };
+
+  const handleUserIconClick = () => {
+    if (showUserPage) {
       setShowUserPage(false);
       setUserPageState({ showPasswordModal: false });
+      setMenuDropdownOpen(false);
     } else {
-      // Si on ferme, supprimer de l'historique
-      setNavigationHistory(prev => prev.filter(p => p !== 'pending'));
-      setResidenceToSelect(null);
-    }
-
-    setShowNotifications(false);
-    setClickedResidenceId(null);
-
-    if (isSelectingLocation || showAddAddress) {
-      setIsSelectingLocation(false);
-      setShowAddAddress(false);
-      setSelectedLocation(null);
-      setSelectedAddress("");
-      setHasSelectedAddress(false);
-      setAddressDetails({
-        lot: "",
-        nomResidence: "",
-        nomProprietaire: "",
-        quartier: "",
-        ville: ""
-      });
-      setIsAddAddressModalOpen(false);
+      openPage('user');
+      setMenuDropdownOpen(false);
     }
   };
 
@@ -1564,7 +1294,6 @@ export default function Interface({ user }) {
     }
   };
 
-  // Gestionnaire de clic sur Ajouter une adresse
   const handleAddAddressClick = () => {
     if (isAnyPageOpen || isSelectingLocation || isAddAddressModalOpen || showAddAddress) return;
 
@@ -1588,17 +1317,14 @@ export default function Interface({ user }) {
       ville: ""
     });
 
-    // CORRECTION : Message en noir et blanc initialement
     setMessageStatus("normal");
 
     setShowNotifications(false);
     setShowSearchResults(false);
     setClickedResidenceId(null);
-    // MODIFICATION : Fermer le menu déroulant seulement quand on ajoute une adresse
     setMenuDropdownOpen(false);
   };
 
-  // Fonction pour obtenir l'adresse à partir de coordonnées (géocodage)
   const getAddressFromCoordinates = async (lat, lng) => {
     try {
       const geocoder = new window.google.maps.Geocoder();
@@ -1671,12 +1397,11 @@ export default function Interface({ user }) {
       if (map) {
         const screenPos = latLngToPixel(location);
         const modalWidth = 480;
-        const modalHeight = 580; // Augmenté pour afficher les boutons d'action
+        const modalHeight = 580;
 
         const mapContainer = document.querySelector('[data-map-container]');
         const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
 
-        // Position avec décalage de 20px vers la droite par rapport au centre
         let modalX = screenPos.x + 20;
         let modalY = screenPos.y - (modalHeight / 2);
 
@@ -1747,7 +1472,6 @@ export default function Interface({ user }) {
     }, 100);
   };
 
-  // Gestionnaire de clic sur la carte
   const handleMapClick = async (event) => {
     if (isSelectingLocation) {
       const lat = event.latLng.lat();
@@ -1775,13 +1499,11 @@ export default function Interface({ user }) {
 
         repositionModalForLocation({ lat, lng });
       } else {
-        // CORRECTION : Changement en rouge uniquement si on clique en dehors de la zone
         setMessageStatus("error");
       }
     }
   };
 
-  // Gestionnaire pour retourner à la sélection de localisation
   const handleReturnToSelection = () => {
     setShowAddAddress(false);
     setIsSelectingLocation(true);
@@ -1801,7 +1523,6 @@ export default function Interface({ user }) {
     setSelectedMarkerColor("yellow");
   };
 
-  // Gestionnaire pour fermer complètement l'ajout d'adresse
   const handleCloseComplete = () => {
     setShowAddAddress(false);
     setIsSelectingLocation(false);
@@ -1821,7 +1542,6 @@ export default function Interface({ user }) {
     setSelectedMarkerColor("yellow");
   };
 
-  /* utilitaire : calcul âge depuis date ISO (YYYY-MM-DD) */
   const calculateAgeFromDate = (dateStr) => {
     if (!dateStr) return null;
     const d = new Date(dateStr);
@@ -1831,7 +1551,6 @@ export default function Interface({ user }) {
     return Math.abs(ageDt.getUTCFullYear() - 1970);
   };
 
-  /* Ajout / suppression personne */
   const handleAddPerson = () => {
     setNewResidents(prev => [...prev, { nom: '', prenom: '', birthdate: '', cin: '', sexe: 'masculin', phone: '' }]);
     setResidentFieldsScrollable(true);
@@ -1849,7 +1568,6 @@ export default function Interface({ user }) {
       const copy = [...prev];
 
       if (field === 'sexe') {
-        // CORRECTION : Garder "masculin"/"feminin" pour l'UI mais convertir pour l'API
         copy[index] = { ...copy[index], [field]: value };
       } else {
         copy[index] = { ...copy[index], [field]: value };
@@ -1877,7 +1595,6 @@ export default function Interface({ user }) {
     });
   };
 
-  /* Navigation étapes */
   const handleNextFromLot = () => {
     if (!addressDetails.lot || !addressDetails.lot.trim()) {
       setFormError('Lot requis');
@@ -1891,7 +1608,6 @@ export default function Interface({ user }) {
     setAddStep(1);
   };
 
-  /* Confirmation finale: envoi résidence + residents si fournis - MODIFIÉE POUR LES NOUVEAUX CHAMPS */
   const handleConfirmSave = async () => {
     if (!addressDetails.lot || !addressDetails.lot.trim()) {
       setModalError('Lot requis');
@@ -1908,11 +1624,10 @@ export default function Interface({ user }) {
     try {
       const token = localStorage.getItem('token');
 
-      // ÉTAPE 1: Créer la résidence d'abord
       const residencePayload = {
         lot: addressDetails.lot.trim(),
-        nom_residence: addressDetails.nomResidence || null, // NOUVEAU CHAMP
-        nom_proprietaire: addressDetails.nomProprietaire || null, // NOUVEAU CHAMP
+        nom_residence: addressDetails.nomResidence || null,
+        nom_proprietaire: addressDetails.nomProprietaire || null,
         quartier: addressDetails.quartier || null,
         ville: addressDetails.ville || null,
         fokontany: fokontanyName || null,
@@ -1949,24 +1664,19 @@ export default function Interface({ user }) {
       const residenceResult = await residenceResp.json();
       console.log('Résidence créée:', residenceResult);
 
-      // Stocker l'ID de la résidence créée
       const residenceId = residenceResult.id;
 
-      // ÉTAPE 2: Ajouter les personnes (si fournies) avec l'ID de résidence
       if (newResidents.length > 0) {
         console.log('Étape 2: Ajout des personnes', newResidents.length);
         
-        // Filtrer les personnes valides (avec nom et prénom)
         const validResidents = newResidents.filter(r => 
           r.nom?.trim() && r.prenom?.trim()
         );
 
         if (validResidents.length > 0) {
-          // Créer les personnes une par une
           for (const r of validResidents) {
             const nomComplet = `${r.nom.trim()}${r.prenom ? ' ' + r.prenom.trim() : ''}`.trim();
             
-            // Calculer l'âge
             const age = calculateAgeFromDate(r.birthdate);
             let cinVal = null;
             if (age === null) {
@@ -1977,11 +1687,10 @@ export default function Interface({ user }) {
               cinVal = (r.cin && r.cin !== 'Mineur') ? String(r.cin).replace(/\D/g, '').slice(0, 12) : null;
             }
 
-            // Convertir le sexe pour l'API
             const genre = r.sexe === 'masculin' ? 'homme' : (r.sexe === 'feminin' ? 'femme' : 'homme');
 
             const personPayload = {
-              residence_id: residenceId, // Utiliser l'ID de la résidence créée
+              residence_id: residenceId,
               nom_complet: nomComplet,
               date_naissance: r.birthdate || null,
               cin: cinVal,
@@ -2002,19 +1711,17 @@ export default function Interface({ user }) {
 
             if (!personResp.ok) {
               console.warn(`Échec ajout personne: ${nomComplet}`);
-              // Continuer avec les autres personnes même si une échoue
             }
           }
           console.log('Personnes ajoutées avec succès');
         }
       }
 
-      // Mise à jour de l'interface
       const newResidence = {
         id: residenceId,
         lot: residenceResult.lot,
-        nom_residence: residenceResult.nom_residence, // NOUVEAU CHAMP
-        nom_proprietaire: residenceResult.nom_proprietaire, // NOUVEAU CHAMP
+        nom_residence: residenceResult.nom_residence,
+        nom_proprietaire: residenceResult.nom_proprietaire,
         quartier: residenceResult.quartier,
         ville: residenceResult.ville,
         fokontany: residenceResult.fokontany,
@@ -2022,20 +1729,19 @@ export default function Interface({ user }) {
         lng: residenceResult.lng,
         created_by: residenceResult.created_by,
         created_at: residenceResult.created_at,
-        is_active: residenceResult.is_active
+        is_active: residenceResult.is_active,
+        name: residenceResult.nom_residence || residenceResult.lot,
+        proprietaire: residenceResult.nom_proprietaire
       };
 
-      // Ajouter à la liste locale
       setResidences(prev => [newResidence, ...(prev || [])]);
 
-      // Message de succès
       if (residenceResult.requires_approval) {
         alert('Résidence soumise pour approbation.');
       } else {
         alert('Résidence enregistrée avec succès');
       }
 
-      // Reset du modal
       setAddressDetails({ 
         lot: '', 
         nomResidence: '', 
@@ -2054,7 +1760,6 @@ export default function Interface({ user }) {
       setResidentFieldsScrollable(false);
       setIsAddAddressModalOpen(false);
 
-      // Recharger la liste des résidences
       fetchResidences();
 
     } catch (err) {
@@ -2065,13 +1770,11 @@ export default function Interface({ user }) {
     }
   };
 
-  /* Toggle langue (FR <-> MG) */
   const handleToggleLang = () => {
     const next = i18n.language === 'fr' ? 'mg' : 'fr';
     i18n.changeLanguage(next);
   };
 
-  // Gestionnaire pour annuler la sélection
   const handleCancelSelection = () => {
     setIsSelectingLocation(false);
     setSelectedLocation(null);
@@ -2091,7 +1794,6 @@ export default function Interface({ user }) {
     setSelectedMarkerColor("yellow");
   };
 
-  // NOUVEAU : Gestionnaire pour retourner à la sélection de localisation (bouton Annuler)
   const handleCancelToSelection = () => {
     setShowAddAddress(false);
     setIsSelectingLocation(true);
@@ -2115,7 +1817,6 @@ export default function Interface({ user }) {
     setSelectedMarkerColor("yellow");
   };
 
-  // Gestionnaire de changement des détails de l'adresse - MODIFIÉ POUR LES NOUVEAUX CHAMPS
   const handleAddressDetailsChange = (field, value) => {
     setAddressDetails(prev => ({
       ...prev,
@@ -2127,16 +1828,13 @@ export default function Interface({ user }) {
     }
   };
 
-  // Gestionnaires pour fermer les différentes pages
   const handleCloseResidence = () => {
     setShowResidence(false);
     setResidenceDetailMode(false);
-    setNavigationHistory(prev => prev.filter(p => p !== 'residence'));
   };
 
   const handleCloseStatistique = () => {
     setShowStatistique(false);
-    setNavigationHistory(prev => prev.filter(p => p !== 'statistique'));
   };
 
   const handleCloseUserPage = () => {
@@ -2147,15 +1845,12 @@ export default function Interface({ user }) {
   const handleClosePendingResidences = () => {
     setShowPendingResidences(false);
     setResidenceToSelect(null);
-    setNavigationHistory(prev => prev.filter(p => p !== 'pending'));
   };
 
-  // Gestionnaire pour changer l'état de la page utilisateur
   const handleUserPageStateChange = (newState) => {
     setUserPageState(newState);
   };
 
-  // Gestionnaires pour le zoom de la carte
   const handleZoomIn = () => {
     if (map) {
       map.setZoom(map.getZoom() + 1);
@@ -2168,7 +1863,6 @@ export default function Interface({ user }) {
     }
   };
 
-  // Fonction pour centrer la carte sur le polygon
   const handleCenterMap = () => {
     if (map) {
       handleFocusOnPolygon();
@@ -2176,12 +1870,10 @@ export default function Interface({ user }) {
     }
   };
 
-  // Gestionnaire pour changer le type de carte
   const handleMapTypeChange = () => {
     setMapType(mapType === "satellite" ? "roadmap" : "satellite");
   };
 
-  // Gestionnaire de clic sur un marqueur de résidence
   const handleResidenceMarkerClick = (residenceId) => {
     if (map) {
       setZoomBeforeResidenceClick(map.getZoom());
@@ -2191,7 +1883,6 @@ export default function Interface({ user }) {
     setClickedResidenceId(residenceId);
   };
 
-  // Gestionnaire pour fermer l'info-bulle de résidence
   const handleCloseResidenceInfo = () => {
     setClickedResidenceId(null);
 
@@ -2203,13 +1894,11 @@ export default function Interface({ user }) {
     }
   };
 
-  // NOUVELLE FONCTION : Pour gérer l'affichage d'une résidence sur la carte
   const handleViewOnMap = (residence) => {
     console.log('[INTERFACE] Affichage résidence sur carte:', residence);
 
     setShowResidence(false);
     setResidenceDetailMode(false);
-    setNavigationHistory(prev => prev.filter(p => p !== 'residence'));
 
     if (map) {
       setPreviousZoom(map.getZoom());
@@ -2226,6 +1915,7 @@ export default function Interface({ user }) {
       map.setZoom(18);
 
       setClickedResidenceId(residence.id);
+      setSelectedResidenceFromSearch(residence);
 
       if (!residences.some(r => r.id === residence.id)) {
         setResidences(prev => [residence, ...prev]);
@@ -2236,7 +1926,6 @@ export default function Interface({ user }) {
     }
   };
 
-  // Effet pour initialiser le fokontany depuis l'utilisateur
   useEffect(() => {
     const initFokontanyFromUser = async () => {
       try {
@@ -2264,7 +1953,6 @@ export default function Interface({ user }) {
                 const sum = poly.reduce((acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }), { lat: 0, lng: 0 });
                 setFokontanyCenter({ lat: sum.lat / poly.length, lng: sum.lng / poly.length });
 
-                // Récupérer le nom du fokontany
                 if (f.nom) {
                   setFokontanyName(f.nom);
                 }
@@ -2312,7 +2000,6 @@ export default function Interface({ user }) {
                 const sum = poly.reduce((acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }), { lat: 0, lng: 0 });
                 setFokontanyCenter({ lat: sum.lat / poly.length, lng: sum.lng / poly.length });
 
-                // Récupérer le nom du fokontany
                 if (fok.nom) {
                   setFokontanyName(fok.nom);
                 }
@@ -2342,7 +2029,6 @@ export default function Interface({ user }) {
     initFokontanyFromUser();
   }, [user, map]);
 
-  // Effet pour repositionner le modal lors du redimensionnement
   useEffect(() => {
     const handleResize = () => {
       if (selectedLocation && showAddAddress) {
@@ -2354,7 +2040,6 @@ export default function Interface({ user }) {
     return () => window.removeEventListener('resize', handleResize);
   }, [selectedLocation, showAddAddress, map]);
 
-  // Gestionnaire de chargement de la carte
   const onMapLoad = (mapInstance) => {
     try {
       setMap(mapInstance);
@@ -2370,7 +2055,6 @@ export default function Interface({ user }) {
     }
   };
 
-  // Gestionnaire de changement de zoom
   const handleZoomChanged = () => {
     if (map) {
       const currentZoom = map.getZoom();
@@ -2380,12 +2064,10 @@ export default function Interface({ user }) {
     }
   };
 
-  // Gestionnaire de fin de déplacement de la carte
   const handleDragEnd = () => {
     setShouldZoomToPolygon(false);
   };
 
-  // Fonction pour obtenir les options de la carte
   const getMapOptions = () => {
     const activePolygon = (fokontanyPolygon && fokontanyPolygon.length > 0) ? fokontanyPolygon : ANDABOLY_POLYGON;
     const view = calculateOptimalView(activePolygon);
@@ -2410,7 +2092,6 @@ export default function Interface({ user }) {
     };
   };
 
-  // Options du polygon affiché sur la carte
   const polygonOptions = {
     strokeColor: "#1E90FF",
     strokeOpacity: 0.8,
@@ -2421,7 +2102,6 @@ export default function Interface({ user }) {
     zIndex: 1
   };
 
-  // Effet pour ajouter des écouteurs d'événements à la carte
   useEffect(() => {
     if (!map) return;
 
@@ -2466,31 +2146,25 @@ export default function Interface({ user }) {
     };
   }, [map]);
 
-  // Effet pour zoomer sur le polygon quand nécessaire
   useEffect(() => {
     if (shouldZoomToPolygon && map && mapLoaded) {
       handleFocusOnPolygon();
     }
   }, [shouldZoomToPolygon, map, mapLoaded]);
 
-  // Style du conteneur de la carte
   const containerStyle = {
     width: "100%",
     height: "100vh",
   };
 
-  // Détermine le polygon actif (personnalisé ou par défaut)
   const activePolygon = (fokontanyPolygon && fokontanyPolygon.length > 0) ? fokontanyPolygon : ANDABOLY_POLYGON;
 
-  // Rendu du composant
   return (
     <div className="relative w-full h-screen bg-[#F2F2F2] overflow-hidden">
-      {/* Overlay flou quand une page est ouverte */}
       {isAnyPageOpen && (
         <div className="absolute inset-0 z-25 bg-white transition-all duration-300 ease-in-out pointer-events-none"></div>
       )}
 
-      {/* Barre de recherche fixe à gauche */}
       <div className="absolute top-6 left-[320px] z-40 search-bar-container">
         <div className="w-96">
           <div className={`
@@ -2528,16 +2202,12 @@ export default function Interface({ user }) {
         </div>
       </div>
 
-      {/* === RÉSULTATS DE RECHERCHE === */}
       <SearchResultsModal />
 
-      {/* === BOUTONS DROITS (AJOUTER, NOTIFICATIONS, LANGUE, PROFIL) === */}
-      {/* MODIFICATION : Le bouton "Ajouter une nouvelle adresse" est masqué quand une page est ouverte */}
       <div className="absolute top-6 right-4 z-50">
         <div className="bg-white/30 hover:bg-white/50 rounded-2xl shadow-lg border border-gray-200/60 hover:border-gray-300/80 transition-all duration-300">
           <div className="flex items-center justify-end px-4 py-1 space-x-4">
 
-            {/* Bouton Ajouter une adresse - MASQUÉ QUAND UNE PAGE EST OUVERTE */}
             {!isAnyPageOpen && (
               <button
                 onClick={handleAddAddressClick}
@@ -2567,7 +2237,6 @@ export default function Interface({ user }) {
               </button>
             )}
 
-            {/* BOUTON NOTIFICATION */}
             <button
               onClick={() => {
                 if (!showAddAddress) {
@@ -2592,7 +2261,6 @@ export default function Interface({ user }) {
               )}
             </button>
 
-            {/* BOUTON LANGUE (entre notification et profil) */}
             <button
               onClick={handleToggleLang}
               disabled={isAddAddressModalOpen}
@@ -2603,7 +2271,6 @@ export default function Interface({ user }) {
               <span className="text-sm font-medium" style={{ color: isAddAddressModalOpen ? '#9ca3af' : '#374151' }}>{i18n.language === 'fr' ? 'FR' : 'MG'}</span>
             </button>
 
-            {/* Bouton Profil - MODIFICATION: Icône remplacée par un cercle avec la première lettre du prénom */}
             <button
               onClick={handleUserIconClick}
               disabled={isAddAddressModalOpen}
@@ -2623,8 +2290,6 @@ export default function Interface({ user }) {
         </div>
       </div>
 
-
-      {/* PANEL DE NOTIFICATIONS */}
       {showNotifications && (
         <div className="absolute top-18 right-4 z-60 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
           <div className="p-4 border-b border-gray-200">
@@ -2671,7 +2336,6 @@ export default function Interface({ user }) {
         </div>
       )}
 
-      {/* === OVERLAY DE SÉLECTION D'ADRESSE === */}
       {isSelectingLocation && !isAnyPageOpen && (
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-end pb-8 pointer-events-none">
           <div className={`rounded-2xl shadow-2xl p-4 mx-4 border relative w-full max-w-2xl ${messageStatus === "error"
@@ -2711,7 +2375,6 @@ export default function Interface({ user }) {
         </div>
       )}
 
-      {/* === MODAL AJOUT ADRESSE - MODIFIÉ AVEC LES NOUVEAUX CHAMPS === */}
       {showAddAddress && (
         <>
           <div className="fixed inset-0 bg-black/50 z-60"></div>
@@ -2730,7 +2393,6 @@ export default function Interface({ user }) {
               flexDirection: 'column'
             }}
           >
-            {/* Header */}
             <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-5 flex items-center justify-between border-b border-gray-200">
               <h3 className="text-gray-800 font-semibold text-lg">Ajouter une résidence</h3>
               <button
@@ -2741,9 +2403,7 @@ export default function Interface({ user }) {
               </button>
             </div>
 
-            {/* Content */}
             <div className="flex-1 overflow-y-auto px-6 py-4" style={{ paddingTop: '16px', paddingBottom: '16px', maxHeight: '440px' }}>
-              {/* Informations du fokontany */}
               <div className="mb-5">
                 <div className="flex items-start space-x-3">
                   <MapPin size={20} className="text-gray-700 flex-shrink-0 mt-1" />
@@ -2758,10 +2418,8 @@ export default function Interface({ user }) {
                 </div>
               </div>
 
-              {/* Etape 1 : Lot et nouveaux champs */}
               {addStep === 1 && (
                 <div className="space-y-5">
-                  {/* Champ Lot */}
                   <div>
                     <input
                       type="text"
@@ -2779,9 +2437,7 @@ export default function Interface({ user }) {
                     )}
                   </div>
 
-                  {/* NOUVEAUX CHAMPS OPTIONNELS : Nom de la résidence et Propriétaire */}
                   <div className="space-y-4">
-                    {/* Champ Nom de la résidence */}
                     <div>
                       <input
                         type="text"
@@ -2794,7 +2450,6 @@ export default function Interface({ user }) {
                       <p className="text-xs text-gray-500 mt-1 ml-1">Ex: Villa Rose, Résidence du Soleil, etc.</p>
                     </div>
 
-                    {/* Champ Nom du propriétaire */}
                     <div>
                       <input
                         type="text"
@@ -2808,7 +2463,6 @@ export default function Interface({ user }) {
                     </div>
                   </div>
 
-                  {/* Section pour ajouter un résident directement */}
                   <div className="space-y-4 pt-4 border-t border-gray-200">
                     <div className="flex justify-between items-center">
                       <h4 className="font-semibold text-gray-800 text-sm">Ajouter un résident (optionnel)</h4>
@@ -2853,9 +2507,7 @@ export default function Interface({ user }) {
                                 </button>
                               </div>
 
-                              {/* Champs de saisie */}
                               <div className="space-y-3">
-                                {/* Nom et Prénom */}
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
                                     <input 
@@ -2879,10 +2531,8 @@ export default function Interface({ user }) {
                                   </div>
                                 </div>
 
-                                {/* Sexe et Date de naissance */}
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
-                                    {/* Section Sexe avec boutons radio horizontaux */}
                                     <div className="flex flex-col">
                                       <label className="text-xs text-gray-700 font-medium mb-1">Sexe:</label>
                                       <div className="flex items-center space-x-3">
@@ -2925,7 +2575,6 @@ export default function Interface({ user }) {
                                   </div>
                                 </div>
 
-                                {/* CIN et Téléphone */}
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
                                     {showCinField ? (
@@ -2978,7 +2627,6 @@ export default function Interface({ user }) {
                 </div>
               )}
 
-              {/* Etape 2 (ancienne étape 2 transformée en section optionnelle) */}
               {addStep === 2 && (
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
@@ -3008,7 +2656,6 @@ export default function Interface({ user }) {
                           </div>
 
                           <div className="grid grid-cols-2 gap-2">
-                            {/* Sexe en premier */}
                             <div className="flex flex-col">
                               <label className="text-xs text-gray-700 font-medium mb-1">Sexe:</label>
                               <select value={p.sexe} onChange={(e) => handlePersonChange(idx, 'sexe', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }}>
@@ -3049,7 +2696,6 @@ export default function Interface({ user }) {
               )}
             </div>
 
-            {/* Footer avec boutons Annuler et Enregistrer */}
             <div className="border-t border-gray-200 px-6 py-4 flex justify-end space-x-4 bg-white" style={{ paddingTop: '16px', paddingBottom: '16px' }}>
               <button
                 onClick={handleCancelToSelection}
@@ -3071,7 +2717,6 @@ export default function Interface({ user }) {
         </>
       )}
 
-      {/* === SIDEBAR GAUCHE === */}
       <div className="absolute top-6 left-6 z-40 sidebar-container">
         <div className="bg-gray-300/20 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200/60 hover:bg-gray-400/30 hover:backdrop-blur-md hover:border-gray-400/30 transition-all duration-300 ease-out overflow-hidden group"
           style={{
@@ -3080,7 +2725,6 @@ export default function Interface({ user }) {
             maxHeight: "85vh"
           }}>
           
-          {/* En-tête SIGAP - Bouton retour */}
           <button
             onClick={handleLogoClick}
             disabled={isAddAddressModalOpen}
@@ -3113,7 +2757,6 @@ export default function Interface({ user }) {
             }}>SIGAP</span>
           </button>
 
-          {/* Section Menu déroulant */}
           <div className="p-4">
             <div ref={menuDropdownRef} className="mb-4">
               <button
@@ -3123,7 +2766,7 @@ export default function Interface({ user }) {
                 className={`w-full flex items-center justify-between rounded-xl transition-all duration-200 mb-2 group-hover:bg-gray-100 ${isAddAddressModalOpen
                   ? 'cursor-not-allowed opacity-70'
                   : menuDropdownOpen
-                  ? "bg-gray-100"
+                  ? "bg-gray-100 border border-gray-200"
                   : "hover:bg-gray-100"
                   }`}
                 style={{
@@ -3132,24 +2775,21 @@ export default function Interface({ user }) {
                 }}
               >
                 <div className="flex items-center gap-3">
-                  <Menu size={18} className={`${isAddAddressModalOpen ? "text-gray-400" : "text-gray-700"} group-hover:text-gray-900`} />
-                  <span className="group-hover:text-gray-900" style={{
+                  <Menu size={18} className={`${isAddAddressModalOpen ? "text-gray-400" : menuDropdownOpen ? "text-gray-900" : "text-gray-700"} group-hover:text-gray-900`} />
+                  <span className={`group-hover:text-gray-900 ${menuDropdownOpen ? "text-gray-900" : ""}`} style={{
                     fontSize: "14px",
-                    fontWeight: 500,
-                    color: isAddAddressModalOpen ? "#9ca3af" : "#374151"
+                    fontWeight: menuDropdownOpen ? 600 : 500,
+                    color: isAddAddressModalOpen ? "#9ca3af" : menuDropdownOpen ? "#111827" : "#374151"
                   }}>MENU</span>
                 </div>
                 <ChevronDown 
                   size={16} 
-                  className={`transition-transform duration-200 ${menuDropdownOpen ? 'rotate-180' : ''} group-hover:text-gray-700`}
-                  style={{ color: isAddAddressModalOpen ? "#9ca3af" : "#6b7280" }}
+                  className={`transition-transform duration-200 ${menuDropdownOpen ? 'rotate-180' : ''} ${isAddAddressModalOpen ? "text-gray-400" : "text-gray-600"}`}
                 />
               </button>
 
-              {/* Menu déroulant "MENU" - version dropdown */}
               {menuDropdownOpen && !isAddAddressModalOpen && (
                 <div className="mt-2 space-y-1 animate-fadeIn">
-                  {/* Option Résidence */}
                   <button
                     onClick={handleResidenceClick}
                     className={`w-full flex items-center rounded-xl transition-all duration-200 ${showResidence
@@ -3176,7 +2816,6 @@ export default function Interface({ user }) {
                     }}>Résidence</span>
                   </button>
 
-                  {/* Option Statistiques */}
                   <button
                     onClick={handleStatistiqueClick}
                     className={`w-full flex items-center rounded-xl transition-all duration-200 ${showStatistique
@@ -3203,7 +2842,6 @@ export default function Interface({ user }) {
                     }}>Statistiques</span>
                   </button>
 
-                  {/* Option Demandes (visible uniquement pour les secrétaires) */}
                   {currentUser?.role === 'secretaire' && (
                     <button
                       onClick={handlePendingResidencesClick}
@@ -3238,8 +2876,6 @@ export default function Interface({ user }) {
         </div>
       </div>
 
-      {/* === PAGES ÉLARGIES (positionnées parallèlement à la barre de recherche) === */}
-      {/* Page Résidence */}
       {showResidence && (
         <div className="absolute top-20 left-[320px] right-4 z-30 bg-gray-400/30 backdrop-blur-sm rounded-3xl overflow-hidden border border-white"
           style={{
@@ -3258,7 +2894,6 @@ export default function Interface({ user }) {
         </div>
       )}
 
-      {/* Page Statistique */}
       {showStatistique && (
         <div className="absolute top-20 left-[320px] right-4 z-30 bg-gray-400/30 backdrop-blur-sm rounded-3xl overflow-hidden border border-white"
           style={{
@@ -3269,7 +2904,6 @@ export default function Interface({ user }) {
         </div>
       )}
 
-      {/* Page Utilisateur */}
       {showUserPage && (
         <div className="absolute top-20 left-[320px] right-4 z-30 bg-gray-400/30 backdrop-blur-sm rounded-3xl overflow-hidden border border-white"
           style={{
@@ -3286,7 +2920,6 @@ export default function Interface({ user }) {
         </div>
       )}
 
-      {/* Page Demandes en attente */}
       {showPendingResidences && currentUser?.role === 'secretaire' && (
         <div className="absolute top-20 left-[320px] right-4 z-30 bg-gray-400/30 backdrop-blur-sm rounded-3xl overflow-hidden border border-white"
           style={{
@@ -3301,7 +2934,6 @@ export default function Interface({ user }) {
         </div>
       )}
 
-      {/* === CONTROLES ZOOM ET COUCHE - CACHÉS QUAND UNE PAGE EST OUVERTE === */}
       {!isAnyPageOpen && (
         <>
           <div className="fixed right-6 bottom-24 z-40 flex flex-col items-center space-y-2">
@@ -3331,7 +2963,6 @@ export default function Interface({ user }) {
             </button>
           </div>
 
-          {/* Bouton changement de type de carte */}
           <div className="fixed right-6 bottom-8 z-40">
             <button
               onClick={handleMapTypeChange}
@@ -3345,7 +2976,6 @@ export default function Interface({ user }) {
         </>
       )}
 
-      {/* === GOOGLE MAPS === */}
       <div className="absolute inset-0 z-0" data-map-container>
         <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_KEY || "AIza..."} >
           <GoogleMap
@@ -3357,7 +2987,6 @@ export default function Interface({ user }) {
             options={getMapOptions()}
             onClick={handleMapClick}
           >
-            {/* Affichage du polygon de zone */}
             {activePolygon && activePolygon.length > 0 && (
               <Polygon
                 paths={activePolygon}
@@ -3368,7 +2997,6 @@ export default function Interface({ user }) {
               />
             )}
 
-            {/* Marqueur pour l'emplacement sélectionné */}
             {selectedLocation && (
               <Marker
                 position={selectedLocation}
@@ -3376,7 +3004,6 @@ export default function Interface({ user }) {
               />
             )}
 
-            {/* Marqueurs pour les résidences existantes */}
             {residences.map((r) => (
               (r.lat != null && r.lng != null) ? (
                 <Marker
@@ -3389,7 +3016,16 @@ export default function Interface({ user }) {
               ) : null
             ))}
 
-            {/* Info-bulle pour la résidence cliquée */}
+            {selectedResidenceFromSearch && (
+              <Marker
+                position={{ 
+                  lat: parseFloat(selectedResidenceFromSearch.lat || selectedResidenceFromSearch.latitude), 
+                  lng: parseFloat(selectedResidenceFromSearch.lng || selectedResidenceFromSearch.longitude)
+                }}
+                icon={createCustomMarkerIcon("yellow")}
+              />
+            )}
+
             {clickedResidenceId && (() => {
               const r = residences.find(x => x.id === clickedResidenceId);
               if (!r) return null;
@@ -3429,7 +3065,6 @@ export default function Interface({ user }) {
         </LoadScript>
       </div>
 
-      {/* Modal de récupération de mot de passe (masqué par défaut) */}
       {showForgotPassword && (
         <ForgotPassword
           onClose={() => setShowForgotPassword(false)}
@@ -3440,18 +3075,15 @@ export default function Interface({ user }) {
   );
 }
 
-/* NOUVEAU : normalisation robuste des coordonnées GeoJSON/arrays/strings
-   Retourne null ou un array [{lat,lng}, ...] */
 const normalizeCoordinates = (input) => {
   try {
     if (!input) return null;
 
     let data = input;
     if (typeof input === "string") {
-      try { data = JSON.parse(input); } catch (e) { /* keep raw string */ }
+      try { data = JSON.parse(input); } catch (e) { }
     }
 
-    // Gestion des différents formats GeoJSON
     if (data && data.type === "FeatureCollection" && Array.isArray(data.features)) {
       const f = data.features.find(ft => ft && ft.geometry && ft.geometry.coordinates);
       if (f) data = f.geometry.coordinates;
@@ -3465,7 +3097,6 @@ const normalizeCoordinates = (input) => {
       data = data.geometry.coordinates;
     }
 
-    // Fonction récursive pour trouver l'anneau de coordonnées
     const findRing = (d) => {
       if (!Array.isArray(d) || d.length === 0) return null;
       if (Array.isArray(d[0] && d[0][0]) && Array.isArray(d[0][0][0])) return d[0][0];
@@ -3481,7 +3112,6 @@ const normalizeCoordinates = (input) => {
     const ring = findRing(data);
     if (!ring) return null;
 
-    // Conversion en format {lat, lng}
     const coords = ring.map((p) => {
       if (Array.isArray(p) && typeof p[0] === "number" && typeof p[1] === "number") {
         return { lat: +p[1], lng: +p[0] };
