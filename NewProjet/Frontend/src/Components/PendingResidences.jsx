@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Check, X, MapPin, User, Clock, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) => {
+  const { t, i18n } = useTranslation();
   const [pendingResidences, setPendingResidences] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedResidence, setSelectedResidence] = useState(null);
@@ -9,6 +11,30 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
   const [notificationCleared, setNotificationCleared] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE || '';
+
+  // Fonction pour traduire les valeurs qui viennent de l'API
+  const translateValue = (value) => {
+    if (!value) return value;
+    
+    // Mappez les valeurs spécifiques qui viennent de l'API
+    const translations = {
+      // Quartier/Neighborhood
+      'Fari-tany tsy fantatra': t('unknownNeighborhood'),
+      'Quartier inconnu': t('unknownNeighborhood'),
+      'Fari-tany tsy voafaritra': t('neighborhoodNotSpecified'),
+      'Quartier non spécifié': t('neighborhoodNotSpecified'),
+      
+      // Ville/City
+      'Tanàna tsy fantatra': t('unknownCity'),
+      'Ville inconnue': t('unknownCity'),
+      
+      // Lot
+      'Lot tsy voafaritra': t('lotNotSpecified'),
+      'Lot non spécifié': t('lotNotSpecified'),
+    };
+    
+    return translations[value] || value;
+  };
 
   const fetchPendingResidences = async () => {
     try {
@@ -21,10 +47,10 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
         const data = await response.json();
         setPendingResidences(data);
       } else {
-        console.error('Erreur chargement résidences en attente');
+        console.error(t('errorLoadingStatistics'));
       }
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error(t('error') + ':', error);
     } finally {
       setLoading(false);
     }
@@ -47,14 +73,13 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
       });
       
       if (response.ok) {
-        console.log('Notification marquée comme lue:', notificationId);
-        // Rafraîchir les notifications si un callback est fourni
+        console.log(t('markAsRead') + ':', notificationId);
         if (onResidenceApproved) {
           onResidenceApproved();
         }
       }
     } catch (error) {
-      console.error('Erreur marquage notification:', error);
+      console.error(t('error') + ' ' + t('markAsMask') + ':', error);
     }
   };
 
@@ -66,7 +91,6 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
     if (residenceToSelect && pendingResidences.length > 0 && !notificationCleared) {
       console.log('[PENDING] Looking for residence with ID:', residenceToSelect);
       
-      // Essayer de trouver la résidence par différents critères
       const foundResidence = pendingResidences.find(residence => {
         console.log('[PENDING] Checking residence:', {
           id: residence.id,
@@ -75,7 +99,6 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
           pending_id: residence.pending_id
         });
         
-        // Essayer plusieurs façons de faire correspondre l'ID
         if (residence.id && residence.id.toString() === residenceToSelect.toString()) {
           return true;
         }
@@ -89,7 +112,6 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
           return true;
         }
         
-        // Vérifier également dans le message si présent
         if (residence.residence_data?.lot && 
             residence.residence_data.lot.toLowerCase().includes(residenceToSelect.toString().toLowerCase())) {
           return true;
@@ -103,14 +125,12 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
         setSelectedResidence(foundResidence);
         setNotificationCleared(true);
         
-        // Marquer les notifications liées à cette résidence comme lues
         markNotificationAsRead(foundResidence.id);
         
-        // Pré-remplir les notes avec des informations utiles
-        setReviewNotes(`Notification pour la résidence "${foundResidence.residence_data?.lot || ''}" - ` +
-                      `Soumis par: ${foundResidence.submitter_name || ''}`);
+        setReviewNotes(t('notification') + ' ' + t('for') + ' ' + t('residence') + ' "' + 
+                      (foundResidence.residence_data?.lot || '') + '" - ' +
+                      t('submittedBy') + ': ' + (foundResidence.submitter_name || ''));
         
-        // Scroll vers l'élément sélectionné
         setTimeout(() => {
           const selectedElement = document.querySelector(`[data-residence-id="${foundResidence.id}"]`);
           if (selectedElement) {
@@ -132,10 +152,9 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
   // GESTIONNAIRE POUR CLIQUER SUR UNE RÉSIDENCE
   const handleResidenceClick = (residence) => {
     setSelectedResidence(residence);
-    setReviewNotes(`Résidence "${residence.residence_data?.lot || ''}" - ` +
-                  `Quartier: ${residence.residence_data?.quartier || ''}`);
+    setReviewNotes(t('residence') + ' "' + (residence.residence_data?.lot || '') + '" - ' +
+                  t('neighborhood') + ': ' + translateValue(residence.residence_data?.quartier) || '');
     
-    // Si cette résidence venait d'une notification, marquer comme lue
     if (residence.id === residenceToSelect && !notificationCleared) {
       markNotificationAsRead(residence.id);
       setNotificationCleared(true);
@@ -157,28 +176,27 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
       });
 
       if (response.ok) {
-        alert('Résidence approuvée avec succès');
+        alert(t('saveSuccess'));
         setSelectedResidence(null);
         setReviewNotes('');
         setNotificationCleared(false);
         fetchPendingResidences();
         
-        // Appeler le callback pour mettre à jour les notifications
         if (onResidenceApproved) {
           onResidenceApproved();
         }
       } else {
-        alert('Erreur lors de l\'approbation');
+        alert(t('saveError'));
       }
     } catch (error) {
-      console.error('Erreur:', error);
-      alert('Erreur réseau');
+      console.error(t('error') + ':', error);
+      alert(t('connectionError'));
     }
   };
 
   const handleReject = async (pendingId) => {
     if (!reviewNotes.trim()) {
-      alert('Veuillez fournir une raison pour le rejet');
+      alert(t('reviewNotesRequired'));
       return;
     }
 
@@ -196,22 +214,21 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
       });
 
       if (response.ok) {
-        alert('Résidence rejetée avec succès');
+        alert(t('residenceRejected'));
         setSelectedResidence(null);
         setReviewNotes('');
         setNotificationCleared(false);
         fetchPendingResidences();
         
-        // Appeler le callback pour mettre à jour les notifications
         if (onResidenceApproved) {
           onResidenceApproved();
         }
       } else {
-        alert('Erreur lors du rejet');
+        alert(t('rejectionError'));
       }
     } catch (error) {
-      console.error('Erreur:', error);
-      alert('Erreur réseau');
+      console.error(t('error') + ':', error);
+      alert(t('connectionError'));
     }
   };
 
@@ -219,7 +236,7 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
   const formatDate = (dateString) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('fr-FR', {
+      return date.toLocaleDateString(i18n.language === 'mg' ? 'mg-MG' : 'fr-FR', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -227,7 +244,7 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
         minute: '2-digit'
       });
     } catch (error) {
-      return dateString || 'Date inconnue';
+      return dateString || t('unknownDate');
     }
   };
 
@@ -236,7 +253,7 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement des demandes...</p>
+          <p className="mt-4 text-gray-600">{t('loadingRequests')}</p>
         </div>
       </div>
     );
@@ -248,10 +265,10 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
       <div className="w-1/2 border-r border-gray-200/60 overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center space-x-3 mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Demandes en attente</h2>
+            <h2 className="text-2xl font-bold text-gray-800">{t('pendingRequests')}</h2>
             {residenceToSelect && !notificationCleared && (
               <span className="text-xs px-3 py-1 bg-gray-800 text-white rounded-full animate-pulse">
-                Nouvelle notification
+                {t('newNotification')}
               </span>
             )}
           </div>
@@ -259,9 +276,9 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
           {pendingResidences.length === 0 ? (
             <div className="text-center py-12">
               <Clock className="mx-auto text-gray-400 mb-4" size={48} />
-              <p className="text-gray-800 text-lg">Aucune demande en attente</p>
+              <p className="text-gray-800 text-lg">{t('noPendingRequests')}</p>
               <p className="text-gray-600 text-sm mt-2">
-                Les nouvelles résidences soumises par les agents apparaîtront ici
+                {t('newResidencesWillAppear')}
               </p>
             </div>
           ) : (
@@ -282,22 +299,22 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
                       <div className="flex items-center space-x-2 mb-2">
                         <MapPin size={16} className="text-gray-600" />
                         <h3 className="font-semibold text-gray-800">
-                          {residence.residence_data?.lot || 'Lot non spécifié'}
+                          {translateValue(residence.residence_data?.lot) || t('lotNotSpecified')}
                         </h3>
                         {residence.id === residenceToSelect && !notificationCleared && (
                           <span className="text-xs px-2 py-1 bg-gray-800 text-white rounded-full animate-pulse">
-                            Nouveau!
+                            {t('new')}
                           </span>
                         )}
                       </div>
                       
                       <div className="flex items-center space-x-2 text-sm text-gray-600 mb-1">
                         <User size={14} />
-                        <span>{residence.submitter_name || 'Agent inconnu'}</span>
+                        <span>{residence.submitter_name || t('unknownAgent')}</span>
                       </div>
                       
                       <div className="text-sm text-gray-500 mb-2">
-                        Quartier: {residence.residence_data?.quartier || 'Non spécifié'}
+                        {t('neighborhood')}: {translateValue(residence.residence_data?.quartier) || t('notSpecified')}
                       </div>
 
                       <div className="text-xs text-gray-400">
@@ -319,32 +336,32 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
         ) : selectedResidence ? (
           <div>
             <h3 className="text-xl font-bold text-gray-800 mb-6">
-              Détails de la demande
+              {t('requestDetails')}
               {selectedResidence.id === residenceToSelect && !notificationCleared && (
                 <span className="ml-2 text-sm bg-gray-800 text-white px-2 py-1 rounded-full animate-pulse">
-                  Nouvelle notification
+                  {t('newNotification')}
                 </span>
               )}
             </h3>
 
             <div className="space-y-4 mb-6">
               <div className="bg-white/50 p-4 rounded-lg border border-gray-200/60">
-                <h4 className="font-semibold text-gray-700 mb-2">Informations de la résidence</h4>
+                <h4 className="font-semibold text-gray-700 mb-2">{t('residenceInformation')}</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Numéro de lot:</span>
-                    <span className="font-medium text-gray-800">{selectedResidence.residence_data?.lot || 'Non spécifié'}</span>
+                    <span className="text-gray-600">{t('lotNumber')}:</span>
+                    <span className="font-medium text-gray-800">{translateValue(selectedResidence.residence_data?.lot) || t('notSpecified')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Quartier:</span>
-                    <span className="font-medium text-gray-800">{selectedResidence.residence_data?.quartier || 'Non spécifié'}</span>
+                    <span className="text-gray-600">{t('neighborhood')}:</span>
+                    <span className="font-medium text-gray-800">{translateValue(selectedResidence.residence_data?.quartier) || t('notSpecified')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Ville:</span>
-                    <span className="font-medium text-gray-800">{selectedResidence.residence_data?.ville || 'Non spécifié'}</span>
+                    <span className="text-gray-600">{t('city')}:</span>
+                    <span className="font-medium text-gray-800">{translateValue(selectedResidence.residence_data?.ville) || t('notSpecified')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Coordonnées:</span>
+                    <span className="text-gray-600">{t('coordinates')}:</span>
                     <span className="font-medium text-gray-800">
                       {selectedResidence.residence_data?.lat?.toFixed(6) || 'N/A'}, {selectedResidence.residence_data?.lng?.toFixed(6) || 'N/A'}
                     </span>
@@ -353,22 +370,22 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
               </div>
 
               <div className="bg-white/50 p-4 rounded-lg border border-gray-200/60">
-                <h4 className="font-semibold text-gray-700 mb-2">Informations de l'agent</h4>
+                <h4 className="font-semibold text-gray-700 mb-2">{t('agentInformation')}</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Nom:</span>
-                    <span className="font-medium text-gray-800">{selectedResidence.submitter_name || 'Non spécifié'}</span>
+                    <span className="text-gray-600">{t('name')}:</span>
+                    <span className="font-medium text-gray-800">{selectedResidence.submitter_name || t('notSpecified')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Immatricule:</span>
-                    <span className="font-medium text-gray-800">{selectedResidence.submitter_immatricule || 'Non spécifié'}</span>
+                    <span className="text-gray-600">{t('registration')}:</span>
+                    <span className="font-medium text-gray-800">{selectedResidence.submitter_immatricule || t('notSpecified')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Fokontany:</span>
-                    <span className="font-medium text-gray-800">{selectedResidence.fokontany_nom || 'Non spécifié'}</span>
+                    <span className="text-gray-600">{t('fokontany')}:</span>
+                    <span className="font-medium text-gray-800">{selectedResidence.fokontany_nom || t('notSpecified')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Date de soumission:</span>
+                    <span className="text-gray-600">{t('submissionDate')}:</span>
                     <span className="font-medium text-gray-800">{formatDate(selectedResidence.created_at)}</span>
                   </div>
                 </div>
@@ -377,12 +394,12 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
 
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Notes pour l'agent (optionnel)
+                {t('notesForAgent')}
               </label>
               <textarea
                 value={reviewNotes}
                 onChange={(e) => setReviewNotes(e.target.value)}
-                placeholder="Ajoutez des commentaires ou des raisons pour votre décision..."
+                placeholder={t('addCommentsPlaceholder')}
                 className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-600 focus:border-transparent bg-white/50"
                 rows="4"
               />
@@ -394,7 +411,7 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
                 className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
               >
                 <Check size={20} />
-                <span>Approuver</span>
+                <span>{t('approve')}</span>
               </button>
               
               <button
@@ -402,20 +419,20 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
                 className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
               >
                 <X size={20} />
-                <span>Rejeter</span>
+                <span>{t('reject')}</span>
               </button>
             </div>
           </div>
         ) : (
           <div className="text-center py-12">
             <AlertCircle className="mx-auto text-gray-400 mb-4 mt-16" size={48} />
-            <p className="text-gray-800 text-lg">Sélectionnez une demande</p>
+            <p className="text-gray-800 text-lg">{t('selectRequest')}</p>
             <p className="text-gray-600 text-sm mt-2">
-              Cliquez sur une demande dans la liste pour voir les détails
+              {t('clickRequestInList')}
             </p>
             {residenceToSelect && !notificationCleared && (
               <p className="text-gray-700 text-sm mt-4 flex items-center justify-center">
-                <i>Une notification a été cliquée - sélectionnez la résidence correspondante</i>
+                <i>{t('notificationClickedSelect')}</i>
               </p>
             )}
           </div>

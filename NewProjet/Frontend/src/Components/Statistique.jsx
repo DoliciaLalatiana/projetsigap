@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Users,
   Home,
@@ -19,9 +20,25 @@ import {
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 const Statistique = ({ onBack }) => {
+  const { t, i18n } = useTranslation();
   const [selectedFokontany, setSelectedFokontany] = useState("Ampasikibo");
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Fonction pour obtenir les noms des mois selon la langue
+  const getLocalizedMonths = () => {
+    const currentLang = i18n.language;
+    
+    if (currentLang === 'mg') {
+      // Mois en malgache
+      return ["Janoary", "Febroary", "Martsa", "Aprily", "Mey", "Jona", 
+              "Jolay", "Aogositra", "Septambra", "Oktobra", "Novambra", "Desambra"];
+    }
+    
+    // Par défaut en français
+    return ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", 
+            "Juil", "Août", "Sep", "Oct", "Nov", "Dec"];
+  };
 
   // Charger les données réelles depuis l'API
   useEffect(() => {
@@ -94,6 +111,22 @@ const Statistique = ({ onBack }) => {
     fetchStatistics();
   }, []);
 
+  // Recharger les données quand la langue change
+  useEffect(() => {
+    if (statistics) {
+      // Regénérer les données de croissance avec les mois localisés
+      const newCroissanceData = genererDonneesCroissance(
+        statistics.totalResidences, 
+        statistics.totalResidents
+      );
+      
+      setStatistics(prev => ({
+        ...prev,
+        croissanceData: newCroissanceData
+      }));
+    }
+  }, [i18n.language]);
+
   // Fonction pour calculer la pyramide des âges
   const calculerPyramideAges = (persons) => {
     const groupes = [
@@ -143,7 +176,7 @@ const Statistique = ({ onBack }) => {
 
   // Générer des données de croissance basées sur les données actuelles
   const genererDonneesCroissance = (totalResidences, totalResidents) => {
-    const mois = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Dec"];
+    const mois = getLocalizedMonths();
     const data = [];
     
     // Simulation de croissance progressive
@@ -170,7 +203,7 @@ const Statistique = ({ onBack }) => {
     const zones = {};
     
     residences.forEach(residence => {
-      const zone = residence.quartier || "Non spécifié";
+      const zone = residence.quartier || t("unspecifiedZone");
       if (!zones[zone]) {
         zones[zone] = {
           residences: 0,
@@ -195,7 +228,9 @@ const Statistique = ({ onBack }) => {
   const genererPDF = () => {
     if (!statistics) return;
 
-    const date = new Date().toLocaleDateString("fr-FR", {
+    // Format de date selon la langue
+    const locale = i18n.language === 'mg' ? 'mg-MG' : 'fr-FR';
+    const date = new Date().toLocaleDateString(locale, {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -207,7 +242,7 @@ const Statistique = ({ onBack }) => {
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>Rapport SIGAP - ${selectedFokontany}</title>
+        <title>${t("statistics")} SIGAP - ${selectedFokontany}</title>
         <style>
           body {
             font-family: Arial, sans-serif;
@@ -250,35 +285,35 @@ const Statistique = ({ onBack }) => {
       </head>
       <body>
         <div class="header">
-          <h1>Rapport SIGAP - ${selectedFokontany}</h1>
-          <p>Date: ${date}</p>
+          <h1>${t("statistics")} SIGAP - ${selectedFokontany}</h1>
+          <p>${t("date")}: ${date}</p>
         </div>
         
         <div class="stats-grid">
           <div class="stat-card">
-            <h3>Adresses</h3>
+            <h3>${t("address")}</h3>
             <p>${statistics.totalResidences}</p>
           </div>
           <div class="stat-card">
-            <h3>Résidents</h3>
+            <h3>${t("residents")}</h3>
             <p>${statistics.totalResidents}</p>
           </div>
         </div>
         
-        <h2>Démographie</h2>
+        <h2>${t("demographics")}</h2>
         <table>
           <thead>
             <tr>
-              <th>Groupe d'âge</th>
-              <th>Hommes</th>
-              <th>Femmes</th>
-              <th>Total</th>
+              <th>${t("ageGroup")}</th>
+              <th>${t("men")}</th>
+              <th>${t("women")}</th>
+              <th>${t("total")}</th>
             </tr>
           </thead>
           <tbody>
             ${statistics.pyramideAges.map(age => `
               <tr>
-                <td>${age.groupe} ans</td>
+                <td>${age.groupe} ${t("years")}</td>
                 <td>${age.hommes}</td>
                 <td>${age.femmes}</td>
                 <td>${age.hommes + age.femmes}</td>
@@ -287,7 +322,7 @@ const Statistique = ({ onBack }) => {
           </tbody>
         </table>
         
-        <p>Généré automatiquement par SIGAP</p>
+        <p>${t("generatedBy")} SIGAP</p>
       </body>
       </html>
     `;
@@ -303,7 +338,7 @@ const Statistique = ({ onBack }) => {
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement des statistiques...</p>
+          <p className="mt-4 text-gray-600">{t("loadingStatistics")}</p>
         </div>
       </div>
     );
@@ -313,7 +348,7 @@ const Statistique = ({ onBack }) => {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Erreur lors du chargement des statistiques</p>
+          <p className="text-gray-600">{t("errorLoadingStatistics")}</p>
         </div>
       </div>
     );
@@ -325,8 +360,11 @@ const Statistique = ({ onBack }) => {
       <div className="flex-shrink-0 flex items-center justify-between p-8 border-gray-200/60 bg-transparent">
         <div className="flex flex-col">
           <h1 className="font-bold text-3xl text-gray-800">
-            Statistique 
+            {t("statistics")}
           </h1>
+          <p className="text-gray-600 text-sm mt-1">
+            {t("overviewOfPopulationData")}
+          </p>
         </div>
         
         {/* Contrôles en haut à droite */}
@@ -345,7 +383,7 @@ const Statistique = ({ onBack }) => {
             className="flex items-center space-x-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-all duration-200 text-sm"
           >
             <Printer size={14} />
-            <span>Générer PDF</span>
+            <span>{t("generatePDF")}</span>
           </button>
         </div>
       </div>
@@ -364,12 +402,12 @@ const Statistique = ({ onBack }) => {
                 <div className="text-2xl font-bold text-gray-800">
                   {statistics.totalResidences}
                 </div>
-                <div className="text-xs text-gray-600">Adresses</div>
+                <div className="text-xs text-gray-600">{t("address")}</div>
               </div>
             </div>
             <div className="mt-auto flex items-center text-xs">
               <span className="text-gray-700">▲ 25%</span>
-              <span className="text-gray-500 ml-1">vs mois dernier</span>
+              <span className="text-gray-500 ml-1">{t("vsLastMonth")}</span>
             </div>
           </div>
 
@@ -383,12 +421,12 @@ const Statistique = ({ onBack }) => {
                 <div className="text-2xl font-bold text-gray-800">
                   {statistics.totalResidents}
                 </div>
-                <div className="text-xs text-gray-600">Résidents</div>
+                <div className="text-xs text-gray-600">{t("residents")}</div>
               </div>
             </div>
             <div className="mt-auto flex items-center text-xs">
               <span className="text-gray-700">▲ 18%</span>
-              <span className="text-gray-500 ml-1">vs mois dernier</span>
+              <span className="text-gray-500 ml-1">{t("vsLastMonth")}</span>
             </div>
           </div>
 
@@ -402,12 +440,12 @@ const Statistique = ({ onBack }) => {
                 <div className="text-2xl font-bold text-gray-800">
                   {statistics.totalHommes}
                 </div>
-                <div className="text-xs text-gray-600">Hommes</div>
+                <div className="text-xs text-gray-600">{t("men")}</div>
               </div>
             </div>
             <div className="mt-auto flex items-center text-xs">
               <span className="text-gray-700">{Math.round((statistics.totalHommes / statistics.totalResidents) * 100)}%</span>
-              <span className="text-gray-500 ml-1">du total</span>
+              <span className="text-gray-500 ml-1">{t("ofTotal")}</span>
             </div>
           </div>
 
@@ -421,12 +459,12 @@ const Statistique = ({ onBack }) => {
                 <div className="text-2xl font-bold text-gray-800">
                   {statistics.totalFemmes}
                 </div>
-                <div className="text-xs text-gray-600">Femmes</div>
+                <div className="text-xs text-gray-600">{t("women")}</div>
               </div>
             </div>
             <div className="mt-auto flex items-center text-xs">
               <span className="text-gray-700">{Math.round((statistics.totalFemmes / statistics.totalResidents) * 100)}%</span>
-              <span className="text-gray-500 ml-1">du total</span>
+              <span className="text-gray-500 ml-1">{t("ofTotal")}</span>
             </div>
           </div>
         </div>
@@ -443,14 +481,14 @@ const Statistique = ({ onBack }) => {
             <div className="bg-white backdrop-blur-sm border border-gray-200/60 rounded-lg p-4 hover:shadow-md transition-all duration-200">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-800 text-sm">
-                  Évolution Démographique
+                  {t("demographicEvolution")}
                 </h3>
                 <div className="flex space-x-2">
                   <span className="px-2 py-1 bg-gray-200 text-gray-800 rounded-full text-xs">
-                    Adresses
+                    {t("address")}
                   </span>
                   <span className="px-2 py-1 bg-gray-300 text-gray-800 rounded-full text-xs">
-                    Résidents
+                    {t("residents")}
                   </span>
                 </div>
               </div>
@@ -472,16 +510,16 @@ const Statistique = ({ onBack }) => {
             <div className="bg-white backdrop-blur-sm border border-gray-200/60 rounded-lg p-4 hover:shadow-md transition-all duration-200">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-800 text-sm">
-                  Pyramide des Âges
+                  {t("agePyramid")}
                 </h3>
                 <div className="flex space-x-2">
                   <div className="flex items-center space-x-1">
                     <div className="w-2 h-2 bg-gray-800 rounded"></div>
-                    <span className="text-xs text-gray-600">Hommes</span>
+                    <span className="text-xs text-gray-600">{t("men")}</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <div className="w-2 h-2 bg-gray-400 rounded"></div>
-                    <span className="text-xs text-gray-600">Femmes</span>
+                    <span className="text-xs text-gray-600">{t("women")}</span>
                   </div>
                 </div>
               </div>

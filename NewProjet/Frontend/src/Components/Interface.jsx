@@ -160,8 +160,6 @@ export default function Interface({ user }) {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [addressDetails, setAddressDetails] = useState({
     lot: "",
-    nomResidence: "",
-    nomProprietaire: "",
     quartier: "",
     ville: ""
   });
@@ -187,13 +185,14 @@ export default function Interface({ user }) {
   const [residenceDetailMode, setResidenceDetailMode] = useState(false);
   const [fokontanyPolygon, setFokontanyPolygon] = useState(null);
   const [fokontanyCenter, setFokontanyCenter] = useState(null);
-  const [fokontanyName, setFokontanyName] = useState(null);
+  const [fokontanyName, setFokontanyName] = useState("Andaboly"); // Défaut: Andaboly
   const [residences, setResidences] = useState([]);
   const [addStep, setAddStep] = useState(1);
   const [newResidents, setNewResidents] = useState([]);
   const [savingResidence, setSavingResidence] = useState(false);
   const [modalError, setModalError] = useState('');
   const [selectedResidenceFromSearch, setSelectedResidenceFromSearch] = useState(null);
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
 
   const dropdownRef = useRef(null);
   const searchRef = useRef(null);
@@ -406,11 +405,15 @@ export default function Interface({ user }) {
 
   const fetchResidences = async () => {
     try {
-      console.log('[RES] fetchResidences: starting...');
+      console.log('[RES] fetchResidences: starting... with fokontanyName:', fokontanyName);
       let url = `${API_BASE}/api/residences`;
-      if (fokontanyName) {
-        url += `?fokontany=${encodeURIComponent(fokontanyName)}`;
-        console.log('[RES] Fetching with fokontany:', fokontanyName);
+      
+      // Utiliser fokontanyName ou le nom de l'utilisateur
+      const fokontanyToUse = fokontanyName || currentUser?.fokontany?.nom || 'Andaboly';
+      
+      if (fokontanyToUse) {
+        url += `?fokontany=${encodeURIComponent(fokontanyToUse)}`;
+        console.log('[RES] Fetching with fokontany:', fokontanyToUse);
       }
 
       const resp = await fetch(url);
@@ -552,7 +555,7 @@ export default function Interface({ user }) {
       setMenuDropdownOpen(false);
 
     } else {
-      alert("Cette résidence n'a pas de coordonnées géographiques enregistrées");
+      alert(t('noCoordinates'));
     }
 
     if (showResidence) {
@@ -598,7 +601,7 @@ export default function Interface({ user }) {
         setMenuDropdownOpen(false);
         
       } else {
-        alert("Cette résidence n'a pas de coordonnées géographiques enregistrées");
+        alert(t('noCoordinates'));
       }
     } else if (result.type === 'person') {
       if (result.residences && result.residences.length > 0) {
@@ -628,10 +631,10 @@ export default function Interface({ user }) {
           
           setMenuDropdownOpen(false);
         } else {
-          alert("Cette personne n'a pas d'adresse avec coordonnées géographiques");
+          alert(t('personNoCoordinates'));
         }
       } else {
-        alert("Cette personne n'a pas d'adresse associée");
+        alert(t('personNoAddress'));
       }
     }
   };
@@ -645,10 +648,10 @@ export default function Interface({ user }) {
       if (residenceWithCoords) {
         handleResidenceSearchResult(residenceWithCoords);
       } else {
-        alert(`Personne: ${result.nom} ${result.prenom}\nAucune adresse avec coordonnées trouvée`);
+        alert(`${t('person')}: ${result.nom} ${result.prenom}\n${t('personNoCoordinates')}`);
       }
     } else {
-      alert(`Personne: ${result.nom} ${result.prenom}\nAucune adresse associée`);
+      alert(`${t('person')}: ${result.nom} ${result.prenom}\n${t('personNoAddress')}`);
     }
   };
 
@@ -677,7 +680,7 @@ export default function Interface({ user }) {
       >
         <div className="p-4 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-gray-800">Résultats de recherche</h3>
+            <h3 className="font-semibold text-gray-800">{t('searchResults')}</h3>
             <button
               onClick={() => setShowSearchResults(false)}
               className="text-gray-400 hover:text-gray-600"
@@ -686,7 +689,7 @@ export default function Interface({ user }) {
             </button>
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            {searchResults.length} résultat{searchResults.length !== 1 ? 's' : ''} trouvé{searchResults.length !== 1 ? 's' : ''}
+            {searchResults.length} {t('resultsFound')}
           </p>
         </div>
 
@@ -707,22 +710,22 @@ export default function Interface({ user }) {
                           {result.lot || 'Lot non spécifié'}
                         </h4>
                         <span className="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full flex-shrink-0">
-                          Adresse
+                          {t('address')}
                         </span>
                       </div>
                       {result.quartier && (
                         <p className="text-xs text-gray-600 mb-1">
-                          <span className="font-medium">Quartier:</span> {result.quartier}
+                          <span className="font-medium">{t('neighborhood')}:</span> {result.quartier}
                         </p>
                       )}
                       {result.ville && (
                         <p className="text-xs text-gray-600">
-                          <span className="font-medium">Ville:</span> {result.ville}
+                          <span className="font-medium">{t('city')}:</span> {result.ville}
                         </p>
                       )}
                       {result.proprietaires && result.proprietaires.length > 0 && (
                         <p className="text-xs text-gray-600 mt-1">
-                          <span className="font-medium">Propriétaire(s):</span> {result.proprietaires.map(p => p.nom).join(', ')}
+                          <span className="font-medium">{t('owner')}:</span> {result.proprietaires.map(p => p.nom).join(', ')}
                         </p>
                       )}
                     </div>
@@ -736,12 +739,12 @@ export default function Interface({ user }) {
                           {result.nom} {result.prenom}
                         </h4>
                         <span className="ml-2 text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full flex-shrink-0">
-                          Personne
+                          {t('person')}
                         </span>
                       </div>
                       {result.residences && result.residences.length > 0 && (
                         <div className="mt-2">
-                          <p className="text-xs text-gray-500 font-medium mb-1">Adresse(s):</p>
+                          <p className="text-xs text-gray-500 font-medium mb-1">{t('addresses')}:</p>
                           {result.residences.slice(0, 2).map((residence, idx) => (
                             <p key={idx} className="text-xs text-gray-600">
                               • {residence.lot || 'Lot non spécifié'} - {residence.quartier}
@@ -749,7 +752,7 @@ export default function Interface({ user }) {
                           ))}
                           {result.residences.length > 2 && (
                             <p className="text-xs text-gray-400 mt-1">
-                              +{result.residences.length - 2} autre(s) adresse(s)
+                              +{result.residences.length - 2} {t('otherAddresses')}
                             </p>
                           )}
                         </div>
@@ -764,10 +767,10 @@ export default function Interface({ user }) {
                     handleViewOnMapFromSearch(result);
                   }}
                   className="ml-2 flex items-center text-xs px-3 py-1.5 bg-white text-gray-800 border border-gray-800 rounded-lg hover:bg-gray-50 transition-colors"
-                  title="Voir sur la carte"
+                  title={t('viewOnMap')}
                 >
                   <Map size={14} className="mr-1" />
-                  Voir sur carte
+                  {t('viewOnMap')}
                 </button>
               </div>
             </div>
@@ -777,12 +780,44 @@ export default function Interface({ user }) {
     );
   };
 
+  // USE EFFECT POUR CHARGER LES DONNÉES APRÈS AUTHENTIFICATION
   useEffect(() => {
-    console.log('[APP] Component mounted, loading data...');
+    console.log('[APP] useEffect principal - chargement après auth');
 
-    fetchAllNotifications();
-    fetchResidences();
+    // Fonction pour charger toutes les données
+    const loadAllData = async () => {
+      try {
+        console.log('[APP] loadAllData: starting...');
+        
+        // 1. Charger les notifications
+        await fetchAllNotifications();
+        
+        // 2. Charger le fokontany de l'utilisateur
+        await loadMyFokontany();
+        
+        // 3. Attendre que fokontanyName soit disponible puis charger les résidences
+        if (fokontanyName) {
+          console.log('[APP] fokontanyName disponible:', fokontanyName);
+          await fetchResidences();
+        } else {
+          // Si fokontanyName n'est pas encore disponible, réessayer après un délai
+          setTimeout(() => {
+            console.log('[APP] Retry fetchResidences après délai');
+            fetchResidences();
+          }, 500);
+        }
+        
+        setInitialDataLoaded(true);
+        console.log('[APP] Toutes les données chargées');
+      } catch (error) {
+        console.error('[APP] Erreur lors du chargement des données:', error);
+      }
+    };
 
+    // Exécuter le chargement initial
+    loadAllData();
+
+    // Configurer l'intervalle pour les notifications
     const interval = setInterval(() => {
       console.log('[APP] Refreshing notifications...');
       fetchAllNotifications();
@@ -792,14 +827,31 @@ export default function Interface({ user }) {
       console.log('[APP] Component unmounting...');
       clearInterval(interval);
     };
-  }, []);
+  }, []); // Exécuté une seule fois au montage
 
+  // USE EFFECT POUR CHARGER LES RÉSIDENCES QUAND fokontanyName CHANGE
   useEffect(() => {
-    if (fokontanyName) {
-      console.log('[APP] fokontanyName changed:', fokontanyName);
+    console.log('[APP] useEffect fokontanyName changed:', fokontanyName);
+    
+    if (fokontanyName && initialDataLoaded) {
+      console.log('[APP] Rechargement des résidences pour nouveau fokontany:', fokontanyName);
       fetchResidences();
     }
-  }, [fokontanyName]);
+  }, [fokontanyName, initialDataLoaded]);
+
+  // USE EFFECT POUR METTRE À JOUR L'UTILISATEUR COURANT
+  useEffect(() => {
+    if (user) {
+      console.log('[APP] User prop updated:', user);
+      setCurrentUser(user);
+      
+      // Si l'utilisateur a un fokontany différent
+      if (user.fokontany?.nom && user.fokontany.nom !== fokontanyName) {
+        console.log('[APP] Mise à jour fokontanyName depuis user:', user.fokontany.nom);
+        setFokontanyName(user.fokontany.nom);
+      }
+    }
+  }, [user]);
 
   useEffect(() => {
     if (showPendingResidences && currentUser?.role === 'secretaire') {
@@ -915,51 +967,52 @@ export default function Interface({ user }) {
     return { center, zoom: 17 };
   };
 
-  useEffect(() => {
-    const loadMyFokontany = async () => {
-      try {
-        console.log('[FOK] loadMyFokontany: starting request to /api/fokontany/me');
-        const token = localStorage.getItem('token');
-        if (!token) {
-          console.log('[FOK] loadMyFokontany: no token found in localStorage');
-          return;
-        }
-        const resp = await fetch(`${API_BASE}/api/fokontany/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        console.log('[FOK] loadMyFokontany: response status', resp.status);
-        if (!resp.ok) {
-          console.warn('[FOK] loadMyFokontany: non-ok response', await resp.text());
-          return;
-        }
-        const f = await resp.json();
-        console.log('[FOK] loadMyFokontany: body received', f);
-        let coordsRaw = f.coordinates ?? f.geometry ?? null;
-        const poly = normalizeCoordinates(coordsRaw);
-        console.log('[FOK] loadMyFokontany: parsed polygon length', poly ? poly.length : 0);
-        setFokontanyPolygon(poly);
-
-        if (f.nom) {
-          setFokontanyName(f.nom);
-        }
-
-        if (f.centre_lat && f.centre_lng) {
-          setFokontanyCenter({ lat: parseFloat(f.centre_lat), lng: parseFloat(f.centre_lng) });
-          console.log('[FOK] loadMyFokontany: using centre_lat/centre_lng', f.centre_lat, f.centre_lng);
-        } else if (poly && poly.length) {
-          const lat = poly.reduce((s, p) => s + p.lat, 0) / poly.length;
-          const lng = poly.reduce((s, p) => s + p.lng, 0) / poly.length;
-          setFokontanyCenter({ lat, lng });
-          console.log('[FOK] loadMyFokontany: computed center', { lat, lng });
-        } else {
-          console.log('[FOK] loadMyFokontany: no coordinates or center available for fokontany');
-        }
-      } catch (err) {
-        console.warn('[FOK] loadMyFokontany failed', err);
+  // FONCTION POUR CHARGER LE FOKONTANY
+  const loadMyFokontany = async () => {
+    try {
+      console.log('[FOK] loadMyFokontany: starting request to /api/fokontany/me');
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('[FOK] loadMyFokontany: no token found in localStorage');
+        return;
       }
-    };
-    loadMyFokontany();
-  }, []);
+      const resp = await fetch(`${API_BASE}/api/fokontany/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log('[FOK] loadMyFokontany: response status', resp.status);
+      if (!resp.ok) {
+        console.warn('[FOK] loadMyFokontany: non-ok response', await resp.text());
+        return;
+      }
+      const f = await resp.json();
+      console.log('[FOK] loadMyFokontany: body received', f);
+      
+      // Définir le nom du fokontany en premier
+      if (f.nom) {
+        console.log('[FOK] Setting fokontanyName to:', f.nom);
+        setFokontanyName(f.nom);
+      }
+      
+      let coordsRaw = f.coordinates ?? f.geometry ?? null;
+      const poly = normalizeCoordinates(coordsRaw);
+      console.log('[FOK] loadMyFokontany: parsed polygon length', poly ? poly.length : 0);
+      setFokontanyPolygon(poly);
+
+      if (f.centre_lat && f.centre_lng) {
+        setFokontanyCenter({ lat: parseFloat(f.centre_lat), lng: parseFloat(f.centre_lng) });
+        console.log('[FOK] loadMyFokontany: using centre_lat/centre_lng', f.centre_lat, f.centre_lng);
+      } else if (poly && poly.length) {
+        const lat = poly.reduce((s, p) => s + p.lat, 0) / poly.length;
+        const lng = poly.reduce((s, p) => s + p.lng, 0) / poly.length;
+        setFokontanyCenter({ lat, lng });
+        console.log('[FOK] loadMyFokontany: computed center', { lat, lng });
+      } else {
+        console.log('[FOK] loadMyFokontany: no coordinates or center available for fokontany');
+      }
+    } catch (err) {
+      console.warn('[FOK] loadMyFokontany failed', err);
+    }
+  };
 
   useEffect(() => {
     const savedState = localStorage.getItem('interfaceState');
@@ -1016,8 +1069,6 @@ export default function Interface({ user }) {
       setHasSelectedAddress(false);
       setAddressDetails({
         lot: "",
-        nomResidence: "",
-        nomProprietaire: "",
         quartier: "",
         ville: ""
       });
@@ -1047,11 +1098,11 @@ export default function Interface({ user }) {
 
   const getSearchPlaceholder = () => {
     if (showResidence) {
-      return "Rechercher dans les résidences... (saisissez et appuyez sur Entrée)";
+      return t('searchPlaceholderResidences');
     } else if (showStatistique || showUserPage || showPendingResidences) {
-      return "Recherche désactivée";
+      return t('searchDisabled');
     } else {
-      return "Rechercher un lieu, une adresse ou une personne...";
+      return t('searchPlaceholder');
     }
   };
 
@@ -1311,8 +1362,6 @@ export default function Interface({ user }) {
     setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
-      nomResidence: "",
-      nomProprietaire: "",
       quartier: "",
       ville: ""
     });
@@ -1356,7 +1405,7 @@ export default function Interface({ user }) {
       });
 
       if (!quartier) {
-        quartier = ville || "Quartier non spécifié";
+        quartier = ville || t('neighborhoodNotSpecified');
       }
 
       const addressInfo = {
@@ -1371,8 +1420,6 @@ export default function Interface({ user }) {
       setSelectedAddress(fullAddress);
       setAddressDetails({
         lot: "",
-        nomResidence: "",
-        nomProprietaire: "",
         quartier: addressInfo.quartier,
         ville: addressInfo.ville
       });
@@ -1384,10 +1431,8 @@ export default function Interface({ user }) {
       setSelectedAddress(fallbackAddress);
       setAddressDetails({
         lot: "",
-        nomResidence: "",
-        nomProprietaire: "",
-        quartier: "Quartier inconnu",
-        ville: "Ville inconnue"
+        quartier: t('unknownNeighborhood'),
+        ville: t('unknownCity')
       });
     }
   };
@@ -1512,8 +1557,6 @@ export default function Interface({ user }) {
     setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
-      nomResidence: "",
-      nomProprietaire: "",
       quartier: "",
       ville: ""
     });
@@ -1531,8 +1574,6 @@ export default function Interface({ user }) {
     setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
-      nomResidence: "",
-      nomProprietaire: "",
       quartier: "",
       ville: ""
     });
@@ -1576,9 +1617,9 @@ export default function Interface({ user }) {
       if (field === 'birthdate') {
         const age = calculateAgeFromDate(value);
         if (age !== null && age < 18) {
-          copy[index].cin = 'Mineur';
+          copy[index].cin = t('minor');
         } else if (age !== null && age >= 18) {
-          if (copy[index].cin && copy[index].cin !== 'Mineur') {
+          if (copy[index].cin && copy[index].cin !== t('minor')) {
             copy[index].cin = String(copy[index].cin).replace(/\D/g, '').slice(0, 12);
           }
         }
@@ -1588,7 +1629,7 @@ export default function Interface({ user }) {
         if (age === null || age >= 18) {
           copy[index].cin = String(value).replace(/\D/g, '').slice(0, 12);
         } else {
-          copy[index].cin = 'Mineur';
+          copy[index].cin = t('minor');
         }
       }
       return copy;
@@ -1597,7 +1638,7 @@ export default function Interface({ user }) {
 
   const handleNextFromLot = () => {
     if (!addressDetails.lot || !addressDetails.lot.trim()) {
-      setFormError('Lot requis');
+      setFormError(t('lotError'));
       return;
     }
     setFormError('');
@@ -1610,11 +1651,11 @@ export default function Interface({ user }) {
 
   const handleConfirmSave = async () => {
     if (!addressDetails.lot || !addressDetails.lot.trim()) {
-      setModalError('Lot requis');
+      setModalError(t('lotError'));
       return;
     }
     if (!selectedLocation) {
-      setModalError('Emplacement invalide');
+      setModalError(t('invalidLocation'));
       return;
     }
 
@@ -1626,8 +1667,6 @@ export default function Interface({ user }) {
 
       const residencePayload = {
         lot: addressDetails.lot.trim(),
-        nom_residence: addressDetails.nomResidence || null,
-        nom_proprietaire: addressDetails.nomProprietaire || null,
         quartier: addressDetails.quartier || null,
         ville: addressDetails.ville || null,
         fokontany: fokontanyName || null,
@@ -1649,14 +1688,14 @@ export default function Interface({ user }) {
 
       if (!residenceResp.ok) {
         const body = await residenceResp.text().catch(() => null);
-        let errorMessage = 'Erreur de sauvegarde de la résidence';
+        let errorMessage = t('saveError');
         try {
           if (body) {
             const errorJson = JSON.parse(body);
             errorMessage = errorJson.error || errorJson.message || body;
           }
         } catch (e) {
-          errorMessage = body || 'Erreur de sauvegarde de la résidence';
+          errorMessage = body || t('saveError');
         }
         throw new Error(errorMessage);
       }
@@ -1684,7 +1723,7 @@ export default function Interface({ user }) {
             } else if (age < 18) {
               cinVal = null;
             } else {
-              cinVal = (r.cin && r.cin !== 'Mineur') ? String(r.cin).replace(/\D/g, '').slice(0, 12) : null;
+              cinVal = (r.cin && r.cin !== t('minor')) ? String(r.cin).replace(/\D/g, '').slice(0, 12) : null;
             }
 
             const genre = r.sexe === 'masculin' ? 'homme' : (r.sexe === 'feminin' ? 'femme' : 'homme');
@@ -1720,8 +1759,6 @@ export default function Interface({ user }) {
       const newResidence = {
         id: residenceId,
         lot: residenceResult.lot,
-        nom_residence: residenceResult.nom_residence,
-        nom_proprietaire: residenceResult.nom_proprietaire,
         quartier: residenceResult.quartier,
         ville: residenceResult.ville,
         fokontany: residenceResult.fokontany,
@@ -1730,22 +1767,20 @@ export default function Interface({ user }) {
         created_by: residenceResult.created_by,
         created_at: residenceResult.created_at,
         is_active: residenceResult.is_active,
-        name: residenceResult.nom_residence || residenceResult.lot,
-        proprietaire: residenceResult.nom_proprietaire
+        name: residenceResult.lot,
+        proprietaire: null
       };
 
       setResidences(prev => [newResidence, ...(prev || [])]);
 
       if (residenceResult.requires_approval) {
-        alert('Résidence soumise pour approbation.');
+        alert(t('submittedForApproval'));
       } else {
-        alert('Résidence enregistrée avec succès');
+        alert(t('saveSuccess'));
       }
 
       setAddressDetails({ 
         lot: '', 
-        nomResidence: '', 
-        nomProprietaire: '', 
         quartier: '', 
         ville: '' 
       });
@@ -1764,7 +1799,7 @@ export default function Interface({ user }) {
 
     } catch (err) {
       console.error('handleConfirmSave error', err);
-      setModalError(err.message || 'Erreur de sauvegarde');
+      setModalError(err.message || t('saveError'));
     } finally {
       setSavingResidence(false);
     }
@@ -1782,8 +1817,6 @@ export default function Interface({ user }) {
     setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
-      nomResidence: "",
-      nomProprietaire: "",
       quartier: "",
       ville: ""
     });
@@ -1802,8 +1835,6 @@ export default function Interface({ user }) {
     setHasSelectedAddress(false);
     setAddressDetails({
       lot: "",
-      nomResidence: "",
-      nomProprietaire: "",
       quartier: "",
       ville: ""
     });
@@ -1922,7 +1953,7 @@ export default function Interface({ user }) {
       }
     } else {
       console.warn('[INTERFACE] Résidence sans coordonnées:', residence);
-      alert("Cette résidence n'a pas de coordonnées géographiques enregistrées");
+      alert(t('noCoordinates'));
     }
   };
 
@@ -2220,10 +2251,10 @@ export default function Interface({ user }) {
                   }`}
                 title={
                   isSelectingLocation
-                    ? "Sélection en cours - cliquez sur la carte ou annulez"
+                    ? t('clickOnMap')
                     : isAddAddressModalOpen
                       ? "Une modal est déjà ouverte"
-                      : "Ajouter une nouvelle adresse"
+                      : t('addAddress')
                 }
               >
                 {isSelectingLocation ? (
@@ -2232,7 +2263,7 @@ export default function Interface({ user }) {
                   <Plus size={18} className="mr-2 flex-shrink-0" />
                 )}
                 <span className="text-sm font-medium">
-                  {isSelectingLocation ? "Cliquez sur la carte" : "Ajouter une nouvelle adresse"}
+                  {isSelectingLocation ? t('clickOnMap') : t('addAddress')}
                 </span>
               </button>
             )}
@@ -2251,7 +2282,7 @@ export default function Interface({ user }) {
                 ? 'bg-gray-300 text-gray-400 cursor-not-allowed'
                 : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
                 }`}
-              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : showAddAddress ? "Fermez la modal d'ajout d'adresse pour accéder aux notifications" : "Notifications"}
+              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : showAddAddress ? "Fermez la modal d'ajout d'adresse pour accéder aux notifications" : t('notifications')}
             >
               <Bell size={20} className={`${isAddAddressModalOpen ? 'text-gray-400' : showAddAddress ? 'text-gray-400' : 'text-gray-600 hover:text-gray-800 transition-all duration-300'}`} />
               {totalNotificationsCount > 0 && (
@@ -2278,7 +2309,7 @@ export default function Interface({ user }) {
                 ? 'bg-gray-300 text-gray-400 cursor-not-allowed'
                 : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
                 }`}
-              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : "Profil"}
+              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : t('profile')}
             >
               <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center">
                 <span className="text-xs font-bold text-white">
@@ -2293,14 +2324,14 @@ export default function Interface({ user }) {
       {showNotifications && (
         <div className="absolute top-18 right-4 z-60 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
           <div className="p-4 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-800">Notifications</h3>
+            <h3 className="font-semibold text-gray-800">{t('notifications')}</h3>
             <p className="text-xs text-gray-500 mt-1">
-              {notifications.length} notification{notifications.length !== 1 ? 's' : ''} non lue{notifications.length !== 1 ? 's' : ''}
+              {notifications.length} {notifications.length !== 1 ? t('notificationsCount') : t('notification')}
             </p>
           </div>
           <div className="p-2">
             {notifications.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">Aucune notification non lue</p>
+              <p className="text-gray-500 text-center py-4">{t('noUnreadNotifications')}</p>
             ) : (
               notifications.map(notification => (
                 <div
@@ -2316,7 +2347,7 @@ export default function Interface({ user }) {
                         markAsRead(notification.id);
                       }}
                       className="text-gray-400 hover:text-red-500 text-xs"
-                      title="Marquer comme lue"
+                      title={t('markAsRead')}
                     >
                       <X size={14} />
                     </button>
@@ -2349,15 +2380,15 @@ export default function Interface({ user }) {
                 <div className="flex-1">
                   <p className={`font-medium text-base mb-1 ${messageStatus === "error" ? "text-red-800" : "text-gray-800"}`}>
                     {messageStatus === "error"
-                      ? "Veuillez cliquer uniquement dans la zone limite (en bleu)"
-                      : "Cliquez sur la carte pour sélectionner une adresse"}
+                      ? t('clickOnlyInZone')
+                      : t('selectAddress')}
                   </p>
                   <p className={`text-sm ${messageStatus === "error" ? "text-red-600" : "text-gray-600"}`}>
                     <span className={`font-medium ${messageStatus === "error" ? "text-red-700" : "text-gray-700"}`}>
-                      Zone limitée :
+                      {t('zoneLimited')}
                     </span> {messageStatus === "error"
-                      ? "Cliquez dans la zone bleue pour ajouter une résidence"
-                      : "Veuillez cliquer uniquement dans la zone bleue"}
+                      ? t('clickInBlueZone')
+                      : t('clickInZone')}
                   </p>
                 </div>
               </div>
@@ -2365,10 +2396,10 @@ export default function Interface({ user }) {
               <button
                 onClick={handleCancelSelection}
                 className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-all duration-200 pointer-events-auto flex items-center space-x-2 flex-shrink-0"
-                title="Annuler"
+                title={t('cancel')}
               >
                 <X size={16} />
-                <span className="text-sm font-medium">Annuler</span>
+                <span className="text-sm font-medium">{t('cancel')}</span>
               </button>
             </div>
           </div>
@@ -2394,7 +2425,7 @@ export default function Interface({ user }) {
             }}
           >
             <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-5 flex items-center justify-between border-b border-gray-200">
-              <h3 className="text-gray-800 font-semibold text-lg">Ajouter une résidence</h3>
+              <h3 className="text-gray-800 font-semibold text-lg">{t('addResidence')}</h3>
               <button
                 onClick={handleReturnToSelection}
                 className="text-gray-500 hover:text-gray-700 transition-all duration-200"
@@ -2425,7 +2456,7 @@ export default function Interface({ user }) {
                       type="text"
                       value={addressDetails.lot}
                       onChange={(e) => handleAddressDetailsChange('lot', e.target.value)}
-                      placeholder="Numéro de lot *"
+                      placeholder={t('lotLabel')}
                       className={`w-full px-4 py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formError ? "border-red-500" : "border-gray-300"}`}
                       style={{ height: '42px', fontSize: '14px' }}
                     />
@@ -2437,47 +2468,21 @@ export default function Interface({ user }) {
                     )}
                   </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <input
-                        type="text"
-                        value={addressDetails.nomResidence || ''}
-                        onChange={(e) => handleAddressDetailsChange('nomResidence', e.target.value)}
-                        placeholder="Nom de la résidence (optionnel)"
-                        className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        style={{ height: '42px', fontSize: '14px' }}
-                      />
-                      <p className="text-xs text-gray-500 mt-1 ml-1">Ex: Villa Rose, Résidence du Soleil, etc.</p>
-                    </div>
-
-                    <div>
-                      <input
-                        type="text"
-                        value={addressDetails.nomProprietaire || ''}
-                        onChange={(e) => handleAddressDetailsChange('nomProprietaire', e.target.value)}
-                        placeholder="Nom du propriétaire (optionnel)"
-                        className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        style={{ height: '42px', fontSize: '14px' }}
-                      />
-                      <p className="text-xs text-gray-500 mt-1 ml-1">Propriétaire principal de la résidence</p>
-                    </div>
-                  </div>
-
                   <div className="space-y-4 pt-4 border-t border-gray-200">
                     <div className="flex justify-between items-center">
-                      <h4 className="font-semibold text-gray-800 text-sm">Ajouter un résident (optionnel)</h4>
+                      <h4 className="font-semibold text-gray-800 text-sm">{t('addResident')}</h4>
                       <button 
                         onClick={handleAddPerson}
                         className="text-xs bg-gray-800 text-white px-3 py-1.5 rounded-lg hover:bg-gray-900 transition-all duration-200 flex items-center"
                       >
                         <Plus size={14} className="mr-1" />
-                        Ajouter un résident
+                        {t('addResident')}
                       </button>
                     </div>
 
                     {newResidents.length === 0 ? (
                       <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs">
-                        Aucun résident ajouté — vous pouvez enregistrer directement.
+                        {t('noResidentAdded')}
                       </div>
                     ) : (
                       <div 
@@ -2496,14 +2501,14 @@ export default function Interface({ user }) {
                             <div key={idx} className="border border-gray-200 rounded-xl p-3 space-y-3 bg-white">
                               <div className="flex justify-between items-center">
                                 <strong className="text-gray-800 text-sm">
-                                  {p.nom || p.prenom ? `${p.nom} ${p.prenom}` : `Résident ${idx + 1}`}
+                                  {p.nom || p.prenom ? `${p.nom} ${p.prenom}` : `${t('resident')} ${idx + 1}`}
                                 </strong>
                                 <button 
                                   onClick={() => handleRemovePerson(idx)} 
                                   className="text-red-600 hover:text-red-800 text-xs flex items-center"
                                 >
                                   <X size={12} className="mr-1" />
-                                  Supprimer
+                                  {t('delete')}
                                 </button>
                               </div>
 
@@ -2512,7 +2517,7 @@ export default function Interface({ user }) {
                                   <div>
                                     <input 
                                       type="text" 
-                                      placeholder="Nom" 
+                                      placeholder={t('lastName')}
                                       value={p.nom} 
                                       onChange={(e) => handlePersonChange(idx, 'nom', e.target.value)} 
                                       className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
@@ -2522,7 +2527,7 @@ export default function Interface({ user }) {
                                   <div>
                                     <input 
                                       type="text" 
-                                      placeholder="Prénom" 
+                                      placeholder={t('firstName')}
                                       value={p.prenom} 
                                       onChange={(e) => handlePersonChange(idx, 'prenom', e.target.value)} 
                                       className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
@@ -2534,7 +2539,7 @@ export default function Interface({ user }) {
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
                                     <div className="flex flex-col">
-                                      <label className="text-xs text-gray-700 font-medium mb-1">Sexe:</label>
+                                      <label className="text-xs text-gray-700 font-medium mb-1">{t('gender')}:</label>
                                       <div className="flex items-center space-x-3">
                                         <label className="flex items-center cursor-pointer">
                                           <input
@@ -2546,7 +2551,7 @@ export default function Interface({ user }) {
                                             className="mr-1"
                                             style={{ width: '14px', height: '14px', accentColor: '#3b82f6' }}
                                           />
-                                          <span className="text-xs text-gray-700">Masculin</span>
+                                          <span className="text-xs text-gray-700">{t('male')}</span>
                                         </label>
                                         <label className="flex items-center cursor-pointer">
                                           <input
@@ -2558,7 +2563,7 @@ export default function Interface({ user }) {
                                             className="mr-1"
                                             style={{ width: '14px', height: '14px', accentColor: '#3b82f6' }}
                                           />
-                                          <span className="text-xs text-gray-700">Féminin</span>
+                                          <span className="text-xs text-gray-700">{t('female')}</span>
                                         </label>
                                       </div>
                                     </div>
@@ -2566,7 +2571,7 @@ export default function Interface({ user }) {
                                   <div>
                                     <input 
                                       type="date" 
-                                      placeholder="Date de naissance" 
+                                      placeholder={t('birthDate')}
                                       value={p.birthdate} 
                                       onChange={(e) => handlePersonChange(idx, 'birthdate', e.target.value)} 
                                       className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
@@ -2580,7 +2585,7 @@ export default function Interface({ user }) {
                                     {showCinField ? (
                                       <input 
                                         type="text" 
-                                        placeholder="CIN" 
+                                        placeholder={t('cin')}
                                         value={p.cin} 
                                         onChange={(e) => handlePersonChange(idx, 'cin', e.target.value)} 
                                         className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
@@ -2589,8 +2594,8 @@ export default function Interface({ user }) {
                                     ) : p.birthdate ? (
                                       <input 
                                         type="text" 
-                                        placeholder="CIN" 
-                                        value="Mineur" 
+                                        placeholder={t('cin')}
+                                        value={t('minor')} 
                                         disabled
                                         className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
                                         style={{ height: '36px', fontSize: '12px' }}
@@ -2598,7 +2603,7 @@ export default function Interface({ user }) {
                                     ) : (
                                       <input 
                                         type="text" 
-                                        placeholder="CIN" 
+                                        placeholder={t('cin')}
                                         value="" 
                                         disabled
                                         className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
@@ -2609,7 +2614,7 @@ export default function Interface({ user }) {
                                   <div>
                                     <input 
                                       type="text" 
-                                      placeholder="Téléphone" 
+                                      placeholder={t('phone')}
                                       value={p.phone} 
                                       onChange={(e) => handlePersonChange(idx, 'phone', e.target.value)} 
                                       className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
@@ -2630,13 +2635,13 @@ export default function Interface({ user }) {
               {addStep === 2 && (
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <h4 className="font-semibold text-sm text-gray-800">Formulaire personnes (optionnel)</h4>
-                    <button onClick={handleAddPerson} className="text-xs bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-900">Ajouter une personne</button>
+                    <h4 className="font-semibold text-sm text-gray-800">{t('addResident')}</h4>
+                    <button onClick={handleAddPerson} className="text-xs bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-900">{t('addAnotherPerson')}</button>
                   </div>
 
                   <div className="space-y-3 max-h-64 overflow-y-auto">
                     {newResidents.length === 0 && (
-                      <div className="text-sm text-gray-500">Aucune personne ajoutée — vous pouvez enregistrer directement.</div>
+                      <div className="text-sm text-gray-500">{t('noResidentAdded')}</div>
                     )}
 
                     {newResidents.map((p, idx) => {
@@ -2646,35 +2651,35 @@ export default function Interface({ user }) {
                       return (
                         <div key={idx} className="border p-3 rounded-lg space-y-2 bg-white">
                           <div className="flex justify-between">
-                            <strong className="text-sm text-gray-800">{p.nom || p.prenom ? `${p.nom} ${p.prenom}` : `Personne ${idx + 1}`}</strong>
-                            <button onClick={() => handleRemovePerson(idx)} className="text-red-500 text-xs">Supprimer</button>
+                            <strong className="text-sm text-gray-800">{p.nom || p.prenom ? `${p.nom} ${p.prenom}` : `${t('resident')} ${idx + 1}`}</strong>
+                            <button onClick={() => handleRemovePerson(idx)} className="text-red-500 text-xs">{t('delete')}</button>
                           </div>
 
                           <div className="grid grid-cols-2 gap-2">
-                            <input type="text" placeholder="Nom" value={p.nom} onChange={(e) => handlePersonChange(idx, 'nom', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }} />
-                            <input type="text" placeholder="Prénom" value={p.prenom} onChange={(e) => handlePersonChange(idx, 'prenom', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }} />
+                            <input type="text" placeholder={t('lastName')} value={p.nom} onChange={(e) => handlePersonChange(idx, 'nom', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }} />
+                            <input type="text" placeholder={t('firstName')} value={p.prenom} onChange={(e) => handlePersonChange(idx, 'prenom', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }} />
                           </div>
 
                           <div className="grid grid-cols-2 gap-2">
                             <div className="flex flex-col">
-                              <label className="text-xs text-gray-700 font-medium mb-1">Sexe:</label>
+                              <label className="text-xs text-gray-700 font-medium mb-1">{t('gender')}:</label>
                               <select value={p.sexe} onChange={(e) => handlePersonChange(idx, 'sexe', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }}>
-                                <option value="masculin">Masculin</option>
-                                <option value="feminin">Féminin</option>
+                                <option value="masculin">{t('male')}</option>
+                                <option value="feminin">{t('female')}</option>
                               </select>
                             </div>
-                            <input type="date" placeholder="Date de naissance" value={p.birthdate} onChange={(e) => handlePersonChange(idx, 'birthdate', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }} />
+                            <input type="date" placeholder={t('birthDate')} value={p.birthdate} onChange={(e) => handlePersonChange(idx, 'birthdate', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }} />
                           </div>
 
                           <div className="grid grid-cols-2 gap-2 items-center">
                             {showCinField ? (
-                              <input type="text" placeholder="CIN" value={p.cin} onChange={(e) => handlePersonChange(idx, 'cin', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }} />
+                              <input type="text" placeholder={t('cin')} value={p.cin} onChange={(e) => handlePersonChange(idx, 'cin', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }} />
                             ) : p.birthdate ? (
-                              <input type="text" placeholder="CIN" value="Mineur" disabled className="px-2 py-1 border rounded text-sm bg-gray-100 text-gray-500" style={{ height: '32px' }} />
+                              <input type="text" placeholder={t('cin')} value={t('minor')} disabled className="px-2 py-1 border rounded text-sm bg-gray-100 text-gray-500" style={{ height: '32px' }} />
                             ) : (
-                              <input type="text" placeholder="CIN" value="" disabled className="px-2 py-1 border rounded text-sm bg-gray-100 text-gray-500" style={{ height: '32px' }} />
+                              <input type="text" placeholder={t('cin')} value="" disabled className="px-2 py-1 border rounded text-sm bg-gray-100 text-gray-500" style={{ height: '32px' }} />
                             )}
-                            <input type="text" placeholder="Téléphone" value={p.phone} onChange={(e) => handlePersonChange(idx, 'phone', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }} />
+                            <input type="text" placeholder={t('phone')} value={p.phone} onChange={(e) => handlePersonChange(idx, 'phone', e.target.value)} className="px-2 py-1 border rounded text-sm" style={{ height: '32px' }} />
                           </div>
                         </div>
                       );
@@ -2682,11 +2687,11 @@ export default function Interface({ user }) {
                   </div>
 
                   <div className="flex justify-between mt-4">
-                    <button onClick={handleBackToLot} className="px-3 py-1.5 border rounded-lg text-sm text-gray-700 border-gray-300 hover:bg-gray-50">Retour</button>
+                    <button onClick={handleBackToLot} className="px-3 py-1.5 border rounded-lg text-sm text-gray-700 border-gray-300 hover:bg-gray-50">{t('back')}</button>
                     <div className="flex gap-2">
-                      <button onClick={handleCancelToSelection} className="px-3 py-1.5 border rounded-lg text-sm text-gray-700 border-gray-300 hover:bg-gray-50">Annuler</button>
+                      <button onClick={handleCancelToSelection} className="px-3 py-1.5 border rounded-lg text-sm text-gray-700 border-gray-300 hover:bg-gray-50">{t('cancel')}</button>
                       <button onClick={handleConfirmSave} disabled={savingResidence} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
-                        {savingResidence ? 'Enregistrement...' : 'Enregistrer'}
+                        {savingResidence ? t('saving') : t('save')}
                       </button>
                     </div>
                   </div>
@@ -2702,7 +2707,7 @@ export default function Interface({ user }) {
                 className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium"
                 style={{ height: '38px', fontSize: '13px' }}
               >
-                Annuler
+                {t('cancel')}
               </button>
               <button
                 onClick={addStep === 1 ? handleConfirmSave : handleConfirmSave}
@@ -2710,7 +2715,7 @@ export default function Interface({ user }) {
                 className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ height: '38px', fontSize: '13px' }}
               >
-                {savingResidence ? 'Enregistrement...' : 'Enregistrer'}
+                {savingResidence ? t('saving') : t('save')}
               </button>
             </div>
           </div>
@@ -2730,7 +2735,7 @@ export default function Interface({ user }) {
             disabled={isAddAddressModalOpen}
             className={`w-full flex items-center px-4 py-3 transition-all duration-200 ${isAddAddressModalOpen
               ? 'cursor-not-allowed opacity-70'
-              : 'hover:bg-gray-100'
+              : ''
               }`}
             style={{ height: "44px" }}
           >
@@ -2757,48 +2762,134 @@ export default function Interface({ user }) {
             }}>SIGAP</span>
           </button>
 
+          {/* Nouvelle section placée au-dessus du menu */}
+          <div className="p-4 border-b border-gray-200/60 bg-white/30">
+            {!isAnyPageOpen ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <MapPin size={18} className="text-gray-700 mr-2" />
+                  <span className="text-sm font-medium text-gray-800">
+                    Carte {fokontanyName}
+                  </span>
+                </div>
+                
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <MapPin size={18} className="text-gray-700 mr-2" />
+                  <span className="text-sm font-medium text-gray-800">
+                    {fokontanyName}
+                  </span>
+                </div>
+                <button
+                  onClick={handleLogoClick}
+                  className="text-xs text-gray-500 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center"
+                >
+                  <Eye size={14} className="mr-1" />
+                  Voir carte
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="p-4">
-            <div ref={menuDropdownRef} className="mb-4">
-              <button
-                data-menu-button
-                onClick={handleMenuButtonClick}
-                disabled={isAddAddressModalOpen}
-                className={`w-full flex items-center justify-between rounded-xl transition-all duration-200 mb-2 group-hover:bg-gray-100 ${isAddAddressModalOpen
-                  ? 'cursor-not-allowed opacity-70'
-                  : menuDropdownOpen
-                  ? "bg-gray-100 border border-gray-200"
-                  : "hover:bg-gray-100"
+            {/* Titre "Menu" toujours affiché */}
+            <div className="mb-4">
+              <div className="flex items-center gap-3 mb-3">
+                <Menu size={18} className="text-gray-700" />
+                <span className="text-sm font-semibold text-gray-900">
+                  {t('menu')}
+                </span>
+              </div>
+            
+              {/* MENU FIXE - Pas de collapse/expand */}
+              <div className="space-y-1">
+                {/* Résidences */}
+                <button
+                  onClick={() => {
+                    if (showResidence) {
+                      if (residenceDetailMode) {
+                        setResidenceDetailMode(false);
+                      } else {
+                        setShowResidence(false);
+                      }
+                    } else {
+                      openPage('residence');
+                    }
+                  }}
+                  className={`w-full flex items-center rounded-xl transition-all duration-200 hover:bg-gray-100 hover:border hover:border-gray-200 ${
+                    showResidence ? "bg-gray-100 border border-gray-200" : ""
                   }`}
-                style={{
-                  padding: "10px 12px",
-                  minHeight: "48px"
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <Menu size={18} className={`${isAddAddressModalOpen ? "text-gray-400" : menuDropdownOpen ? "text-gray-900" : "text-gray-700"} group-hover:text-gray-900`} />
-                  <span className={`group-hover:text-gray-900 ${menuDropdownOpen ? "text-gray-900" : ""}`} style={{
+                  style={{
+                    height: "44px",
+                    padding: "0 12px"
+                  }}
+                >
+                  <div style={{
+                    width: "36px",
+                    display: "flex",
+                    justifyContent: "center",
+                    marginRight: "10px"
+                  }}>
+                    <MapPin size={20} className={showResidence ? "text-gray-800" : "text-gray-700"} />
+                  </div>
+                  <span style={{
                     fontSize: "14px",
-                    fontWeight: menuDropdownOpen ? 600 : 500,
-                    color: isAddAddressModalOpen ? "#9ca3af" : menuDropdownOpen ? "#111827" : "#374151"
-                  }}>MENU</span>
-                </div>
-                <ChevronDown 
-                  size={16} 
-                  className={`transition-transform duration-200 ${menuDropdownOpen ? 'rotate-180' : ''} ${isAddAddressModalOpen ? "text-gray-400" : "text-gray-600"}`}
-                />
-              </button>
+                    fontWeight: 500,
+                    color: showResidence ? "#111827" : "#374151"
+                  }}>{t('residence')}</span>
+                </button>
 
-              {menuDropdownOpen && !isAddAddressModalOpen && (
-                <div className="mt-2 space-y-1 animate-fadeIn">
+                {/* Statistiques */}
+                <button
+                  onClick={() => {
+                    if (showStatistique) {
+                      setShowStatistique(false);
+                    } else {
+                      openPage('statistique');
+                    }
+                  }}
+                  className={`w-full flex items-center rounded-xl transition-all duration-200 hover:bg-gray-100 hover:border hover:border-gray-200 ${
+                    showStatistique ? "bg-gray-100 border border-gray-200" : ""
+                  }`}
+                  style={{
+                    height: "44px",
+                    padding: "0 12px"
+                  }}
+                >
+                  <div style={{
+                    width: "36px",
+                    display: "flex",
+                    justifyContent: "center",
+                    marginRight: "10px"
+                  }}>
+                    <BarChart3 size={20} className={showStatistique ? "text-gray-800" : "text-gray-700"} />
+                  </div>
+                  <span style={{
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    color: showStatistique ? "#111827" : "#374151"
+                  }}>{t('statistics')}</span>
+                </button>
+
+                {/* Demandes en attente (seulement pour secrétaire) */}
+                {currentUser?.role === 'secretaire' && (
                   <button
-                    onClick={handleResidenceClick}
-                    className={`w-full flex items-center rounded-xl transition-all duration-200 ${showResidence
-                      ? "bg-gray-100 border border-gray-200"
-                      : "hover:bg-gray-100"
-                      }`}
+                    onClick={() => {
+                      if (showPendingResidences) {
+                        setShowPendingResidences(false);
+                        setResidenceToSelect(null);
+                      } else {
+                        openPage('pending');
+                      }
+                    }}
+                    className={`w-full flex items-center rounded-xl transition-all duration-200 hover:bg-gray-100 hover:border hover:border-gray-200 ${
+                      showPendingResidences ? "bg-gray-100 border border-gray-200" : ""
+                    }`}
                     style={{
                       height: "44px",
-                      padding: "0 12px 0 40px"
+                      padding: "0 12px"
                     }}
                   >
                     <div style={{
@@ -2807,70 +2898,16 @@ export default function Interface({ user }) {
                       justifyContent: "center",
                       marginRight: "10px"
                     }}>
-                      <MapPin size={20} className={showResidence ? "text-gray-800" : "text-gray-700"} />
+                      <ClipboardList size={20} className={showPendingResidences ? "text-gray-800" : "text-gray-700"} />
                     </div>
                     <span style={{
                       fontSize: "14px",
                       fontWeight: 500,
-                      color: showResidence ? "#111827" : "#374151"
-                    }}>Résidence</span>
+                      color: showPendingResidences ? "#111827" : "#374151"
+                    }}>{t('requests')}</span>
                   </button>
-
-                  <button
-                    onClick={handleStatistiqueClick}
-                    className={`w-full flex items-center rounded-xl transition-all duration-200 ${showStatistique
-                      ? "bg-gray-100 border border-gray-200"
-                      : "hover:bg-gray-100"
-                      }`}
-                    style={{
-                      height: "44px",
-                      padding: "0 12px 0 40px"
-                    }}
-                  >
-                    <div style={{
-                      width: "36px",
-                      display: "flex",
-                      justifyContent: "center",
-                      marginRight: "10px"
-                    }}>
-                      <BarChart3 size={20} className={showStatistique ? "text-gray-800" : "text-gray-700"} />
-                    </div>
-                    <span style={{
-                      fontSize: "14px",
-                      fontWeight: 500,
-                      color: showStatistique ? "#111827" : "#374151"
-                    }}>Statistiques</span>
-                  </button>
-
-                  {currentUser?.role === 'secretaire' && (
-                    <button
-                      onClick={handlePendingResidencesClick}
-                      className={`w-full flex items-center rounded-xl transition-all duration-200 ${showPendingResidences
-                        ? "bg-gray-100 border border-gray-200"
-                        : "hover:bg-gray-100"
-                        }`}
-                      style={{
-                        height: "44px",
-                        padding: "0 12px 0 40px"
-                      }}
-                    >
-                      <div style={{
-                        width: "36px",
-                        display: "flex",
-                        justifyContent: "center",
-                        marginRight: "10px"
-                      }}>
-                        <ClipboardList size={20} className={showPendingResidences ? "text-gray-800" : "text-gray-700"} />
-                      </div>
-                      <span style={{
-                        fontSize: "14px",
-                        fontWeight: 500,
-                        color: showPendingResidences ? "#111827" : "#374151"
-                      }}>Demande</span>
-                    </button>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -2941,7 +2978,7 @@ export default function Interface({ user }) {
               onClick={handleZoomIn}
               disabled={isAddAddressModalOpen}
               className={`w-10 h-10 ${isAddAddressModalOpen ? 'bg-gray-300 cursor-not-allowed' : 'bg-white/95 backdrop-blur-sm hover:bg-white'} rounded-full shadow-lg flex items-center justify-center transition-all duration-300 border ${isAddAddressModalOpen ? 'border-gray-300' : 'border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl'}`}
-              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : "Zoom avant"}
+              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : t('zoomIn')}
             >
               <Plus size={20} className={isAddAddressModalOpen ? "text-gray-400" : "text-gray-700 hover:text-gray-800 transition-all duration-300"} />
             </button>
@@ -2949,7 +2986,7 @@ export default function Interface({ user }) {
               onClick={handleZoomOut}
               disabled={isAddAddressModalOpen}
               className={`w-10 h-10 ${isAddAddressModalOpen ? 'bg-gray-300 cursor-not-allowed' : 'bg-white/95 backdrop-blur-sm hover:bg-white'} rounded-full shadow-lg flex items-center justify-center transition-all duration-300 border ${isAddAddressModalOpen ? 'border-gray-300' : 'border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl'}`}
-              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : "Zoom arrière"}
+              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : t('zoomOut')}
             >
               <Minus size={20} className={isAddAddressModalOpen ? "text-gray-400" : "text-gray-700 hover:text-gray-800 transition-all duration-300"} />
             </button>
@@ -2957,7 +2994,7 @@ export default function Interface({ user }) {
               onClick={handleCenterMap}
               disabled={isAddAddressModalOpen}
               className={`w-10 h-10 ${isAddAddressModalOpen ? 'bg-gray-300 cursor-not-allowed' : 'bg-white/95 backdrop-blur-sm hover:bg-white'} rounded-full shadow-lg flex items-center justify-center transition-all duration-300 border ${isAddAddressModalOpen ? 'border-gray-300' : 'border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl'}`}
-              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : "Voir la zone limite"}
+              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : t('viewZone')}
             >
               <LocateFixed size={20} className={isAddAddressModalOpen ? "text-gray-400" : "text-gray-700 hover:text-gray-800 transition-all duration-300"} />
             </button>
@@ -2968,7 +3005,7 @@ export default function Interface({ user }) {
               onClick={handleMapTypeChange}
               disabled={isAddAddressModalOpen}
               className={`w-10 h-10 ${isAddAddressModalOpen ? 'bg-gray-300 cursor-not-allowed' : 'bg-white/95 backdrop-blur-sm hover:bg-white'} rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:shadow-xl border ${isAddAddressModalOpen ? 'border-gray-300' : 'border-gray-200/60 hover:border-gray-300/80'}`}
-              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : mapType === "satellite" ? "Passer en vue plan" : "Passer en vue satellite"}
+              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : mapType === "satellite" ? t('switchToPlan') : t('switchToSatellite')}
             >
               <Layers size={22} className={isAddAddressModalOpen ? "text-gray-400" : "text-gray-700 hover:text-gray-800 transition-all duration-300"} />
             </button>
@@ -3049,12 +3086,12 @@ export default function Interface({ user }) {
                     </div>
                     {r.quartier && (
                       <div className="text-xs text-gray-600 mb-1">
-                        <span className="font-medium">Quartier:</span> {r.quartier}
+                        <span className="font-medium">{t('neighborhood')}:</span> {r.quartier}
                       </div>
                     )}
                     {r.ville && (
                       <div className="text-xs text-gray-600">
-                        <span className="font-medium">Ville:</span> {r.ville}
+                        <span className="font-medium">{t('city')}:</span> {r.ville}
                       </div>
                     )}
                   </div>

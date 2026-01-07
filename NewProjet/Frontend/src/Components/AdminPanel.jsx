@@ -17,11 +17,13 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 // base API pour Vite
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 const AdminPanel = ({ onLogout, currentUser }) => {
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState([]);
   const [resetRequests, setResetRequests] = useState([]);
@@ -35,7 +37,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(4);
+  const [itemsPerPage] = useState(3);
 
   useEffect(() => {
     if (activeTab === 'users') {
@@ -44,6 +46,17 @@ const AdminPanel = ({ onLogout, currentUser }) => {
       fetchAllRequests();
     }
   }, [activeTab]);
+
+  // Fonction pour changer la langue
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'fr' ? 'mg' : 'fr';
+    i18n.changeLanguage(newLang);
+  };
+
+  // Obtenir le texte du bouton de langue
+  const getLanguageButtonText = () => {
+    return i18n.language === 'fr' ? 'FR' : 'MG';
+  };
 
   const fetchUsers = async () => {
     try {
@@ -62,7 +75,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
       if (response.ok) setUsers(data);
     } catch (error) {
       console.error('Erreur récupération utilisateurs:', error);
-      alert('Erreur de connexion au serveur');
+      alert(t('connectionError'));
     }
   };
 
@@ -92,13 +105,15 @@ const AdminPanel = ({ onLogout, currentUser }) => {
       if (changeResponse.ok) setPasswordChangeRequests(changeData);
     } catch (error) {
       console.error('Erreur récupération demandes:', error);
-      alert('Erreur de connexion au serveur');
+      alert(t('connectionError'));
     }
   };
 
   // FONCTION POUR APPROUVER LA RÉINITIALISATION
   const handleApproveReset = async (requestId) => {
-    if (!confirm('Êtes-vous sûr de vouloir approuver cette demande de réinitialisation ?')) {
+    if (!confirm(i18n.language === 'fr' 
+      ? 'Êtes-vous sûr de vouloir approuver cette demande de réinitialisation ?'
+      : 'Azo antoka fa te-hankato ity fangatahana famerenana ity ve ianao?')) {
       return;
     }
 
@@ -119,7 +134,9 @@ const AdminPanel = ({ onLogout, currentUser }) => {
       });
 
       if (response.status === 401) {
-        alert('Session expirée. Veuillez vous reconnecter.');
+        alert(i18n.language === 'fr' 
+          ? 'Session expirée. Veuillez vous reconnecter.'
+          : 'Tapitra ny fotoam-pidirana. Midiram-pidirana indray azafady.');
         onLogout();
         return;
       }
@@ -127,20 +144,24 @@ const AdminPanel = ({ onLogout, currentUser }) => {
       const data = await response.json();
 
       if (response.ok) {
-        alert(`✅ Mot de passe réinitialisé avec succès !\n\nNouveau mot de passe: ${data.newPassword}\n\nCommuniquez ce mot de passe à l'utilisateur.`);
+        alert(i18n.language === 'fr'
+          ? `✅ Mot de passe réinitialisé avec succès !\n\nNouveau mot de passe: ${data.newPassword}\n\nCommuniquez ce mot de passe à l'utilisateur.`
+          : `✅ Nohavaozina soa aman-tsara ny tenimiafina !\n\nTeni miafina vaovao: ${data.newPassword}\n\nAmpitaho ity tenimiafina ity amin'ny mpampiasa.`);
         fetchAllRequests(); // Recharger les demandes
       } else {
-        alert(data.message || 'Erreur lors de la réinitialisation');
+        alert(data.message || t('error'));
       }
     } catch (error) {
       console.error('Erreur approbation reset:', error);
-      alert('Erreur de connexion au serveur');
+      alert(t('connectionError'));
     }
   };
 
   // FONCTION POUR APPROUVER LE CHANGEMENT DE MOT DE PASSE
   const handleApprovePasswordChange = async (requestId) => {
-    if (!confirm('Êtes-vous sûr de vouloir approuver ce changement de mot de passe ?')) {
+    if (!confirm(i18n.language === 'fr'
+      ? 'Êtes-vous sûr de vouloir approuver ce changement de mot de passe ?'
+      : 'Azo antoka fa te-hankato ity fanovana tenimiafina ity ve ianao?')) {
       return;
     }
 
@@ -156,7 +177,9 @@ const AdminPanel = ({ onLogout, currentUser }) => {
       });
 
       if (response.status === 401) {
-        alert('Session expirée. Veuillez vous reconnecter.');
+        alert(i18n.language === 'fr'
+          ? 'Session expirée. Veuillez vous reconnecter.'
+          : 'Tapitra ny fotoam-pidirana. Midiram-pidirana indray azafady.');
         onLogout();
         return;
       }
@@ -164,22 +187,26 @@ const AdminPanel = ({ onLogout, currentUser }) => {
       const data = await response.json();
 
       if (response.ok) {
-        alert('✅ Changement de mot de passe approuvé avec succès !');
+        alert('✅ ' + t('passwordChangeSuccess'));
         fetchAllRequests(); // Recharger les demandes
       } else {
-        alert(data.message || 'Erreur lors de l\'approbation');
+        alert(data.message || t('error'));
       }
     } catch (error) {
       console.error('Erreur approbation changement:', error);
-      alert('Erreur de connexion au serveur');
+      alert(t('connectionError'));
     }
   };
 
   // FONCTION POUR (DÉ)ACTIVER UN UTILISATEUR
   const handleDeactivateUser = async (userId, currentStatus) => {
-    const action = currentStatus ? 'désactiver' : 'activer';
+    const action = currentStatus ? t('deactivate') : t('activate');
+    const actionText = currentStatus ? 'désactiver' : 'activer';
+    const actionTextMg = currentStatus ? 'hanala' : 'hamelona';
     
-    if (!confirm(`Êtes-vous sûr de vouloir ${action} cet utilisateur ?`)) {
+    if (!confirm(i18n.language === 'fr'
+      ? `Êtes-vous sûr de vouloir ${actionText} cet utilisateur ?`
+      : `Azo antoka fa te-${actionTextMg} ity mpampiasa ity ve ianao?`)) {
       return;
     }
 
@@ -197,27 +224,31 @@ const AdminPanel = ({ onLogout, currentUser }) => {
       });
 
       if (response.status === 401) {
-        alert('Session expirée. Veuillez vous reconnecter.');
+        alert(i18n.language === 'fr'
+          ? 'Session expirée. Veuillez vous reconnecter.'
+          : 'Tapitra ny fotoam-pidirana. Midiram-pidirana indray azafady.');
         onLogout();
         return;
       }
 
       if (response.ok) {
-        alert(`✅ Utilisateur ${action} avec succès`);
+        alert(`✅ ${t('user')} ${actionText} ${t('success')}`);
         fetchUsers(); // Recharger la liste
       } else {
         const data = await response.json();
-        alert(data.message || `Erreur lors de la ${action}`);
+        alert(data.message || t('error'));
       }
     } catch (error) {
-      console.error(`Erreur ${action} utilisateur:`, error);
-      alert('Erreur de connexion au serveur');
+      console.error(`Erreur ${actionText} utilisateur:`, error);
+      alert(t('connectionError'));
     }
   };
 
   // FONCTION POUR SUPPRIMER UN UTILISATEUR
   const handleDeleteUser = async (userId) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer définitivement cet utilisateur ?')) {
+    if (!confirm(i18n.language === 'fr'
+      ? 'Êtes-vous sûr de vouloir supprimer définitivement cet utilisateur ?'
+      : 'Azo antoka fa te-hamafa tanteraka ity mpampiasa ity ve ianao?')) {
       return;
     }
 
@@ -231,21 +262,23 @@ const AdminPanel = ({ onLogout, currentUser }) => {
       });
 
       if (response.status === 401) {
-        alert('Session expirée. Veuillez vous reconnecter.');
+        alert(i18n.language === 'fr'
+          ? 'Session expirée. Veuillez vous reconnecter.'
+          : 'Tapitra ny fotoam-pidirana. Midiram-pidirana indray azafady.');
         onLogout();
         return;
       }
 
       if (response.ok) {
-        alert('✅ Utilisateur supprimé avec succès');
+        alert('✅ ' + t('user') + ' ' + t('delete') + ' ' + t('success'));
         fetchUsers(); // Recharger la liste
       } else {
         const data = await response.json();
-        alert(data.message || 'Erreur lors de la suppression');
+        alert(data.message || t('error'));
       }
     } catch (error) {
       console.error('Erreur suppression utilisateur:', error);
-      alert('Erreur de connexion au serveur');
+      alert(t('connectionError'));
     }
   };
 
@@ -253,7 +286,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
   const handleCreateUser = async (e) => {
     e.preventDefault();
     if (!newUser.immatricule.trim() || !newUser.nom_complet.trim()) {
-      alert('Immatricule et nom complet requis');
+      alert(t('allFieldsRequired'));
       return;
     }
     setLoading(true);
@@ -275,17 +308,19 @@ const AdminPanel = ({ onLogout, currentUser }) => {
       });
       const data = await res.json();
       if (!res.ok) {
-        const msg = data.message || data.error || 'Erreur création utilisateur';
+        const msg = data.message || data.error || t('error');
         alert(msg);
       } else {
         setShowUserForm(false);
         setNewUser({ immatricule: '', nom_complet: '', role: 'agent', fokontany_code: '' });
         fetchUsers();
-        alert('Utilisateur créé. Mot de passe retourné : ' + (data.user?.password || '—'));
+        alert(i18n.language === 'fr'
+          ? 'Utilisateur créé. Mot de passe retourné : ' + (data.user?.password || '—')
+          : 'Noforonina ny mpampiasa. Tenimiafina niverina : ' + (data.user?.password || '—'));
       }
     } catch (err) {
       console.error('create user error', err);
-      alert('Erreur serveur lors de la création');
+      alert(t('serverError'));
     } finally {
       setLoading(false);
     }
@@ -311,16 +346,25 @@ const AdminPanel = ({ onLogout, currentUser }) => {
 
   const getRoleBadge = (role) => {
     const roles = {
-      admin: { color: 'bg-gray-800 text-white', text: 'Administrateur' },
-      secretaire: { color: 'bg-gray-600 text-white', text: 'Secrétaire' },
-      agent: { color: 'bg-gray-400 text-gray-900', text: 'Agent' }
+      admin: { 
+        color: 'bg-gray-800 text-white', 
+        text: t('administratorRole')
+      },
+      secretaire: { 
+        color: 'bg-gray-600 text-white', 
+        text: t('secretaryRole')
+      },
+      agent: { 
+        color: 'bg-gray-400 text-gray-900', 
+        text: t('agentRole')
+      }
     };
     return roles[role] || roles.agent;
   };
 
   const getStatusBadge = (isActive) => ({
     color: isActive ? 'bg-gray-300 text-gray-800' : 'bg-gray-700 text-white',
-    text: isActive ? 'Actif' : 'Inactif'
+    text: isActive ? t('active') : t('inactive')
   });
 
   // Calcul du nombre total de demandes pour la notification
@@ -338,16 +382,26 @@ const AdminPanel = ({ onLogout, currentUser }) => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-black bg-clip-text text-transparent">
-                  Administration SIGAP
+                  {t('adminTitle')}
                 </h1>
                 <p className="text-black text-sm flex items-center space-x-1">
                   <UserCheck className="w-4 h-4" />
-                  <span>Connecté en tant que {currentUser?.nom_complet}</span>
+                  <span>{t('connectedAs')} {currentUser?.nom_complet}</span>
                 </p>
               </div>
             </div>
             
             <div className="flex items-center space-x-3">
+              {/* Bouton de changement de langue */}
+              <button
+                onClick={toggleLanguage}
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 px-3 py-2 rounded-xl transition-all duration-200"
+                title={i18n.language === 'fr' ? 'Passer en malgache' : 'Mivily amin\'ny frantsay'}
+              >
+                <span className="font-medium">{getLanguageButtonText()}</span>
+              </button>
+              
+              {/* Bouton de notification */}
               <button className="relative p-2 text-gray-600 hover:text-gray-800 transition-colors">
                 <Bell className="w-5 h-5" />
                 {totalDemands > 0 && (
@@ -357,13 +411,13 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                 )}
               </button>
               
-              {/* Bouton Déconnexion - Gris avec border rouge par défaut, rouge au hover */}
+              {/* Bouton Déconnexion */}
               <button
                 onClick={onLogout}
-                className="flex items-center space-x-2 text-red-600  hover:text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 border-2 border-red-200 hover:bg-red-600 hover:border-red-600"
+                className="flex items-center space-x-2 text-red-600 hover:text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 border-2 border-red-200 hover:bg-red-600 hover:border-red-600"
               >
                 <LogOut size={16} />
-                <span>Déconnexion</span>
+                <span>{t('logout')}</span>
               </button>
             </div>
           </div>
@@ -375,8 +429,8 @@ const AdminPanel = ({ onLogout, currentUser }) => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex space-x-1 bg-gray-100/50 rounded-2xl p-1.5 w-fit">
             {[
-              { id: 'users', icon: Users, label: 'Utilisateurs', count: users.length },
-              { id: 'demandes', icon: Key, label: 'Demandes', count: totalDemands }
+              { id: 'users', icon: Users, label: t('users'), count: users.length },
+              { id: 'demandes', icon: Key, label: t('requests'), count: totalDemands }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -412,10 +466,10 @@ const AdminPanel = ({ onLogout, currentUser }) => {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  Gestion des Utilisateurs
+                  {t('usersManagement')}
                 </h2>
                 <p className="text-gray-600 mt-1">
-                  {filteredUsers.length} utilisateur(s) trouvé(s) • Page {currentPage} sur {totalPages}
+                  {filteredUsers.length} {t('usersFound')} • {t('page')} {currentPage} {t('of')} {totalPages}
                 </p>
               </div>
               
@@ -425,7 +479,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type="text"
-                    placeholder="Rechercher un utilisateur..."
+                    placeholder={t('searchUser')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 transition-all duration-200 w-64"
@@ -437,7 +491,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                   className="flex items-center space-x-2 bg-gradient-to-r from-gray-700 to-gray-900 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
                 >
                   <UserPlus size={18} />
-                  <span>Nouvel Utilisateur</span>
+                  <span>{t('newUser')}</span>
                 </button>
               </div>
             </div>
@@ -447,9 +501,11 @@ const AdminPanel = ({ onLogout, currentUser }) => {
               {currentUsers.length === 0 ? (
                 <div className="text-center py-12">
                   <Users className="mx-auto text-gray-300 w-16 h-16 mb-4" />
-                  <p className="text-gray-500 text-lg">Aucun utilisateur trouvé</p>
+                  <p className="text-gray-500 text-lg">{t('noUsersFound')}</p>
                   <p className="text-gray-400 text-sm mt-1">
-                    {searchTerm ? 'Essayez de modifier vos critères de recherche' : 'Commencez par créer un nouvel utilisateur'}
+                    {searchTerm ? 
+                      t('tryModifySearch') : 
+                      t('startByCreatingUser')}
                   </p>
                 </div>
               ) : (
@@ -458,19 +514,19 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                     <thead>
                       <tr className="border-b border-gray-200/60 bg-gray-50/50">
                         <th className="px-6 py-4 text-left text-sm font-semibold text-black uppercase tracking-wider">
-                          Utilisateur
+                          {t('user')}
                         </th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-black uppercase tracking-wider">
-                          Rôle
+                          {t('role')}
                         </th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-black uppercase tracking-wider">
-                          Statut
+                          {t('status')}
                         </th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-black uppercase tracking-wider">
-                          Date de création
+                          {t('creationDate')}
                         </th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-black uppercase tracking-wider">
-                          Actions
+                          {t('actions')}
                         </th>
                       </tr>
                     </thead>
@@ -504,11 +560,11 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                               </span>
                             </td>
                             <td className="px-6 py-4 text-gray-600 text-sm">
-                              {new Date(user.created_at).toLocaleDateString('fr-FR')}
+                              {new Date(user.created_at).toLocaleDateString(i18n.language === 'fr' ? 'fr-FR' : 'mg-MG')}
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center space-x-2">
-                                {/* Bouton Activer/Désactiver - Gris */}
+                                {/* Bouton Activer/Désactiver */}
                                 <button
                                   onClick={() => handleDeactivateUser(user.id, user.is_active)}
                                   className={`p-2 rounded-lg transition-all duration-200 ${
@@ -516,15 +572,15 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                                       ? 'bg-gray-300 text-gray-700 hover:bg-gray-400' 
                                       : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
                                   }`}
-                                  title={user.is_active ? 'Désactiver' : 'Activer'}
+                                  title={user.is_active ? t('deactivate') : t('activate')}
                                 >
                                   <Power size={16} />
                                 </button>
-                                {/* Bouton Supprimer - Rouge */}
+                                {/* Bouton Supprimer */}
                                 <button
                                   onClick={() => handleDeleteUser(user.id)}
                                   className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all duration-200"
-                                  title="Supprimer"
+                                  title={t('deleteUser')}
                                 >
                                   <Trash2 size={16} />
                                 </button>
@@ -633,10 +689,10 @@ const AdminPanel = ({ onLogout, currentUser }) => {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  Demandes en Attente
+                  {t('pendingRequests')}
                 </h2>
                 <p className="text-gray-600 mt-1">
-                  {totalDemands} demande(s) nécessitent votre attention
+                  {totalDemands} {t('requestsNeedAttention')}
                 </p>
               </div>
               <button
@@ -644,7 +700,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                 className="flex items-center space-x-2 bg-gradient-to-r from-gray-700 to-gray-900 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
               >
                 <RefreshCw size={16} />
-                <span>Actualiser</span>
+                <span>{t('refresh')}</span>
               </button>
             </div>
 
@@ -653,7 +709,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
               <div className="space-y-4">
                 <h3 className="text-xl font-semibold text-gray-700 flex items-center space-x-2">
                   <Key className="w-5 h-5 text-gray-600" />
-                  <span>Demandes de Réinitialisation ({resetRequests.length})</span>
+                  <span>{t('resetRequests')} ({resetRequests.length})</span>
                 </h3>
                 <div className="grid gap-4">
                   {resetRequests.map((request) => {
@@ -668,18 +724,18 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                             </div>
                             <div>
                               <h3 className="font-semibold text-gray-800 text-lg">
-                                <span className="text-gray-800 font-bold">🔐 {request.nom_complet}</span> demande la réinitialisation de son mot de passe
+                                <span className="text-gray-800 font-bold">🔐 {request.nom_complet}</span> {t('resetPasswordRequest')}
                               </h3>
                               <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
-                                <span><strong>Immatricule:</strong> {request.immatricule}</span>
-                                <span><strong>Username:</strong> @{request.username}</span>
+                                <span><strong>{t('registrationNumber')}</strong> {request.immatricule}</span>
+                                <span><strong>{t('usernameField')}</strong> @{request.username}</span>
                                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${roleBadge.color}`}>
                                   {roleBadge.text}
                                 </span>
                               </div>
                               <div className="flex items-center space-x-1 mt-1 text-gray-500 text-xs">
                                 <Clock className="w-3 h-3" />
-                                <span>Demandé le {new Date(request.created_at).toLocaleDateString('fr-FR')} à {new Date(request.created_at).toLocaleTimeString('fr-FR')}</span>
+                                <span>{t('requestedOn')} {new Date(request.created_at).toLocaleDateString(i18n.language === 'fr' ? 'fr-FR' : 'mg-MG')} {i18n.language === 'fr' ? 'à' : 'amin\'ny'} {new Date(request.created_at).toLocaleTimeString(i18n.language === 'fr' ? 'fr-FR' : 'mg-MG')}</span>
                               </div>
                             </div>
                           </div>
@@ -689,7 +745,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                             className="flex items-center space-x-2 bg-gradient-to-r from-gray-700 to-gray-900 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
                           >
                             <CheckCircle size={16} />
-                            <span>Générer nouveau mot de passe</span>
+                            <span>{t('generateNewPassword')}</span>
                           </button>
                         </div>
                       </div>
@@ -704,7 +760,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
               <div className="space-y-4">
                 <h3 className="text-xl font-semibold text-gray-700 flex items-center space-x-2">
                   <Lock className="w-5 h-5 text-gray-600" />
-                  <span>Demandes de Changement de Mot de Passe ({passwordChangeRequests.length})</span>
+                  <span>{t('passwordChangeRequests')} ({passwordChangeRequests.length})</span>
                 </h3>
                 <div className="grid gap-4">
                   {passwordChangeRequests.map((request) => {
@@ -719,18 +775,18 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                             </div>
                             <div>
                               <h3 className="font-semibold text-gray-800 text-lg">
-                                <span className="text-gray-800 font-bold">🔄 {request.nom_complet}</span> veut personnaliser son mot de passe
+                                <span className="text-gray-800 font-bold">🔄 {request.nom_complet}</span> {t('wantsToCustomizePassword')}
                               </h3>
                               <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
-                                <span><strong>Immatricule:</strong> {request.immatricule}</span>
-                                <span><strong>Username:</strong> @{request.username}</span>
+                                <span><strong>{t('registrationNumber')}</strong> {request.immatricule}</span>
+                                <span><strong>{t('usernameField')}</strong> @{request.username}</span>
                                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${roleBadge.color}`}>
                                   {roleBadge.text}
                                 </span>
                               </div>
                               <div className="flex items-center space-x-1 mt-1 text-gray-500 text-xs">
                                 <Clock className="w-3 h-3" />
-                                <span>Demandé le {new Date(request.created_at).toLocaleDateString('fr-FR')} à {new Date(request.created_at).toLocaleTimeString('fr-FR')}</span>
+                                <span>{t('requestedOn')} {new Date(request.created_at).toLocaleDateString(i18n.language === 'fr' ? 'fr-FR' : 'mg-MG')} {i18n.language === 'fr' ? 'à' : 'amin\'ny'} {new Date(request.created_at).toLocaleTimeString(i18n.language === 'fr' ? 'fr-FR' : 'mg-MG')}</span>
                               </div>
                             </div>
                           </div>
@@ -740,7 +796,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                             className="flex items-center space-x-2 bg-gradient-to-r from-gray-700 to-gray-900 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
                           >
                             <CheckCircle size={16} />
-                            <span>Approuver le changement</span>
+                            <span>{t('approveChange')}</span>
                           </button>
                         </div>
                       </div>
@@ -756,8 +812,8 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                 <div className="bg-gradient-to-br from-gray-100 to-gray-50 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-10 h-10 text-gray-500" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Aucune demande en attente</h3>
-                <p className="text-gray-600">Toutes les demandes ont été traitées.</p>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">{t('noPendingRequestsFound')}</h3>
+                <p className="text-gray-600">{t('allRequestsProcessed')}</p>
               </div>
             )}
           </div>
@@ -769,7 +825,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md transform animate-scaleIn">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-800">Nouvel Utilisateur</h3>
+              <h3 className="text-xl font-bold text-gray-800">{t('newUser')}</h3>
               <button
                 onClick={() => setShowUserForm(false)}
                 className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
@@ -781,7 +837,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Immatricule *
+                  {t('registrationField')} *
                 </label>
                 <input
                   type="text"
@@ -789,12 +845,12 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                   onChange={(e) => setNewUser({...newUser, immatricule: e.target.value})}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Ex: AGENT001"
+                  placeholder={i18n.language === 'fr' ? "Ex: AGENT001" : "Ohatra: AGENT001"}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nom Complet *
+                  {t('fullName')} *
                 </label>
                 <input
                   type="text"
@@ -802,40 +858,44 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                   onChange={(e) => setNewUser({...newUser, nom_complet: e.target.value})}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Ex: Jean Rakoto"
+                  placeholder={i18n.language === 'fr' ? "Ex: Jean Rakoto" : "Ohatra: Jean Rakoto"}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Rôle
+                  {t('roleField')}
                 </label>
                 <select
                   value={newUser.role}
                   onChange={(e) => setNewUser({...newUser, role: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
                 >
-                  <option value="agent">Agent</option>
-                  <option value="secretaire">Secrétaire</option>
-                  <option value="admin">Administrateur</option>
+                  <option value="agent">{t('agent')}</option>
+                  <option value="secretaire">{t('secretary')}</option>
+                  <option value="admin">{t('administrator')}</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Code Fokontany (optionnel)
+                  {t('fokontanyCode')} ({t('optional')})
                 </label>
                 <input
                   type="text"
                   value={newUser.fokontany_code || ''}
                   onChange={(e) => setNewUser({...newUser, fokontany_code: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Ex: TSIMENATSE_001"
+                  placeholder={i18n.language === 'fr' ? "Ex: TSIMENATSE_001" : "Ohatra: TSIMENATSE_001"}
                 />
-                <p className="text-xs text-gray-400 mt-1">Si l'utilisateur est un agent/secrétaire, renseignez le code du fokontany auquel il appartient.</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {i18n.language === 'fr' 
+                    ? 'Si l\'utilisateur est un agent/secrétaire, renseignez le code du fokontany auquel il appartient.'
+                    : 'Raha mpampiasa mpiasam-panjakana/mpanoratra ianao, ampio ny kaodin\'ny fokontany izay anjarany.'}
+                </p>
               </div>
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                 <p className="text-gray-700 text-sm">
-                  <strong>Note:</strong> Le nom d'utilisateur sera généré automatiquement à partir de l'immatricule et un mot de passe aléatoire sera créé.
+                  <strong>{t('note')}</strong> {t('usernameGenerated')}
                 </p>
               </div>
               <div className="flex space-x-3 pt-4">
@@ -845,7 +905,7 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                   disabled={loading}
                   className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
-                  Annuler
+                  {t('cancelButton')}
                 </button>
                 <button
                   type="submit"
@@ -855,10 +915,10 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                   {loading ? (
                     <div className="flex items-center space-x-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Création...</span>
+                      <span>{t('creating')}</span>
                     </div>
                   ) : (
-                    'Créer l\'utilisateur'
+                    t('createUser')
                   )}
                 </button>
               </div>

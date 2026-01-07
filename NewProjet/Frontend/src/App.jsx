@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-//import { LanguageProvider } from './Components/LanguageContext';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Interface from './Components/Interface';
 import Statistique from './Components/Statistique';
 import AdminPanel from './Components/AdminPanel';
@@ -11,6 +10,7 @@ import ResidencePage from './Components/ResidencePage';
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate(); // Ajout du hook useNavigate
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -36,8 +36,8 @@ function App() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
-    // Redirection vers login
-    window.location.href = '/login';
+    // Utilisation de navigate au lieu de window.location.href
+    navigate('/login');
   };
 
   if (loading) {
@@ -52,48 +52,50 @@ function App() {
   }
 
   return (
-      <Routes>
-        <Route 
-          path="/login" 
-          element={
-            user ? <Navigate to={user.role === 'admin' ? '/admin' : '/'} /> : <Login onLogin={handleLogin} />
-          } 
-        />
-        <Route 
-          path="/admin" 
-          element={
-            user && user.role === 'admin' ? (
-              <AdminPanel onLogout={handleLogout} currentUser={user} />
-            ) : (
-              <Navigate to="/login" />
-            )
-          } 
-        />
-        <Route 
-          path="/statistique" 
-          element={
-            user ? <Statistique user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
-          } 
-        />
-        <Route 
-          path="/userPage" 
-          element={
-            user ? <UserPage user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
-          } 
-        />
-        <Route 
-          path="/residence" 
-          element={
-            user ? <ResidencePage user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
-          } 
-        />
-        <Route 
-          path="/" 
-          element={
-            user ? <Interface user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
-          } 
-        />
-      </Routes>
+    <Routes>
+      <Route 
+        path="/login" 
+        element={
+          user ? <Navigate to={user.role === 'admin' ? '/admin' : '/'} /> : <Login onLogin={handleLogin} />
+        } 
+      />
+      <Route 
+        path="/admin" 
+        element={
+          user && user.role === 'admin' ? (
+            <AdminPanel onLogout={handleLogout} currentUser={user} />
+          ) : (
+            <Navigate to="/login" />
+          )
+        } 
+      />
+      <Route 
+        path="/statistique" 
+        element={
+          user ? <Statistique user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
+        } 
+      />
+      <Route 
+        path="/userPage" 
+        element={
+          user ? <UserPage user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
+        } 
+      />
+      <Route 
+        path="/residence" 
+        element={
+          user ? <ResidencePage user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
+        } 
+      />
+      <Route 
+        path="/" 
+        element={
+          user ? <Interface user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
+        } 
+      />
+      {/* Route fallback pour les URLs non trouvées */}
+      <Route path="*" element={<Navigate to={user ? "/" : "/login"} />} />
+    </Routes>
   );
 }
 

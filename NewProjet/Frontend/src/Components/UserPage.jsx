@@ -16,7 +16,7 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
       <div className="flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Chargement des traductions...</p>
+          <p className="mt-2 text-gray-600">{t('loading')}</p>
         </div>
       </div>
     );
@@ -47,7 +47,8 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
     const fetchUserData = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('https://sigap-backend2.onrender.com/api/auth/me', {
+        const API_BASE = import.meta.env.VITE_API_BASE || 'https://sigap-backend2.onrender.com';
+        const response = await fetch(`${API_BASE}/api/auth/me`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -59,13 +60,13 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
           const userData = await response.json();
           setUserData(userData);
           if (userData.photo) {
-            setProfileImage(`https://sigap-backend2.onrender.com/uploads/${userData.photo}?t=${Date.now()}`);
+            setProfileImage(`${API_BASE}/uploads/${userData.photo}?t=${Date.now()}`);
           }
         } else {
-          console.error('Erreur lors du chargement des données utilisateur');
+          console.error(t('error'));
         }
       } catch (error) {
-        console.error('Erreur chargement données utilisateur:', error);
+        console.error(t('error') + ':', error);
       }
     };
 
@@ -73,7 +74,7 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
       setUserData(user);
       fetchUserData();
     }
-  }, [user]);
+  }, [user, t]);
 
   const handleImageChange = async (event) => {
     const file = event.target.files[0];
@@ -101,10 +102,11 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
   const uploadProfileImage = async (file) => {
     try {
       const token = localStorage.getItem('token');
+      const API_BASE = import.meta.env.VITE_API_BASE || 'https://sigap-backend2.onrender.com';
       const formData = new FormData();
       formData.append('photo', file);
 
-      const response = await fetch('https://sigap-backend2.onrender.com/api/auth/upload-photo', {
+      const response = await fetch(`${API_BASE}/api/auth/upload-photo`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -115,17 +117,17 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
       if (response.ok) {
         const result = await response.json();
         setMessage(t('photoUpdated'));
-        setProfileImage(`https://sigap-backend2.onrender.com/uploads/${result.photo}?t=${Date.now()}`);
+        setProfileImage(`${API_BASE}/uploads/${result.photo}?t=${Date.now()}`);
         
         setTimeout(() => {
           setMessage('');
         }, 3000);
       } else {
         const errorData = await response.json();
-        setMessage(errorData.message || 'Erreur lors du téléchargement de la photo');
+        setMessage(errorData.message || t('error'));
       }
     } catch (error) {
-      console.error('Erreur upload photo:', error);
+      console.error(t('error') + ':', error);
       setMessage(t('connectionError'));
     }
   };
@@ -170,7 +172,8 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://sigap-backend2.onrender.com/api/auth/change-password', {
+      const API_BASE = import.meta.env.VITE_API_BASE || 'https://sigap-backend2.onrender.com';
+      const response = await fetch(`${API_BASE}/api/auth/change-password`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -190,10 +193,10 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
           handleCloseModal();
         }, 3000);
       } else {
-        setMessage(data.message || "Erreur lors du changement de mot de passe");
+        setMessage(data.message || t('error'));
       }
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error(t('error') + ':', error);
       setMessage(t('connectionError'));
     } finally {
       setLoading(false);
@@ -213,17 +216,24 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
   };
 
   const handleLogout = () => {
+    // Appeler la fonction onLogout passée en props
     if (onLogout && typeof onLogout === 'function') {
       onLogout();
     } else {
+      // Fallback si onLogout n'est pas disponible
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Utiliser une redirection conditionnelle
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
   };
 
   const handleGoBack = () => {
-    console.log('Retour en arrière');
+    console.log(t('back'));
+    // Vous pouvez ajouter la navigation vers la page précédente si nécessaire
+    // history.goBack() si vous utilisez react-router
   };
 
   // Composant Modal pour le mot de passe
@@ -243,7 +253,9 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
           {message && (
             <div className="mb-4 relative z-10">
               <div className={`p-4 rounded-xl backdrop-blur-sm ${
-                message.includes('succès') || message.includes('envoyée') || message.includes('soa aman-tsara') || message.includes('nalefa')
+                message.includes('succès') || message.includes('envoyée') || 
+                message.includes('soa aman-tsara') || message.includes('nalefa') ||
+                message.includes('success') || message.includes('sent')
                   ? 'bg-green-50/80 border border-green-200/60 text-green-800' 
                   : 'bg-red-50/80 border border-red-200/60 text-red-800'
               }`}>
@@ -265,7 +277,7 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
             <div className="py-8 px-6">
               <div className="flex flex-col items-center">
                 <h2 className="text-2xl font-bold text-gray-900 text-center">
-                  Modification du mot de passe
+                  {t('passwordChangeTitle')}
                 </h2>
               </div>
             </div>
@@ -277,9 +289,9 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
                   <div className="flex items-start space-x-3">
                     <Lock className="text-gray-600 w-5 h-5 flex-shrink-0 mt-0.5 mt-4" />
                     <div>
-                      <p className="text-gray-800 text-sm font-medium">Processus sécurisé</p>
+                      <p className="text-gray-800 text-sm font-medium">{t('secureProcess')}</p>
                       <p className="text-gray-600 text-xs mt-1">
-                        Pour votre sécurité, la modification du mot de passe nécessite une validation en plusieurs étapes.
+                        {t('secureProcessDesc')}
                       </p>
                     </div>
                   </div>
@@ -298,7 +310,7 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
                         value={passwordData.oldPassword}
                         onChange={(e) => handlePasswordChange('oldPassword', e.target.value)}
                         className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder="Mot de passe actuel"
+                        placeholder={t('oldPassword')}
                         required
                         disabled={loading}
                       />
@@ -316,7 +328,7 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
                         value={passwordData.newPassword}
                         onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
                         className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder="Nouveau mot de passe"
+                        placeholder={t('newPassword')}
                         required
                         minLength={6}
                         disabled={loading}
@@ -335,7 +347,7 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
                         value={passwordData.confirmPassword}
                         onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
                         className="block w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder="Confirmer le nouveau mot de passe"
+                        placeholder={t('confirmPassword')}
                         required
                         minLength={6}
                         disabled={loading}
@@ -352,7 +364,7 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
                     disabled={loading}
                     className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-xl font-semibold hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Annuler
+                    {t('cancel')}
                   </button>
                   <button
                     type="submit"
@@ -362,10 +374,10 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
                     {loading ? (
                       <div className="flex items-center justify-center space-x-2">
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Envoi en cours...</span>
+                        <span>{t('sending')}</span>
                       </div>
                     ) : (
-                      'Envoyer la demande'
+                      t('sendRequest')
                     )}
                   </button>
                 </div>
@@ -390,13 +402,13 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
           <button
             onClick={handleGoBack}
             className="w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:shadow-lg transition-all duration-200 mr-4 flex-shrink-0"
-            aria-label="Retour"
+            aria-label={t('back')}
           >
             <ArrowLeft size={20} />
           </button>
           
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-            {t('title') || 'Paramètres et compte'}
+            {t('profileSettings')}
           </h1>
         </div>
 
@@ -404,7 +416,9 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
         {message && !showPasswordModal && (
           <div className="mb-8">
             <div className={`p-4 rounded-xl ${
-              message.includes('succès') || message.includes('envoyée') || message.includes('soa aman-tsara') || message.includes('nalefa')
+              message.includes('succès') || message.includes('envoyée') || 
+              message.includes('soa aman-tsara') || message.includes('nalefa') ||
+              message.includes('success') || message.includes('sent')
                 ? 'bg-green-50 border border-green-200 text-green-800' 
                 : 'bg-red-50 border border-red-200 text-red-800'
             }`}>
@@ -445,7 +459,7 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
             <button
               onClick={triggerFileInput}
               className="absolute -bottom-2 -right-2 bg-blue-500 text-white p-3 rounded-full shadow-lg hover:bg-blue-600 transition-all duration-300 transform hover:scale-110 border-4 border-white"
-              title={t('profilePhoto') || 'Changer la photo'}
+              title={t('changePhoto')}
               type="button"
             >
               <Camera size={15} />
@@ -463,20 +477,20 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
           {/* Nom et rôle sur la même ligne */}
           <div className="flex items-center justify-center space-x-3 mb-2">
             <h2 className="text-xl md:text-2xl font-semibold text-gray-900">
-              {userData?.nom_complet || "Chargement..."}
+              {userData?.nom_complet || t('loading')}
             </h2>
             <span className="text-gray-600 text-sm font-medium px-3 py-1 rounded-full capitalize">
-              {userData?.role || "Utilisateur"}
+              {userData?.role || t('user')}
             </span>
           </div>
 
           {/* Informations secondaires */}
           <div className="space-y-2 text-center">
             <p className="text-gray-600 text-sm">
-              {t('immatriculation') || 'Immatriculation'}: <span className="font-medium text-gray-800">{userData?.immatricule || "Chargement..."}</span>
+              {t('registration')}: <span className="font-medium text-gray-800">{userData?.immatricule || t('loading')}</span>
             </p>
             <p className="text-gray-600 text-sm">
-              {t('username') || 'Nom d\'utilisateur'}: <span className="font-medium text-gray-800">{userData?.username || "Chargement..."}</span>
+              {t('username')}: <span className="font-medium text-gray-800">{userData?.username || t('loading')}</span>
             </p>
           </div>
         </div>
@@ -484,13 +498,13 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
         {/* Section Sécurité - Centrée */}
         <div className="mb-3 flex flex-col items-center">
           <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-5">
-            Sécurité
+            {t('security')}
           </h2>
           
           <div className="w-full max-w-xl">
             <button
               onClick={handleChangePassword}
-              className="w-full bg-gray-50 transition-all duration-200 flex items-center space-x-4 p-4 rounded-2xl border border-gray-200"
+              className="w-full bg-gray-50 transition-all duration-200 flex items-center space-x-4 p-4 rounded-2xl border border-gray-200 hover:bg-gray-100"
             >
               <div className="flex-shrink-0">
                 <div className="w-14 h-14 rounded-full flex items-center justify-center">
@@ -499,10 +513,10 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
               </div>
               <div className="flex-1 text-left">
                 <h3 className="font-bold text-gray-900 text-lg mb-1">
-                  MOT DE PASSE
+                  {t('changePassword')}
                 </h3>
                 <p className="text-gray-600 text-sm">
-                  Mettre a jour securite
+                  {t('updateSecurity')}
                 </p>
               </div>
               <div className="flex-shrink-0">
@@ -523,7 +537,7 @@ const UserPage = ({ user, onLogout, userPageState, onUserPageStateChange }) => {
             className="flex items-center justify-center space-x-3 text-red-600 hover:text-white font-medium py-3 px-4 rounded-2xl hover:bg-red-600 transition-colors border border-red-200 max-w-xl"
           >
             <LogOut size={20} />
-            <span className="font-semibold">Déconnexion</span>
+            <span className="font-semibold">{t('logout')}</span>
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import ReactDOM from "react-dom";
+import { useTranslation } from 'react-i18next';
 import {
   Home,
   Users,
@@ -35,6 +36,7 @@ const ImageModal = ({
   onAddImage
 }) => {
   const [isMounted, setIsMounted] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     setIsMounted(true);
@@ -57,13 +59,11 @@ const ImageModal = ({
 
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* Overlay sombre comme pour le modal Ajouter un résident */}
       <div 
         className="absolute inset-0 bg-black/20"
         onClick={handleOverlayClick}
       />
       
-      {/* Conteneur principal avec hauteur réduite */}
       <div 
         className="relative rounded-xl overflow-hidden shadow-2xl bg-black"
         onClick={(e) => e.stopPropagation()}
@@ -74,14 +74,12 @@ const ImageModal = ({
           width: 'auto'
         }}
       >
-        {/* Image principale */}
         <img
           src={images[currentIndex]}
           alt={`Image ${currentIndex + 1}`}
           className="max-w-full max-h-[75vh] object-contain"
         />
 
-        {/* Boutons flottants sur l'image - en haut à droite */}
         <div className="absolute top-4 right-4 flex items-center gap-2">
           <button
             onClick={handleAddImageClick}
@@ -94,7 +92,7 @@ const ImageModal = ({
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
               border: '1px solid rgba(209, 213, 219, 0.5)'
             }}
-            title="Ajouter une image"
+            title={t('addImage') || "Ajouter une image"}
           >
             <Plus size={18} />
           </button>
@@ -115,7 +113,6 @@ const ImageModal = ({
           </button>
         </div>
 
-        {/* Indicateur "1/1" sur l'image - en bas à GAUCHE */}
         <div className="absolute bottom-4 left-4 text-gray-800 text-sm rounded-full px-3 py-1.5 font-medium"
           style={{
             backgroundColor: 'rgba(243, 244, 246, 0.9)',
@@ -126,7 +123,6 @@ const ImageModal = ({
           {currentIndex + 1}/{images.length}
         </div>
 
-        {/* Boutons de navigation sur l'image - SUPERPOSÉS DIRECTEMENT */}
         {images.length > 1 && (
           <>
             <button
@@ -135,8 +131,8 @@ const ImageModal = ({
               style={{ 
                 width: '44px', 
                 height: '44px',
-                color: '#374151', /* Icônes blanches */
-                backgroundColor: 'rgba(243, 244, 243, 0.9)', /* Fond semi-transparent blanc */
+                color: '#374151',
+                backgroundColor: 'rgba(243, 244, 243, 0.9)',
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
                 border: '1px solid rgba(209, 213, 219, 0.5)'
               }}
@@ -149,8 +145,8 @@ const ImageModal = ({
               style={{ 
                 width: '44px', 
                 height: '44px',
-                color: '#374151', /* Icônes blanches */
-                backgroundColor: 'rgba(243, 244, 246, 0.9)', /* Fond semi-transparent blanc */
+                color: '#374151',
+                backgroundColor: 'rgba(243, 244, 246, 0.9)',
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
                 border: '1px solid rgba(209, 213, 219, 0.5)'
               }}
@@ -165,7 +161,6 @@ const ImageModal = ({
   );
 };
 
-// Composant modal séparé pour l'ajout de résident
 const AddResidentModal = ({ 
   isOpen, 
   onClose, 
@@ -182,6 +177,7 @@ const AddResidentModal = ({
   cinInputRef,
   telephoneInputRef
 }) => {
+  const { t } = useTranslation();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -254,7 +250,7 @@ const AddResidentModal = ({
 
         return validateDateComplete(correctedDate);
       } else {
-        setDateError("Format de date invalide. Utilisez jj/mm/aaaa");
+        setDateError(t('dateFormatError') || "Format de date invalide. Utilisez jj/mm/aaaa");
         return false;
       }
     }
@@ -273,19 +269,19 @@ const AddResidentModal = ({
         .padStart(2, "0")}`
     );
     if (isNaN(date.getTime())) {
-      setDateError("Date invalide");
+      setDateError(t('invalidDate') || "Date invalide");
       return false;
     }
 
     const MAX_YEAR = 2025;
     if (year > MAX_YEAR) {
-      setDateError(`L'année maximum est ${MAX_YEAR}`);
+      setDateError(t('maxYearError', { year: MAX_YEAR }) || `L'année maximum est ${MAX_YEAR}`);
       return false;
     }
 
     const MIN_YEAR = 1900;
     if (year < MIN_YEAR) {
-      setDateError("L'année semble trop ancienne");
+      setDateError(t('minYearError') || "L'année semble trop ancienne");
       return false;
     }
 
@@ -294,7 +290,7 @@ const AddResidentModal = ({
     const inputDate = new Date(year, month - 1, day);
 
     if (inputDate > today) {
-      setDateError("La date de naissance ne peut pas être dans le futur");
+      setDateError(t('futureDateError') || "La date de naissance ne peut pas être dans le futur");
       return false;
     }
 
@@ -437,7 +433,7 @@ const AddResidentModal = ({
           }
         }
       } else {
-        setDateError("Date incomplète. Format: jj/mm/aaaa");
+        setDateError(t('incompleteDate') || "Date incomplète. Format: jj/mm/aaaa");
       }
       return;
     }
@@ -610,7 +606,7 @@ const AddResidentModal = ({
       >
         <div className="flex items-center justify-between px-6 py-5">
           <h2 className="text-xl font-bold text-gray-800">
-            Ajouter un résident
+            {t('addResident')}
           </h2>
           <button
             onClick={handleCancel}
@@ -644,7 +640,7 @@ const AddResidentModal = ({
                   outline: 'none',
                   transition: 'box-shadow 0.2s ease'
                 }}
-                placeholder="Nom"
+                placeholder={t('lastName')}
                 maxLength={50}
                 onFocus={(e) => {
                   e.target.style.boxShadow = '0 0 0 2px rgba(209, 213, 219, 0.5)';
@@ -671,7 +667,7 @@ const AddResidentModal = ({
                   outline: 'none',
                   transition: 'box-shadow 0.2s ease'
                 }}
-                placeholder="Prénom"
+                placeholder={t('firstName')}
                 maxLength={50}
                 onFocus={(e) => {
                   e.target.style.boxShadow = '0 0 0 2px rgba(209, 213, 219, 0.5)';
@@ -684,7 +680,7 @@ const AddResidentModal = ({
 
             <div className="pl-4">
               <div className="mb-2 text-sm font-medium text-gray-700">
-                Sexe
+                {t('gender')}
               </div>
               <div className="flex flex-col space-y-2 ml-4">
                 <label className="flex items-center space-x-2 cursor-pointer">
@@ -701,7 +697,9 @@ const AddResidentModal = ({
                       accentColor: '#3B82F6'
                     }}
                   />
-                  <span className="text-gray-700 text-sm">Masculin</span>
+                  <span className="text-gray-700 text-sm">
+                    {t('male')}
+                  </span>
                 </label>
                 <label className="flex items-center space-x-2 cursor-pointer">
                   <input
@@ -717,7 +715,9 @@ const AddResidentModal = ({
                       accentColor: '#3B82F6'
                     }}
                   />
-                  <span className="text-gray-700 text-sm">Féminin</span>
+                  <span className="text-gray-700 text-sm">
+                    {t('female')}
+                  </span>
                 </label>
               </div>
             </div>
@@ -744,7 +744,7 @@ const AddResidentModal = ({
                   outline: 'none',
                   transition: 'box-shadow 0.2s ease, border-color 0.2s ease'
                 }}
-                placeholder="Date de naissance (jj/mm/aaaa)"
+                placeholder={`${t('birthDate')} (jj/mm/aaaa)`}
                 maxLength={10}
               />
               {dateError && (
@@ -769,7 +769,7 @@ const AddResidentModal = ({
                     outline: 'none',
                     transition: 'box-shadow 0.2s ease'
                   }}
-                  placeholder="CIN"
+                  placeholder={t('cin')}
                   maxLength={12}
                   onFocus={(e) => {
                     e.target.style.boxShadow = '0 0 0 2px rgba(209, 213, 219, 0.5)';
@@ -779,7 +779,7 @@ const AddResidentModal = ({
                   }}
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Champ réservé aux personnes majeures uniquement
+                  {t('fieldForAdultsOnly')}
                 </p>
               </div>
             )}
@@ -800,7 +800,7 @@ const AddResidentModal = ({
                   outline: 'none',
                   transition: 'box-shadow 0.2s ease'
                 }}
-                placeholder="Téléphone"
+                placeholder={t('phone')}
                 maxLength={10}
                 onFocus={(e) => {
                   e.target.style.boxShadow = '0 0 0 2px rgba(209, 213, 219, 0.5)';
@@ -822,7 +822,7 @@ const AddResidentModal = ({
               borderColor: '#E5E7EB'
             }}
           >
-            Annuler
+            {t('cancel')}
           </button>
           <button
             onClick={onSave}
@@ -831,7 +831,7 @@ const AddResidentModal = ({
               maxWidth: '200px'
             }}
           >
-            Enregistrer
+            {t('save')}
           </button>
         </div>
       </div>
@@ -840,7 +840,6 @@ const AddResidentModal = ({
   );
 };
 
-// Composant pour afficher directement les résidents
 const ResidentsList = ({ 
   residents, 
   onBackToResidences, 
@@ -848,6 +847,7 @@ const ResidentsList = ({
   onViewOnMap,
   residencesList 
 }) => {
+  const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState(1);
   const residentsPerPage = 10;
   
@@ -857,7 +857,9 @@ const ResidentsList = ({
   const totalPages = Math.ceil(residents.length / residentsPerPage);
 
   const formatGenre = (genre) => {
-    return genre === "homme" ? "Masculin" : "Féminin";
+    if (genre === "homme") return t('male');
+    if (genre === "femme") return t('female');
+    return genre;
   };
 
   const extractNomPrenom = (nomComplet) => {
@@ -911,7 +913,7 @@ const ResidentsList = ({
                 color: '#000000'
               }}
             >
-              Résultats de recherche: "{searchQuery}"
+              {t('searchResults')}: "{searchQuery}"
             </h1>
           </div>
         </div>
@@ -956,7 +958,7 @@ const ResidentsList = ({
                       color: '#6B7280'
                     }}
                   >
-                    Résidents trouvés
+                    {t('residentsFound')}
                   </div>
                 </div>
               </div>
@@ -977,6 +979,7 @@ const ResidentsList = ({
               overflow: 'hidden'
             }}
           >
+            {/* En-tête du tableau avec des colonnes alignées */}
             <div className="flex-shrink-0 mb-1">
               <div className="flex items-center" style={{ height: '48px' }}>
                 <div style={{ width: '60px', padding: '0 12px' }}>
@@ -988,7 +991,7 @@ const ResidentsList = ({
                       color: '#6B7280'
                     }}
                   >
-                    N°
+                    {t('number')}
                   </div>
                 </div>
                 
@@ -1001,7 +1004,7 @@ const ResidentsList = ({
                       color: '#6B7280'
                     }}
                   >
-                    Nom
+                    {t('lastName')}
                   </div>
                 </div>
                 
@@ -1014,7 +1017,7 @@ const ResidentsList = ({
                       color: '#6B7280'
                     }}
                   >
-                    Prénom
+                    {t('firstName')}
                   </div>
                 </div>
                 
@@ -1027,7 +1030,7 @@ const ResidentsList = ({
                       color: '#6B7280'
                     }}
                   >
-                    Sexe
+                    {t('gender')}
                   </div>
                 </div>
                 
@@ -1040,7 +1043,7 @@ const ResidentsList = ({
                       color: '#6B7280'
                     }}
                   >
-                    Date de naissance
+                    {t('birthDate')}
                   </div>
                 </div>
                 
@@ -1053,7 +1056,7 @@ const ResidentsList = ({
                       color: '#6B7280'
                     }}
                   >
-                    CIN
+                    {t('cin')}
                   </div>
                 </div>
                 
@@ -1066,7 +1069,7 @@ const ResidentsList = ({
                       color: '#6B7280'
                     }}
                   >
-                    Téléphone
+                    {t('phone')}
                   </div>
                 </div>
                 
@@ -1079,7 +1082,7 @@ const ResidentsList = ({
                       color: '#6B7280'
                     }}
                   >
-                    Actions
+                    {t('actions')}
                   </div>
                 </div>
               </div>
@@ -1093,7 +1096,7 @@ const ResidentsList = ({
                       <User className="w-8 h-8" style={{ color: '#9CA3AF' }} />
                     </div>
                     <h3 className="font-semibold mb-2" style={{ fontSize: '18px', color: '#000000' }}>
-                      Aucun résident trouvé
+                      {t('noResidentRegistered')}
                     </h3>
                   </div>
                 </div>
@@ -1110,27 +1113,50 @@ const ResidentsList = ({
                         className="flex items-center border-b border-gray-200 hover:bg-gray-50 transition-colors"
                         style={{ height: '60px' }}
                       >
+                        {/* Numéro - aligné avec l'en-tête */}
                         <div style={{ width: '60px', padding: '0 12px' }}>
-                          <span className="font-medium" style={{ fontSize: '14px', color: '#6B7280' }}>
+                          <span 
+                            className="font-medium block text-center"
+                            style={{ 
+                              fontSize: '14px', 
+                              color: '#6B7280',
+                              textAlign: 'center'
+                            }}
+                          >
                             {(currentPage - 1) * residentsPerPage + index + 1}
                           </span>
                         </div>
                         
+                        {/* Nom - aligné avec l'en-tête */}
                         <div style={{ flex: 1, padding: '0 12px' }}>
-                          <div className="font-semibold" style={{ fontSize: '14px', color: '#000000' }}>
+                          <div 
+                            className="font-semibold"
+                            style={{ 
+                              fontSize: '14px', 
+                              color: '#000000'
+                            }}
+                          >
                             {displayNom}
                           </div>
                         </div>
                         
+                        {/* Prénom - aligné avec l'en-tête */}
                         <div style={{ flex: 1, padding: '0 12px' }}>
-                          <div className="font-semibold" style={{ fontSize: '14px', color: '#000000' }}>
+                          <div 
+                            className="font-semibold"
+                            style={{ 
+                              fontSize: '14px', 
+                              color: '#000000'
+                            }}
+                          >
                             {prenom || "-"}
                           </div>
                         </div>
                         
+                        {/* Genre - aligné avec l'en-tête (centré) */}
                         <div style={{ width: '120px', padding: '0 12px' }}>
                           <div className="flex items-center justify-center">
-                            {formatGenre(resident.genre) === "Masculin" ? (
+                            {formatGenre(resident.genre) === t('male') ? (
                               <Mars className="w-4 h-4 text-black mr-2" />
                             ) : (
                               <Venus className="w-4 h-4 text-black mr-2" />
@@ -1141,24 +1167,37 @@ const ResidentsList = ({
                           </div>
                         </div>
                         
+                        {/* Date de naissance - aligné avec l'en-tête */}
                         <div style={{ width: '150px', padding: '0 12px' }}>
-                          <div className="text-sm text-gray-600">
+                          <div 
+                            className="text-sm text-gray-600"
+                            style={{ textAlign: 'left' }}
+                          >
                             {resident.dateNaissance ? formatDateHyphen(resident.dateNaissance) : "-"}
                           </div>
                         </div>
                         
+                        {/* CIN - aligné avec l'en-tête */}
                         <div style={{ width: '120px', padding: '0 12px' }}>
-                          <div className="text-sm font-mono text-gray-600">
+                          <div 
+                            className="text-sm font-mono text-gray-600"
+                            style={{ textAlign: 'left' }}
+                          >
                             {resident.cin || "-"}
                           </div>
                         </div>
                         
+                        {/* Téléphone - aligné avec l'en-tête */}
                         <div style={{ width: '150px', padding: '0 12px' }}>
-                          <div className="text-sm text-gray-600">
+                          <div 
+                            className="text-sm text-gray-600"
+                            style={{ textAlign: 'left' }}
+                          >
                             {resident.telephone ? `+261 ${resident.telephone}` : "-"}
                           </div>
                         </div>
                         
+                        {/* Actions - aligné avec l'en-tête (centré) */}
                         <div style={{ width: '120px', padding: '0 12px' }}>
                           <div className="text-center">
                             {residence && onViewOnMap && (
@@ -1171,12 +1210,13 @@ const ResidentsList = ({
                                   padding: '0 12px',
                                   fontSize: '13px',
                                   borderColor: '#D1D5DB',
-                                  color: '#000000'
+                                  color: '#000000',
+                                  margin: '0 auto'
                                 }}
-                                title="Voir sur la carte"
+                                title={t('viewOnMap')}
                               >
                                 <Map size={14} className="mr-2" style={{ color: '#000000' }} />
-                                Carte
+                                {t('map')}
                               </button>
                             )}
                           </div>
@@ -1289,6 +1329,7 @@ export default function ResidencePage({
   onEnterDetail,
   onExitDetail,
 }) {
+  const { t, i18n } = useTranslation();
   const [resList, setResList] = useState([]);
   const [selectedResidence, setSelectedResidence] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -1299,7 +1340,7 @@ export default function ResidencePage({
   const [sortBy, setSortBy] = useState("date");
   const [expandedResidence, setExpandedResidence] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [residencesPerPage] = useState(4);
+  const [residencesPerPage] = useState(3);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [newResident, setNewResident] = useState({
     nom: "",
@@ -1329,7 +1370,13 @@ export default function ResidencePage({
   const photoInputRef = useRef(null);
   const isMountedRef = useRef(true);
   const [residentPage, setResidentPage] = useState(1);
-  const [residentsPerPageInModal] = useState(4);
+  const [residentsPerPageInModal] = useState(3); // Changé à 3 résidents par page
+
+  // Fonction pour changer de langue
+  const switchLanguage = () => {
+    const newLang = i18n.language === 'fr' ? 'mg' : 'fr';
+    i18n.changeLanguage(newLang);
+  };
 
   // LOAD residences from backend on mount
   useEffect(() => {
@@ -1727,6 +1774,7 @@ export default function ResidencePage({
 
       setIsPhotoExpanded(false);
       setIsFullScreenPhoto(false);
+      setResidentPage(1); // Réinitialiser la pagination des résidents
 
       setShowModal(true);
     } catch (e) {
@@ -1760,6 +1808,7 @@ export default function ResidencePage({
         nom_residence: nomResidence,
         nom_proprietaire: nomProprietaire
       });
+      setResidentPage(1); // Réinitialiser la pagination des résidents
       setShowModal(true);
     }
     setCurrentPhotoIndex(0);
@@ -2093,10 +2142,11 @@ export default function ResidencePage({
   );
   const totalPages = Math.ceil(filteredResidences.length / residencesPerPage);
 
-  const indexOfLastResident = residentPage * residentsPerPageInModal;
-  const indexOfFirstResident = indexOfLastResident - residentsPerPageInModal;
+  // Pagination pour les résidents dans la modal
+  const indexOfLastResidentInModal = residentPage * residentsPerPageInModal;
+  const indexOfFirstResidentInModal = indexOfLastResidentInModal - residentsPerPageInModal;
   const currentResidentsInModal = selectedResidence?.residents
-    ? selectedResidence.residents.slice(indexOfFirstResident, indexOfLastResident)
+    ? selectedResidence.residents.slice(indexOfFirstResidentInModal, indexOfLastResidentInModal)
     : [];
   const totalResidentPages = selectedResidence?.residents
     ? Math.ceil(selectedResidence.residents.length / residentsPerPageInModal)
@@ -2155,7 +2205,9 @@ export default function ResidencePage({
   };
 
   const formatGenre = (genre) => {
-    return genre === "homme" ? "Masculin" : "Féminin";
+    if (genre === "homme") return t('male');
+    if (genre === "femme") return t('female');
+    return genre;
   };
 
   const ResidentRow = ({ resident }) => {
@@ -2165,15 +2217,30 @@ export default function ResidencePage({
 
     return (
       <tr className="border-b border-gray-200 hover:bg-gray-50">
+        {/* Nom - aligné avec l'en-tête */}
         <td className="px-4 py-3">
-          <div className="font-semibold text-gray-800">{displayNom}</div>
+          <div 
+            className="font-semibold text-gray-800"
+            style={{ textAlign: 'left' }}
+          >
+            {displayNom}
+          </div>
         </td>
+        
+        {/* Prénom - aligné avec l'en-tête */}
         <td className="px-4 py-3">
-          <div className="font-semibold text-gray-800">{prenom || "-"}</div>
+          <div 
+            className="font-semibold text-gray-800"
+            style={{ textAlign: 'left' }}
+          >
+            {prenom || "-"}
+          </div>
         </td>
+        
+        {/* Genre - aligné avec l'en-tête (centré) */}
         <td className="px-4 py-3">
-          <div className="flex items-center">
-            {formatGenre(resident.genre) === "Masculin" ? (
+          <div className="flex items-center" style={{ justifyContent: 'center' }}>
+            {formatGenre(resident.genre) === t('male') ? (
               <Mars className="w-4 h-4 text-black mr-2" />
             ) : (
               <Venus className="w-4 h-4 text-black mr-2" />
@@ -2183,22 +2250,37 @@ export default function ResidencePage({
             </span>
           </div>
         </td>
+        
+        {/* Date de naissance - aligné avec l'en-tête */}
         <td className="px-4 py-3">
-          <div className="text-sm text-gray-600">
+          <div 
+            className="text-sm text-gray-600"
+            style={{ textAlign: 'left' }}
+          >
             {resident.dateNaissance 
               ? formatDateHyphen(resident.dateNaissance) 
               : "-"}
           </div>
         </td>
+        
+        {/* CIN - aligné avec l'en-tête */}
         <td className="px-4 py-3">
-          <div className={`text-sm font-mono ${
-            isMineur ? "text-gray-500 italic" : "text-gray-600"
-          }`}>
-            {isMineur ? "-- Mineur --" : resident.cin || "-"}
+          <div 
+            className={`text-sm font-mono ${
+              isMineur ? "text-gray-500 italic" : "text-gray-600"
+            }`}
+            style={{ textAlign: 'left' }}
+          >
+            {isMineur ? `-- ${t('minor')} --` : resident.cin || "-"}
           </div>
         </td>
+        
+        {/* Téléphone - aligné avec l'en-tête */}
         <td className="px-4 py-3">
-          <div className="text-sm text-gray-600">
+          <div 
+            className="text-sm text-gray-600"
+            style={{ textAlign: 'left' }}
+          >
             {resident.telephone ? `+261 ${resident.telephone}` : "-"}
           </div>
         </td>
@@ -2209,23 +2291,40 @@ export default function ResidencePage({
   const ResidentListHeader = () => (
     <thead className="bg-gray-50 sticky top-0 z-10">
       <tr>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50">
-          NOM
+        <th 
+          className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
+          style={{ textAlign: 'left' }}
+        >
+          {t('lastName')}
         </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50">
-          PRÉNOM
+        <th 
+          className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
+          style={{ textAlign: 'left' }}
+        >
+          {t('firstName')}
         </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50">
-          SEXE
+        <th 
+          className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
+        >
+          {t('gender')}
         </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50">
-          DATE DE NAISSANCE
+        <th 
+          className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
+          style={{ textAlign: 'left' }}
+        >
+          {t('birthDate')}
         </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50">
-          CIN
+        <th 
+          className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
+          style={{ textAlign: 'left' }}
+        >
+          {t('cin')}
         </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50">
-          TEL.
+        <th 
+          className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
+          style={{ textAlign: 'left' }}
+        >
+          {t('tel')}
         </th>
       </tr>
     </thead>
@@ -2254,18 +2353,18 @@ export default function ResidencePage({
                 padding: '24px 32px'
               }}
             >
-              <div className="flex items-center justify-between">
-                <h1 
-                  className="text-black"
-                  style={{
-                    fontSize: '32px',
-                    fontWeight: '700',
-                    color: '#000000'
-                  }}
-                >
-                  Liste des Résidences
-                </h1>
-              </div>
+<div>
+  <h1 
+    className="text-black"
+    style={{
+      fontSize: '32px',
+      fontWeight: '700',
+      color: '#000000'
+    }}
+  >
+    {t('residencesList')}
+  </h1>
+</div>
 
               <div>
                 <div className="grid grid-cols-4 gap-5">
@@ -2307,7 +2406,7 @@ export default function ResidencePage({
                             color: '#6B7280'
                           }}
                         >
-                          Résidences
+                          {t('residences')}
                         </div>
                       </div>
                     </div>
@@ -2351,7 +2450,7 @@ export default function ResidencePage({
                             color: '#6B7280'
                           }}
                         >
-                          Résidents
+                          {t('residents')}
                         </div>
                       </div>
                     </div>
@@ -2395,7 +2494,7 @@ export default function ResidencePage({
                             color: '#6B7280'
                           }}
                         >
-                          Hommes
+                          {t('men')}
                         </div>
                       </div>
                     </div>
@@ -2439,7 +2538,7 @@ export default function ResidencePage({
                             color: '#6B7280'
                           }}
                         >
-                          Femmes
+                          {t('women')}
                         </div>
                       </div>
                     </div>
@@ -2471,7 +2570,7 @@ export default function ResidencePage({
                             color: '#6B7280'
                           }}
                         >
-                          N°
+                          {t('number')}
                         </div>
                       </div>
                       
@@ -2484,7 +2583,7 @@ export default function ResidencePage({
                             color: '#6B7280'
                           }}
                         >
-                          Photo
+                          {t('photo')}
                         </div>
                       </div>
                       
@@ -2497,7 +2596,7 @@ export default function ResidencePage({
                             color: '#6B7280'
                           }}
                         >
-                          Adresse
+                          {t('address')}
                         </div>
                       </div>
                       
@@ -2510,7 +2609,7 @@ export default function ResidencePage({
                             color: '#6B7280'
                           }}
                         >
-                          Résidents
+                          {t('residents')}
                         </div>
                       </div>
                       
@@ -2523,7 +2622,7 @@ export default function ResidencePage({
                             color: '#6B7280'
                           }}
                         >
-                          Actions
+                          {t('actions')}
                         </div>
                       </div>
                     </div>
@@ -2551,8 +2650,8 @@ export default function ResidencePage({
                             }}
                           >
                             {searchQuery 
-                              ? `Aucun résultat trouvé pour "${searchQuery}"`
-                              : "Aucune résidence n'est enregistrée"}
+                              ? `${t('noResultsFor')} "${searchQuery}"`
+                              : t('noResidenceFound')}
                           </h3>
                           <p 
                             className="text-gray-600"
@@ -2562,8 +2661,8 @@ export default function ResidencePage({
                             }}
                           >
                             {searchQuery 
-                              ? "Essayez une autre recherche (lot, nom, prénom, CIN, téléphone, etc.)"
-                              : "Aucune résidence n'est enregistrée"}
+                              ? t('tryAnotherSearch')
+                              : t('noResidenceFound')}
                           </p>
                         </div>
                       </div>
@@ -2690,7 +2789,7 @@ export default function ResidencePage({
                                       color: '#000000'
                                     }}
                                   >
-                                    {totalResidents} résident{totalResidents !== 1 ? 's' : ''}
+                                    {totalResidents} {t('residentsCount').toLowerCase()}{totalResidents !== 1 ? 's' : ''}
                                   </div>
                                   <div className="flex items-center justify-center space-x-3">
                                     <div className="flex items-center">
@@ -2734,10 +2833,10 @@ export default function ResidencePage({
                                         borderColor: '#D1D5DB',
                                         color: '#000000'
                                       }}
-                                      title="Voir sur la carte"
+                                      title={t('viewOnMap')}
                                     >
                                       <Map size={14} className="mr-2" style={{ color: '#000000' }} />
-                                      Carte
+                                      {t('map')}
                                     </button>
                                   )}
                                   <button
@@ -2751,10 +2850,10 @@ export default function ResidencePage({
                                       borderColor: '#D1D5DB',
                                       color: '#000000'
                                     }}
-                                    title="Voir les détails"
-                                    >
+                                    title={t('viewDetails')}
+                                  >
                                     <Eye size={14} className="mr-2" style={{ color: '#000000' }} />
-                                    Détails
+                                    {t('details')}
                                   </button>
                                 </div>
                               </div>
@@ -2869,10 +2968,10 @@ export default function ResidencePage({
                 <div className="flex items-center">
                   <button
                     onClick={handleCloseModal}
-                    className="mr-3 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center"
+                    className="mr-3 bg-gray-200 border-white-400 hover:bg-white rounded-xl transition-colors flex items-center justify-center shadow-3xl"
                     style={{ 
-                      width: '20px', 
-                      height: '20px',
+                      width: '30px', 
+                      height: '30px',
                       color: '#374151'
                     }}
                   >
@@ -2995,7 +3094,9 @@ export default function ResidencePage({
                         <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center mb-3">
                           <Camera size={24} style={{ color: '#6B7280' }} />
                         </div>
-                        
+                        <span className="text-xs text-gray-600">
+                          {t('addPhoto')}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -3011,7 +3112,7 @@ export default function ResidencePage({
                             color: '#000000'
                           }}
                         >
-                          {selectedResidence.nom_residence || selectedResidence.name || "Nom non spécifié"}
+                          {selectedResidence.nom_residence || selectedResidence.name || t('nameNotSpecified')}
                         </h2>
                         
                         <div className="flex items-center mb-2">
@@ -3023,7 +3124,7 @@ export default function ResidencePage({
                               color: '#374151'
                             }}
                           >
-                            {selectedResidence.adresse || "Adresse non disponible"}
+                            {selectedResidence.adresse || t('addressNotAvailable')}
                           </span>
                         </div>
                         
@@ -3036,7 +3137,7 @@ export default function ResidencePage({
                               color: '#374151'
                             }}
                           >
-                            {selectedResidence.totalResidents || 0} résidents
+                            {selectedResidence.totalResidents || 0} {t('residents')}
                           </span>
                         </div>
                         
@@ -3049,7 +3150,7 @@ export default function ResidencePage({
                                 color: '#000000'
                               }}
                             >
-                              {selectedResidence.hommes || 0} Hommes
+                              {selectedResidence.hommes || 0} {t('men')}
                             </span>
                           </div>
                           <div className="text-gray-400 mr-4">•</div>
@@ -3061,53 +3162,10 @@ export default function ResidencePage({
                                 color: '#000000'
                               }}
                             >
-                              {selectedResidence.femmes || 0} Femmes
+                              {selectedResidence.femmes || 0} {t('women')}
                             </span>
                           </div>
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="flex-1 pl-8 border-l border-gray-200 flex flex-col justify-between" style={{ borderLeftColor: '#E5E7EB' }}>
-                      <div>
-                        <h2 
-                          className="font-semibold text-black mb-3"
-                          style={{ 
-                            fontSize: '19px',
-                            fontWeight: '600',
-                            color: '#000000'
-                          }}
-                        >
-                          Propriétaire
-                        </h2>
-                        
-                        <div className="flex items-center mb-2">
-                          <User size={14} className="text-gray-500 mr-2" style={{ color: '#6B7280' }} />
-                          <span 
-                            className="font-medium text-gray-700"
-                            style={{ 
-                              fontSize: '14px',
-                              color: '#374151'
-                            }}
-                          >
-                            {selectedResidence.nom_proprietaire || selectedResidence.proprietaire || "Non spécifié"}
-                          </span>
-                        </div>
-                        
-                        {selectedResidence.telephone && (
-                          <div className="flex items-center mb-2">
-                            <Phone size={14} className="text-gray-500 mr-2" style={{ color: '#6B7280' }} />
-                            <span 
-                              className="text-gray-700"
-                              style={{ 
-                                fontSize: '14px',
-                                color: '#374151'
-                              }}
-                            >
-                              {selectedResidence.telephone}
-                            </span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -3123,7 +3181,7 @@ export default function ResidencePage({
                     color: '#000000'
                   }}
                 >
-                  Liste des résidents
+                  {t('residentsListTitle')}
                 </div>
                 <button
                   onClick={handleOpenAddResidentModal}
@@ -3136,7 +3194,7 @@ export default function ResidencePage({
                     fontSize: '14.5px'
                   }}
                 >
-                  + Ajouter un résident
+                   {t('addResidentButton')}
                 </button>
               </div>
 
@@ -3162,7 +3220,7 @@ export default function ResidencePage({
                                   color: '#6B7280'
                                 }}
                               >
-                                Aucun résident enregistré
+                                {t('noResidentRegistered')}
                               </div>
                             </div>
                           </td>
@@ -3187,79 +3245,86 @@ export default function ResidencePage({
 
                 {totalResidentPages > 1 && (
                   <div className="flex-shrink-0 px-6 py-4 border-t border-gray-200 bg-white">
-                    <div className="flex items-center justify-center space-x-2">
-                      <button
-                        onClick={prevResidentPage}
-                        disabled={residentPage === 1}
-                        className="flex items-center justify-center bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    <div className="flex items-center justify-center">
+                      <div className="flex items-center space-x-2 bg-white rounded-full px-4 py-2"
                         style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          borderColor: '#D1D5DB'
+                          borderRadius: '999px',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                          height: '40px',
+                          width: '220px',
+                          justifyContent: 'center'
                         }}
                       >
-                        <ChevronLeft size={16} style={{ color: '#374151' }} />
-                      </button>
+                        <button
+                          onClick={() => setResidentPage(prev => Math.max(1, prev - 1))}
+                          disabled={residentPage === 1}
+                          className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '999px',
+                            borderColor: '#D1D5DB'
+                          }}
+                        >
+                          <ChevronLeft size={16} style={{ color: '#000000' }} />
+                        </button>
 
-                      <div className="flex items-center space-x-1">
-                        {[...Array(totalResidentPages)].map((_, i) => {
-                          const pageNum = i + 1;
-                          if (
-                            pageNum === 1 ||
-                            pageNum === totalResidentPages ||
-                            (pageNum >= residentPage - 1 && pageNum <= residentPage + 1)
-                          ) {
-                            return (
-                              <button
-                                key={pageNum}
-                                onClick={() => setResidentPage(pageNum)}
-                                className={`flex items-center justify-center font-medium transition-colors ${
-                                  residentPage === pageNum
-                                    ? "bg-gray-900 text-white"
-                                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
-                                }`}
-                                style={{
-                                  width: '32px',
-                                  height: '32px',
-                                  borderRadius: '8px',
-                                  fontSize: '14px',
-                                  borderColor: '#D1D5DB'
-                                }}
-                              >
-                                {pageNum}
-                              </button>
-                            );
-                          } else if (
-                            pageNum === residentPage - 2 ||
-                            pageNum === residentPage + 2
-                          ) {
-                            return (
-                              <span 
-                                className="text-gray-400"
-                                style={{ fontSize: '14px' }}
-                              >
-                                ...
-                              </span>
-                            );
-                          }
-                          return null;
-                        })}
+                        <div className="flex items-center space-x-2">
+                          {[...Array(totalResidentPages)].map((_, i) => {
+                            const pageNum = i + 1;
+                            if (
+                              pageNum === 1 ||
+                              pageNum === totalResidentPages ||
+                              (pageNum >= residentPage - 1 && pageNum <= residentPage + 1)
+                            ) {
+                              return (
+                                <button
+                                  key={pageNum}
+                                  onClick={() => setResidentPage(pageNum)}
+                                  className={`flex items-center justify-center font-medium transition-colors ${
+                                    residentPage === pageNum
+                                      ? "bg-gray-900 text-white"
+                                      : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
+                                  }`}
+                                  style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    borderColor: '#D1D5DB'
+                                  }}
+                                >
+                                  {pageNum}
+                                </button>
+                              );
+                            } else if (
+                              pageNum === residentPage - 2 ||
+                              pageNum === residentPage + 2
+                            ) {
+                              return (
+                                <span className="text-gray-400" style={{ fontSize: '14px', color: '#6B7280' }}>
+                                  ...
+                                </span>
+                              );
+                            }
+                            return null;
+                          })}
+                        </div>
+
+                        <button
+                          onClick={() => setResidentPage(prev => Math.min(totalResidentPages, prev + 1))}
+                          disabled={residentPage === totalResidentPages}
+                          className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '999px',
+                            borderColor: '#D1D5DB'
+                          }}
+                        >
+                          <ChevronRight size={16} style={{ color: '#000000' }} />
+                        </button>
                       </div>
-
-                      <button
-                        onClick={nextResidentPage}
-                        disabled={residentPage === totalResidentPages}
-                        className="flex items-center justify-center bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          borderColor: '#D1D5DB'
-                        }}
-                      >
-                        <ChevronRight size={16} style={{ color: '#374151' }} />
-                      </button>
                     </div>
                   </div>
                 )}
