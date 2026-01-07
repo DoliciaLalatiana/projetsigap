@@ -199,6 +199,7 @@ export default function Interface({ user }) {
   const addAddressRef = useRef(null);
   const menuDropdownRef = useRef(null);
   const residentFieldsRef = useRef(null);
+  const searchResultsModalRef = useRef(null); // NOUVELLE REF POUR LE MODAL DES RÉSULTATS
 
   const createCustomMarkerIcon = (color) => {
     let svg = '';
@@ -650,6 +651,7 @@ export default function Interface({ user }) {
 
     return (
       <div 
+        ref={searchResultsModalRef} // REF AJOUTÉE ICI
         className="fixed z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto"
         style={{
           top: `${topPosition}px`,
@@ -1049,15 +1051,29 @@ export default function Interface({ user }) {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Pour le dropdown utilisateur
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setOpenDropdown(false);
       }
 
-      if (!searchRef.current?.contains(event.target) && showSearchResults) {
-        console.log('[LOG] Clic en dehors des résultats de recherche, fermeture');
-        setShowSearchResults(false);
+      // POUR LES RÉSULTATS DE RECHERCHE - CORRECTION ICI
+      if (showSearchResults) {
+        // Vérifier si le clic est dans la barre de recherche
+        const isClickInsideSearchBar = searchRef.current?.contains(event.target);
+        
+        // Vérifier si le clic est dans le modal des résultats
+        const isClickInsideResultsModal = searchResultsModalRef.current?.contains(event.target);
+        
+        // Si le clic n'est ni dans la barre ni dans le modal
+        if (!isClickInsideSearchBar && !isClickInsideResultsModal) {
+          console.log('[LOG] Clic vraiment en dehors, fermeture des résultats');
+          setShowSearchResults(false);
+        } else {
+          console.log('[LOG] Clic dans la barre ou le modal, on ne ferme pas');
+        }
       }
 
+      // Pour le menu dropdown
       const menuButton = document.querySelector('[data-menu-button]');
       const menuDropdown = menuDropdownRef.current;
       
@@ -1120,11 +1136,12 @@ export default function Interface({ user }) {
 
   const isSearchDisabled = showStatistique || showUserPage || showPendingResidences;
 
+
   const handleLogout = () => {
     localStorage.removeItem('interfaceState');
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    window.location.href = "/login";
+    window.location.href = "/";
   };
 
   const handleLogoClick = () => {
