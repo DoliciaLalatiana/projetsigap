@@ -37,7 +37,7 @@ function App() {
     localStorage.removeItem('user');
     setUser(null);
     // Utilisation de navigate au lieu de window.location.href
-    navigate('/login');
+    navigate('/');
   };
 
   if (loading) {

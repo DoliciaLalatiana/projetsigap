@@ -135,7 +135,7 @@ const ImageModal = ({
                 backgroundColor: 'rgba(243, 244, 243, 0.9)',
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
                 border: '1px solid rgba(209, 213, 219, 0.5)'
-              }}
+            }}
             >
               <ChevronLeft size={24} />
             </button>
@@ -1370,7 +1370,7 @@ export default function ResidencePage({
   const photoInputRef = useRef(null);
   const isMountedRef = useRef(true);
   const [residentPage, setResidentPage] = useState(1);
-  const [residentsPerPageInModal] = useState(3); // Changé à 3 résidents par page
+  const [residentsPerPageInModal] = useState(3);
 
   // Fonction pour changer de langue
   const switchLanguage = () => {
@@ -1398,19 +1398,14 @@ export default function ResidencePage({
             ? r.photos
                 .filter((photo) => photo && photo.trim() !== "")
                 .map((photo) => {
-                  if (typeof photo === "object" && photo.url) {
-                    return photo.url.startsWith("http")
-                      ? photo.url
-                      : `${API_BASE}${photo.url.startsWith("/") ? "" : "/"}${
-                          photo.url
-                        }`;
-                  }
+                  // CORRECTION ICI : Utiliser directement l'URL retournée par l'API
                   if (typeof photo === "string") {
-                    return photo.startsWith("http")
-                      ? photo
-                      : `${API_BASE}${
-                          photo.startsWith("/") ? "" : "/"
-                        }${photo}`;
+                    // Si l'API retourne déjà une URL complète, l'utiliser directement
+                    if (photo.startsWith("http")) {
+                      return photo;
+                    }
+                    // Sinon, ajouter le BASE_URL si nécessaire
+                    return `${API_BASE}${photo.startsWith("/") ? "" : "/"}${photo}`;
                   }
                   return photo;
                 })
@@ -1564,22 +1559,20 @@ export default function ResidencePage({
       : { "Content-Type": "application/json" };
   };
 
+  // CORRECTION PRINCIPALE : Fonction pour charger les photos
   const loadResidencePhotos = async (residenceId) => {
     try {
+      console.log("Chargement des photos pour la résidence:", residenceId);
       const resp = await fetch(
         `${API_BASE}/api/residences/${residenceId}/photos`
       );
       if (resp.ok) {
         const photos = await resp.json();
+        console.log("Photos reçues de l'API:", photos);
+        
+        // Retourner directement les URLs complètes
         return photos.map((photo) => {
-          if (typeof photo === "object" && photo.url) {
-            return photo.url.startsWith("http")
-              ? photo.url
-              : `${API_BASE}${photo.url.startsWith("/") ? "" : "/"}${
-                  photo.url
-                }`;
-          }
-          return photo;
+          return photo.url || `${API_BASE}/uploads/residences/${photo.filename}`;
         });
       }
     } catch (err) {
@@ -1621,12 +1614,7 @@ export default function ResidencePage({
 
       if (result.photos && result.photos.length > 0) {
         const newPhotoUrls = result.photos.map((photo) => {
-          if (photo.url.startsWith("http")) {
-            return photo.url;
-          }
-          return `${API_BASE}${photo.url.startsWith("/") ? "" : "/"}${
-            photo.url
-          }`;
+          return photo.url;
         });
 
         setSelectedResidence((prev) => ({
@@ -1636,7 +1624,7 @@ export default function ResidencePage({
 
         setResList((list) =>
           list.map((r) =>
-            r.id === selectedResidence.id ? { ...r, photos: newPhotoUrls } : r
+            r.id === selectedResidence.id ? { ...r, photos: [...(r.photos || []), ...newPhotoUrls] } : r
           )
         );
       }
@@ -1662,13 +1650,7 @@ export default function ResidencePage({
         const photosList = await photosResp.json();
 
         const photoToDelete = photosList.find((p) => {
-          const fullUrl =
-            typeof p === "object" && p.url
-              ? p.url.startsWith("http")
-                ? p.url
-                : `${API_BASE}${p.url.startsWith("/") ? "" : "/"}${p.url}`
-              : p;
-          return fullUrl === photoUrl;
+          return p.url === photoUrl;
         });
 
         if (photoToDelete) {
@@ -1714,7 +1696,7 @@ export default function ResidencePage({
       }
 
       const photos = await loadResidencePhotos(residence.id);
-      console.log("Loaded photos:", photos.length);
+      console.log("Loaded photos URLs:", photos);
 
       const base = resList.find((r) => r.id === residence.id) || residence;
       const resp = await fetch(
@@ -1754,7 +1736,6 @@ export default function ResidencePage({
           person.genre === "female"
       ).length;
 
-      // RÉCUPÉRER LE NOM DE LA RÉSIDENCE ET LE PROPRIÉTAIRE
       const nomResidence = residence.nom_residence || residence.nomResidence || residence.name || residence.lot || "";
       const nomProprietaire = residence.nom_proprietaire || residence.nomProprietaire || residence.proprietaire || "";
 
@@ -1765,7 +1746,6 @@ export default function ResidencePage({
         totalResidents: totalRealResidents,
         hommes: hommesReal,
         femmes: femmesReal,
-        // S'assurer que les champs sont bien définis
         name: nomResidence,
         proprietaire: nomProprietaire,
         nom_residence: nomResidence,
@@ -1774,7 +1754,7 @@ export default function ResidencePage({
 
       setIsPhotoExpanded(false);
       setIsFullScreenPhoto(false);
-      setResidentPage(1); // Réinitialiser la pagination des résidents
+      setResidentPage(1);
 
       setShowModal(true);
     } catch (e) {
@@ -1808,7 +1788,7 @@ export default function ResidencePage({
         nom_residence: nomResidence,
         nom_proprietaire: nomProprietaire
       });
-      setResidentPage(1); // Réinitialiser la pagination des résidents
+      setResidentPage(1);
       setShowModal(true);
     }
     setCurrentPhotoIndex(0);
@@ -2210,6 +2190,49 @@ export default function ResidencePage({
     return genre;
   };
 
+  const ResidentListHeader = () => (
+    <thead className="bg-gray-50 sticky top-0 z-10">
+      <tr>
+        <th 
+          className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
+          style={{ textAlign: 'left', width: '200px' }}
+        >
+          {t('lastName')}
+        </th>
+        <th 
+          className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
+          style={{ textAlign: 'left', width: '200px' }}
+        >
+          {t('firstName')}
+        </th>
+        <th 
+          className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
+          style={{ textAlign: 'center', width: '120px' }}
+        >
+          {t('gender')}
+        </th>
+        <th 
+          className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
+          style={{ textAlign: 'left', width: '150px' }}
+        >
+          {t('birthDate')}
+        </th>
+        <th 
+          className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
+          style={{ textAlign: 'left', width: '120px' }}
+        >
+          {t('cin')}
+        </th>
+        <th 
+          className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
+          style={{ textAlign: 'left', width: '150px' }}
+        >
+          {t('tel')}
+        </th>
+      </tr>
+    </thead>
+  );
+
   const ResidentRow = ({ resident }) => {
     const { nom, prenom } = extractNomPrenom(resident.nomComplet);
     const isMineur = resident.dateNaissance && !estMajeur(resident.dateNaissance);
@@ -2218,45 +2241,48 @@ export default function ResidencePage({
     return (
       <tr className="border-b border-gray-200 hover:bg-gray-50">
         {/* Nom - aligné avec l'en-tête */}
-        <td className="px-4 py-3">
-          <div 
-            className="font-semibold text-gray-800"
-            style={{ textAlign: 'left' }}
-          >
+        <td 
+          className="px-4 py-3"
+          style={{ textAlign: 'left', width: '200px' }}
+        >
+          <div className="font-semibold text-gray-800">
             {displayNom}
           </div>
         </td>
         
         {/* Prénom - aligné avec l'en-tête */}
-        <td className="px-4 py-3">
-          <div 
-            className="font-semibold text-gray-800"
-            style={{ textAlign: 'left' }}
-          >
+        <td 
+          className="px-4 py-3"
+          style={{ textAlign: 'left', width: '200px' }}
+        >
+          <div className="font-semibold text-gray-800">
             {prenom || "-"}
           </div>
         </td>
         
         {/* Genre - aligné avec l'en-tête (centré) */}
-        <td className="px-4 py-3">
-          <div className="flex items-center" style={{ justifyContent: 'center' }}>
+        <td 
+          className="px-4 py-3"
+          style={{ textAlign: 'center', width: '120px' }}
+        >
+          <div className="flex items-center justify-center">
             {formatGenre(resident.genre) === t('male') ? (
               <Mars className="w-4 h-4 text-black mr-2" />
             ) : (
               <Venus className="w-4 h-4 text-black mr-2" />
             )}
-            <span className={`text-sm font-medium text-black`}>
+            <span className="text-sm font-medium text-black">
               {formatGenre(resident.genre)}
             </span>
           </div>
         </td>
         
         {/* Date de naissance - aligné avec l'en-tête */}
-        <td className="px-4 py-3">
-          <div 
-            className="text-sm text-gray-600"
-            style={{ textAlign: 'left' }}
-          >
+        <td 
+          className="px-4 py-3"
+          style={{ textAlign: 'left', width: '150px' }}
+        >
+          <div className="text-sm text-gray-600">
             {resident.dateNaissance 
               ? formatDateHyphen(resident.dateNaissance) 
               : "-"}
@@ -2264,71 +2290,31 @@ export default function ResidencePage({
         </td>
         
         {/* CIN - aligné avec l'en-tête */}
-        <td className="px-4 py-3">
+        <td 
+          className="px-4 py-3"
+          style={{ textAlign: 'left', width: '120px' }}
+        >
           <div 
             className={`text-sm font-mono ${
               isMineur ? "text-gray-500 italic" : "text-gray-600"
             }`}
-            style={{ textAlign: 'left' }}
           >
             {isMineur ? `-- ${t('minor')} --` : resident.cin || "-"}
           </div>
         </td>
         
         {/* Téléphone - aligné avec l'en-tête */}
-        <td className="px-4 py-3">
-          <div 
-            className="text-sm text-gray-600"
-            style={{ textAlign: 'left' }}
-          >
+        <td 
+          className="px-4 py-3"
+          style={{ textAlign: 'left', width: '150px' }}
+        >
+          <div className="text-sm text-gray-600">
             {resident.telephone ? `+261 ${resident.telephone}` : "-"}
           </div>
         </td>
       </tr>
     );
   };
-
-  const ResidentListHeader = () => (
-    <thead className="bg-gray-50 sticky top-0 z-10">
-      <tr>
-        <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
-          style={{ textAlign: 'left' }}
-        >
-          {t('lastName')}
-        </th>
-        <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
-          style={{ textAlign: 'left' }}
-        >
-          {t('firstName')}
-        </th>
-        <th 
-          className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
-        >
-          {t('gender')}
-        </th>
-        <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
-          style={{ textAlign: 'left' }}
-        >
-          {t('birthDate')}
-        </th>
-        <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
-          style={{ textAlign: 'left' }}
-        >
-          {t('cin')}
-        </th>
-        <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
-          style={{ textAlign: 'left' }}
-        >
-          {t('tel')}
-        </th>
-      </tr>
-    </thead>
-  );
 
   if (searchMode === "residents" && searchQuery && searchQuery.trim() !== "") {
     return (
@@ -2353,18 +2339,18 @@ export default function ResidencePage({
                 padding: '24px 32px'
               }}
             >
-<div>
-  <h1 
-    className="text-black"
-    style={{
-      fontSize: '32px',
-      fontWeight: '700',
-      color: '#000000'
-    }}
-  >
-    {t('residencesList')}
-  </h1>
-</div>
+              <div>
+                <h1 
+                  className="text-black"
+                  style={{
+                    fontSize: '32px',
+                    fontWeight: '700',
+                    color: '#000000'
+                  }}
+                >
+                  {t('residencesList')}
+                </h1>
+              </div>
 
               <div>
                 <div className="grid grid-cols-4 gap-5">

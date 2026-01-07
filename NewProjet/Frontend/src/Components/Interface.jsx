@@ -456,6 +456,8 @@ export default function Interface({ user }) {
         return;
       }
 
+      console.log('[SEARCH] Performing search for:', query);
+      
       const response = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -465,21 +467,22 @@ export default function Interface({ user }) {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('[SEARCH] Search results received:', data);
         setSearchResults(data);
         setShowSearchResults(true);
 
         if (showResidence) {
-          console.log("Recherche dans les résidences:", data);
+          console.log("[SEARCH] Recherche dans les résidences:", data);
           setShowSearchResults(false);
         } else if (!isAnyPageOpen) {
-          console.log("Résultats de recherche sur carte:", data);
+          console.log("[SEARCH] Résultats de recherche sur carte:", data);
         }
       } else if (response.status === 401) {
         console.error('[SEARCH] Token invalid');
         setSearchResults([]);
       }
     } catch (error) {
-      console.error('Erreur lors de la recherche:', error);
+      console.error('[SEARCH] Erreur lors de la recherche:', error);
       setSearchResults([]);
     } finally {
       setSearchLoading(false);
@@ -511,148 +514,125 @@ export default function Interface({ user }) {
     }
   };
 
-  const handleSearchResultClick = (result) => {
-    console.log('=== CLIC SUR RÉSULTAT DE RECHERCHE ===', result);
+  // FONCTION POUR AFFICHER UNE RÉSIDENCE SUR LA CARTE (comme dans ResidencePage.jsx)
+  const handleViewOnMapFromResidence = (residence) => {
+    console.log('[INTERFACE] Affichage résidence sur carte:', residence);
 
+    // Fermer toutes les pages ouvertes pour afficher la carte
+    setShowResidence(false);
+    setResidenceDetailMode(false);
+    setShowStatistique(false);
+    setShowUserPage(false);
+    setShowPendingResidences(false);
+    setUserPageState({ showPasswordModal: false });
+    
+    // Fermer le menu dropdown et les résultats de recherche
+    setMenuDropdownOpen(false);
     setShowSearchResults(false);
-    setSearchQuery("");
 
-    if (result.type === 'residence') {
-      handleResidenceSearchResult(result);
-    } else if (result.type === 'person') {
-      handlePersonSearchResult(result);
-    }
-  };
-
-  const handleResidenceSearchResult = (result) => {
-    if (result.lat && result.lng) {
-      const lat = parseFloat(result.lat);
-      const lng = parseFloat(result.lng);
-
-      if (map) {
-        setPreviousZoom(map.getZoom());
-        setPreviousCenter(map.getCenter());
-      }
-
-      if (map) {
-        map.panTo({ lat, lng });
-        map.setZoom(18);
-      }
-
-      setClickedResidenceId(result.id);
-      setSelectedResidenceFromSearch(result);
-
-      if (!residences.some(r => r.id === result.id)) {
-        setResidences(prev => [result, ...prev]);
-      }
-
-      setShowResidence(false);
-      setShowStatistique(false);
-      setShowUserPage(false);
-      setShowPendingResidences(false);
-      setUserPageState({ showPasswordModal: false });
-      
-      setMenuDropdownOpen(false);
-
-    } else {
-      alert(t('noCoordinates'));
+    // Vérifier si la carte est disponible
+    if (!map) {
+      console.warn('[INTERFACE] Carte non disponible');
+      return;
     }
 
-    if (showResidence) {
-      console.log("Résidence sélectionnée:", result);
-      setShowResidence(false);
-    }
-  };
+    // Vérifier les coordonnées (comme dans ResidencePage)
+    const lat = residence.latitude || residence.lat;
+    const lng = residence.longitude || residence.lng;
 
-  const handleViewOnMapFromSearch = (result) => {
-    console.log('[INTERFACE] Affichage résidence sur carte depuis recherche:', result);
+    if (lat && lng) {
+      console.log('[INTERFACE] Centrage sur:', { lat: parseFloat(lat), lng: parseFloat(lng) });
 
-    setShowSearchResults(false);
-    setSearchQuery("");
-
-    if (map) {
+      // Sauvegarder l'état de la carte
       setPreviousZoom(map.getZoom());
       setPreviousCenter(map.getCenter());
-    }
 
-    if (result.type === 'residence') {
-      if (result.lat && result.lng) {
-        const lat = parseFloat(result.lat);
-        const lng = parseFloat(result.lng);
+      // Centrer la carte
+      map.panTo({ lat: parseFloat(lat), lng: parseFloat(lng) });
+      map.setZoom(18);
 
-        console.log('[INTERFACE] Centrage sur:', { lat, lng });
+      // Mettre à jour les états
+      setClickedResidenceId(residence.id);
+      setSelectedResidenceFromSearch(residence);
 
-        map.panTo({ lat: lat, lng: lng });
-        map.setZoom(18);
-
-        setClickedResidenceId(result.id);
-        setSelectedResidenceFromSearch(result);
-
-        if (!residences.some(r => r.id === result.id)) {
-          setResidences(prev => [result, ...prev]);
-        }
-
-        setShowResidence(false);
-        setShowStatistique(false);
-        setShowUserPage(false);
-        setShowPendingResidences(false);
-        setUserPageState({ showPasswordModal: false });
-        
-        setMenuDropdownOpen(false);
-        
-      } else {
-        alert(t('noCoordinates'));
+      // Ajouter à la liste si nécessaire
+      if (!residences.some(r => r.id === residence.id)) {
+        setResidences(prev => [residence, ...prev]);
       }
-    } else if (result.type === 'person') {
-      if (result.residences && result.residences.length > 0) {
-        const residenceWithCoords = result.residences.find(r => r.lat && r.lng);
+    } else {
+      console.warn('[INTERFACE] Résidence sans coordonnées:', residence);
+      alert(t('noCoordinates'));
+    }
+  };
 
-        if (residenceWithCoords) {
-          const lat = parseFloat(residenceWithCoords.lat);
-          const lng = parseFloat(residenceWithCoords.lng);
+  // FONCTION POUR AFFICHER UNE PERSONNE SUR LA CARTE
+  const handleViewOnMapFromPerson = (person) => {
+    console.log('[INTERFACE] Affichage personne sur carte:', person);
 
-          console.log('[INTERFACE] Centrage sur résidence de la personne:', { lat, lng });
+    // Fermer toutes les pages ouvertes pour afficher la carte
+    setShowResidence(false);
+    setResidenceDetailMode(false);
+    setShowStatistique(false);
+    setShowUserPage(false);
+    setShowPendingResidences(false);
+    setUserPageState({ showPasswordModal: false });
+    
+    // Fermer les menus
+    setMenuDropdownOpen(false);
+    setShowSearchResults(false);
 
-          map.panTo({ lat, lng });
-          map.setZoom(18);
-
-          setClickedResidenceId(residenceWithCoords.id);
-          setSelectedResidenceFromSearch(residenceWithCoords);
-
-          if (!residences.some(r => r.id === residenceWithCoords.id)) {
-            setResidences(prev => [residenceWithCoords, ...prev]);
-          }
-
-          setShowResidence(false);
-          setShowStatistique(false);
-          setShowUserPage(false);
-          setShowPendingResidences(false);
-          setUserPageState({ showPasswordModal: false });
-          
-          setMenuDropdownOpen(false);
-        } else {
-          alert(t('personNoCoordinates'));
-        }
+    // Vérifier si la personne a des résidences
+    if (person.residences && person.residences.length > 0) {
+      // Prendre la première résidence (comme dans ResidencePage)
+      const residence = person.residences[0];
+      
+      if (residence) {
+        // Utiliser la même fonction que pour les résidences
+        handleViewOnMapFromResidence(residence);
       } else {
         alert(t('personNoAddress'));
       }
+    } else {
+      alert(t('personNoAddress'));
     }
   };
 
-  const handlePersonSearchResult = (result) => {
-    console.log("Personne sélectionnée:", result);
+  // FONCTION PRINCIPALE POUR LA RECHERCHE (clic sur un résultat)
+  const handleSearchResultClick = (result) => {
+    console.log('=== CLIC SUR RÉSULTAT DE RECHERCHE ===', result);
+    console.log('[LOG] Clic sur le résultat complet (nom/lot/adresse)');
 
-    if (result.residences && result.residences.length > 0) {
-      const residenceWithCoords = result.residences.find(r => r.lat && r.lng);
+    setShowSearchResults(false);
+    setSearchQuery("");
 
-      if (residenceWithCoords) {
-        handleResidenceSearchResult(residenceWithCoords);
-      } else {
-        alert(`${t('person')}: ${result.nom} ${result.prenom}\n${t('personNoCoordinates')}`);
-      }
-    } else {
-      alert(`${t('person')}: ${result.nom} ${result.prenom}\n${t('personNoAddress')}`);
+    if (result.type === 'residence') {
+      // Utiliser EXACTEMENT la même logique que dans ResidencePage
+      handleViewOnMapFromResidence(result);
+    } else if (result.type === 'person') {
+      // Pour une personne, trouver sa résidence
+      handleViewOnMapFromPerson(result);
     }
+  };
+
+  // FONCTION POUR LE BOUTON "Voir sur la carte" DANS LES RÉSULTATS
+  const handleViewOnMapFromSearch = (result) => {
+    console.log('[INTERFACE] Affichage sur carte depuis bouton "Voir sur la carte":', result);
+    console.log('[LOG] Clic spécifique sur le bouton "Voir sur la carte"');
+
+    setShowSearchResults(false);
+    setSearchQuery("");
+
+    if (result.type === 'residence') {
+      handleViewOnMapFromResidence(result);
+    } else if (result.type === 'person') {
+      handleViewOnMapFromPerson(result);
+    }
+  };
+
+  // FONCTION POUR ResidencePage.jsx (gardée pour compatibilité)
+  const handleViewOnMap = (residence) => {
+    // Cette fonction est appelée par ResidencePage, donc on garde la même logique
+    handleViewOnMapFromResidence(residence);
   };
 
   const SearchResultsModal = () => {
@@ -682,7 +662,10 @@ export default function Interface({ user }) {
           <div className="flex justify-between items-center">
             <h3 className="font-semibold text-gray-800">{t('searchResults')}</h3>
             <button
-              onClick={() => setShowSearchResults(false)}
+              onClick={() => {
+                console.log('[LOG] Clic sur bouton X pour fermer les résultats');
+                setShowSearchResults(false);
+              }}
               className="text-gray-400 hover:text-gray-600"
             >
               <X size={20} />
@@ -697,34 +680,57 @@ export default function Interface({ user }) {
           {searchResults.map((result, index) => (
             <div
               key={index}
-              className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-all duration-200"
-              onClick={() => handleSearchResultClick(result)}
+              className="p-3 border-b border-gray-100 hover:bg-gray-50 transition-all duration-200"
             >
               <div className="flex justify-between items-start">
-                <div className="flex-1">
+                <div 
+                  className="flex-1"
+                  onClick={(e) => {
+                    // Vérifier si le clic vient du bouton ou de la zone de contenu
+                    const target = e.target;
+                    const isButtonClick = target.closest('button') || 
+                                          target.closest('[data-view-on-map]');
+                    
+                    if (!isButtonClick) {
+                      console.log('[LOG] Clic sur la zone de contenu (nom/lot/adresse) du résultat');
+                      console.log('Résultat cliqué:', result);
+                      handleSearchResultClick(result);
+                    } else {
+                      console.log('[LOG] Clic intercepté - provient du bouton, action annulée');
+                    }
+                  }}
+                >
                   {result.type === 'residence' && (
                     <div>
                       <div className="flex items-center mb-2">
                         <MapPin size={16} className="text-blue-500 mr-2 flex-shrink-0" />
-                        <h4 className="font-medium text-sm text-gray-800">
-                          {result.lot || 'Lot non spécifié'}
-                        </h4>
+                        <div className="cursor-pointer hover:text-blue-600">
+                          <h4 className="font-medium text-sm text-gray-800">
+                            {result.lot || 'Lot non spécifié'}
+                          </h4>
+                        </div>
                         <span className="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full flex-shrink-0">
                           {t('address')}
                         </span>
+                        {/* Indicateur si pas de coordonnées */}
+                        {!(result.lat || result.latitude) && !(result.lng || result.longitude) && (
+                          <span className="ml-2 text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full flex-shrink-0">
+                            Sans coordonnées
+                          </span>
+                        )}
                       </div>
                       {result.quartier && (
-                        <p className="text-xs text-gray-600 mb-1">
+                        <p className="text-xs text-gray-600 mb-1 cursor-pointer hover:text-blue-600">
                           <span className="font-medium">{t('neighborhood')}:</span> {result.quartier}
                         </p>
                       )}
                       {result.ville && (
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-600 cursor-pointer hover:text-blue-600">
                           <span className="font-medium">{t('city')}:</span> {result.ville}
                         </p>
                       )}
                       {result.proprietaires && result.proprietaires.length > 0 && (
-                        <p className="text-xs text-gray-600 mt-1">
+                        <p className="text-xs text-gray-600 mt-1 cursor-pointer hover:text-blue-600">
                           <span className="font-medium">{t('owner')}:</span> {result.proprietaires.map(p => p.nom).join(', ')}
                         </p>
                       )}
@@ -735,9 +741,11 @@ export default function Interface({ user }) {
                     <div>
                       <div className="flex items-center mb-2">
                         <User size={16} className="text-green-500 mr-2 flex-shrink-0" />
-                        <h4 className="font-medium text-sm text-gray-800">
-                          {result.nom} {result.prenom}
-                        </h4>
+                        <div className="cursor-pointer hover:text-green-600">
+                          <h4 className="font-medium text-sm text-gray-800">
+                            {result.nom} {result.prenom}
+                          </h4>
+                        </div>
                         <span className="ml-2 text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full flex-shrink-0">
                           {t('person')}
                         </span>
@@ -746,7 +754,7 @@ export default function Interface({ user }) {
                         <div className="mt-2">
                           <p className="text-xs text-gray-500 font-medium mb-1">{t('addresses')}:</p>
                           {result.residences.slice(0, 2).map((residence, idx) => (
-                            <p key={idx} className="text-xs text-gray-600">
+                            <p key={idx} className="text-xs text-gray-600 cursor-pointer hover:text-green-600">
                               • {residence.lot || 'Lot non spécifié'} - {residence.quartier}
                             </p>
                           ))}
@@ -762,12 +770,15 @@ export default function Interface({ user }) {
                 </div>
                 
                 <button
+                  data-view-on-map="true"
                   onClick={(e) => {
                     e.stopPropagation();
+                    console.log('[LOG] Clic direct sur le bouton "Voir sur la carte"');
                     handleViewOnMapFromSearch(result);
                   }}
                   className="ml-2 flex items-center text-xs px-3 py-1.5 bg-white text-gray-800 border border-gray-800 rounded-lg hover:bg-gray-50 transition-colors"
                   title={t('viewOnMap')}
+                  disabled={result.type === 'residence' && !(result.lat || result.latitude) && !(result.lng || result.longitude)}
                 >
                   <Map size={14} className="mr-1" />
                   {t('viewOnMap')}
@@ -1043,6 +1054,7 @@ export default function Interface({ user }) {
       }
 
       if (!searchRef.current?.contains(event.target) && showSearchResults) {
+        console.log('[LOG] Clic en dehors des résultats de recherche, fermeture');
         setShowSearchResults(false);
       }
 
@@ -1348,6 +1360,7 @@ export default function Interface({ user }) {
   const handleAddAddressClick = () => {
     if (isAnyPageOpen || isSelectingLocation || isAddAddressModalOpen || showAddAddress) return;
 
+    console.log('[LOG] Clic sur bouton "Ajouter une adresse"');
     setIsAddAddressModalOpen(true);
     setSelectedMarkerColor("yellow");
 
@@ -1550,6 +1563,7 @@ export default function Interface({ user }) {
   };
 
   const handleReturnToSelection = () => {
+    console.log('[LOG] Clic sur bouton "Retour à la sélection"');
     setShowAddAddress(false);
     setIsSelectingLocation(true);
     setSelectedAddress("");
@@ -1567,6 +1581,7 @@ export default function Interface({ user }) {
   };
 
   const handleCloseComplete = () => {
+    console.log('[LOG] Fermeture complète de la modal d\'ajout d\'adresse');
     setShowAddAddress(false);
     setIsSelectingLocation(false);
     setSelectedAddress("");
@@ -1593,11 +1608,13 @@ export default function Interface({ user }) {
   };
 
   const handleAddPerson = () => {
+    console.log('[LOG] Ajout d\'une nouvelle personne');
     setNewResidents(prev => [...prev, { nom: '', prenom: '', birthdate: '', cin: '', sexe: 'masculin', phone: '' }]);
     setResidentFieldsScrollable(true);
   };
 
   const handleRemovePerson = (index) => {
+    console.log(`[LOG] Suppression de la personne à l'index ${index}`);
     setNewResidents(prev => prev.filter((_, i) => i !== index));
     if (newResidents.length <= 1) {
       setResidentFieldsScrollable(false);
@@ -1646,10 +1663,12 @@ export default function Interface({ user }) {
   };
 
   const handleBackToLot = () => {
+    console.log('[LOG] Retour à l\'étape de saisie du lot');
     setAddStep(1);
   };
 
   const handleConfirmSave = async () => {
+    console.log('[LOG] Tentative de sauvegarde de la résidence');
     if (!addressDetails.lot || !addressDetails.lot.trim()) {
       setModalError(t('lotError'));
       return;
@@ -1806,11 +1825,13 @@ export default function Interface({ user }) {
   };
 
   const handleToggleLang = () => {
+    console.log('[LOG] Changement de langue');
     const next = i18n.language === 'fr' ? 'mg' : 'fr';
     i18n.changeLanguage(next);
   };
 
   const handleCancelSelection = () => {
+    console.log('[LOG] Annulation de la sélection d\'emplacement');
     setIsSelectingLocation(false);
     setSelectedLocation(null);
     setSelectedAddress("");
@@ -1828,6 +1849,7 @@ export default function Interface({ user }) {
   };
 
   const handleCancelToSelection = () => {
+    console.log('[LOG] Annulation et retour à la sélection');
     setShowAddAddress(false);
     setIsSelectingLocation(true);
     setSelectedAddress("");
@@ -1860,20 +1882,24 @@ export default function Interface({ user }) {
   };
 
   const handleCloseResidence = () => {
+    console.log('[LOG] Fermeture de la page Résidences');
     setShowResidence(false);
     setResidenceDetailMode(false);
   };
 
   const handleCloseStatistique = () => {
+    console.log('[LOG] Fermeture de la page Statistiques');
     setShowStatistique(false);
   };
 
   const handleCloseUserPage = () => {
+    console.log('[LOG] Fermeture de la page Utilisateur');
     setShowUserPage(false);
     setUserPageState({ showPasswordModal: false });
   };
 
   const handleClosePendingResidences = () => {
+    console.log('[LOG] Fermeture de la page Demandes en attente');
     setShowPendingResidences(false);
     setResidenceToSelect(null);
   };
@@ -1883,18 +1909,21 @@ export default function Interface({ user }) {
   };
 
   const handleZoomIn = () => {
+    console.log('[LOG] Zoom avant');
     if (map) {
       map.setZoom(map.getZoom() + 1);
     }
   };
 
   const handleZoomOut = () => {
+    console.log('[LOG] Zoom arrière');
     if (map) {
       map.setZoom(map.getZoom() - 1);
     }
   };
 
   const handleCenterMap = () => {
+    console.log('[LOG] Centrage sur la zone');
     if (map) {
       handleFocusOnPolygon();
       setShouldZoomToPolygon(true);
@@ -1902,10 +1931,12 @@ export default function Interface({ user }) {
   };
 
   const handleMapTypeChange = () => {
+    console.log('[LOG] Changement de type de carte');
     setMapType(mapType === "satellite" ? "roadmap" : "satellite");
   };
 
   const handleResidenceMarkerClick = (residenceId) => {
+    console.log(`[LOG] Clic sur le marqueur de résidence ${residenceId}`);
     if (map) {
       setZoomBeforeResidenceClick(map.getZoom());
       setCenterBeforeResidenceClick(map.getCenter());
@@ -1915,6 +1946,7 @@ export default function Interface({ user }) {
   };
 
   const handleCloseResidenceInfo = () => {
+    console.log('[LOG] Fermeture des informations de résidence');
     setClickedResidenceId(null);
 
     if (map && zoomBeforeResidenceClick && centerBeforeResidenceClick) {
@@ -1922,38 +1954,6 @@ export default function Interface({ user }) {
         map.setCenter(centerBeforeResidenceClick);
         map.setZoom(zoomBeforeResidenceClick);
       }, 100);
-    }
-  };
-
-  const handleViewOnMap = (residence) => {
-    console.log('[INTERFACE] Affichage résidence sur carte:', residence);
-
-    setShowResidence(false);
-    setResidenceDetailMode(false);
-
-    if (map) {
-      setPreviousZoom(map.getZoom());
-      setPreviousCenter(map.getCenter());
-    }
-
-    if (map && (residence.latitude || residence.lat) && (residence.longitude || residence.lng)) {
-      const lat = residence.latitude || residence.lat;
-      const lng = residence.longitude || residence.lng;
-
-      console.log('[INTERFACE] Centrage sur:', { lat, lng });
-
-      map.panTo({ lat: parseFloat(lat), lng: parseFloat(lng) });
-      map.setZoom(18);
-
-      setClickedResidenceId(residence.id);
-      setSelectedResidenceFromSearch(residence);
-
-      if (!residences.some(r => r.id === residence.id)) {
-        setResidences(prev => [residence, ...prev]);
-      }
-    } else {
-      console.warn('[INTERFACE] Résidence sans coordonnées:', residence);
-      alert(t('noCoordinates'));
     }
   };
 
@@ -2271,6 +2271,7 @@ export default function Interface({ user }) {
             <button
               onClick={() => {
                 if (!showAddAddress) {
+                  console.log('[LOG] Clic sur bouton notifications');
                   setShowNotifications(!showNotifications);
                   fetchAllNotifications();
                 }
@@ -2344,6 +2345,7 @@ export default function Interface({ user }) {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        console.log('[LOG] Clic sur bouton X pour marquer comme lu');
                         markAsRead(notification.id);
                       }}
                       className="text-gray-400 hover:text-red-500 text-xs"
@@ -2500,7 +2502,7 @@ export default function Interface({ user }) {
                           return (
                             <div key={idx} className="border border-gray-200 rounded-xl p-3 space-y-3 bg-white">
                               <div className="flex justify-between items-center">
-                                <strong className="text-gray-800 text-sm">
+                                <strong className="text-sm text-gray-800">
                                   {p.nom || p.prenom ? `${p.nom} ${p.prenom}` : `${t('resident')} ${idx + 1}`}
                                 </strong>
                                 <button 
@@ -2808,6 +2810,7 @@ export default function Interface({ user }) {
                 {/* Résidences */}
                 <button
                   onClick={() => {
+                    console.log('[LOG] Clic sur menu Résidences');
                     if (showResidence) {
                       if (residenceDetailMode) {
                         setResidenceDetailMode(false);
@@ -2844,6 +2847,7 @@ export default function Interface({ user }) {
                 {/* Statistiques */}
                 <button
                   onClick={() => {
+                    console.log('[LOG] Clic sur menu Statistiques');
                     if (showStatistique) {
                       setShowStatistique(false);
                     } else {
@@ -2877,6 +2881,7 @@ export default function Interface({ user }) {
                 {currentUser?.role === 'secretaire' && (
                   <button
                     onClick={() => {
+                      console.log('[LOG] Clic sur menu Demandes en attente');
                       if (showPendingResidences) {
                         setShowPendingResidences(false);
                         setResidenceToSelect(null);

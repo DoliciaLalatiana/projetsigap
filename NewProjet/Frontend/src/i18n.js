@@ -17,20 +17,20 @@ const resources = {
       "switchToFrench": "Passer en français",
       "switchToMalagasy": "Passer en malgache",
       "title": "Paramètres et compte",
-      
+
       // Menu
       "menu": "MENU",
       "residence": "Résidence",
       "statistics": "Statistiques",
       "requests": "Demande",
       "myProfile": "Mon profil",
-      
+
       // Notifications
       "noUnreadNotifications": "Aucune notification non lue",
       "markAsRead": "Marquer comme lue",
       "notification": "notification",
       "notificationsCount": "notifications",
-      
+
       // Recherche
       "searchResults": "Résultats de recherche",
       "resultsFound": "résultat(s) trouvé(s)",
@@ -42,7 +42,7 @@ const resources = {
       "addresses": "Adresse(s)",
       "otherAddresses": "autre(s) adresse(s)",
       "viewOnMap": "Voir sur carte",
-      
+
       // Ajout d'adresse
       "addResidence": "Ajouter une résidence",
       "zoneLimited": "Zone limitée :",
@@ -52,7 +52,7 @@ const resources = {
       "selectAddress": "Cliquez sur la carte pour sélectionner une adresse",
       "cancel": "Annuler",
       "selectedFokontany": "Fokontany sélectionné",
-      
+
       // Formulaire d'adresse
       "lotLabel": "Numéro de lot *",
       "lotError": "Lot requis",
@@ -63,7 +63,7 @@ const resources = {
       "addResident": "Ajouter un résident",
       "noResidentAdded": "Aucun résident ajouté — vous pouvez enregistrer directement.",
       "resident": "Résident",
-      
+
       // Formulaire résident
       "firstName": "Prénom",
       "lastName": "Nom",
@@ -83,7 +83,7 @@ const resources = {
       "minYearError": "L'année semble trop ancienne",
       "futureDateError": "La date de naissance ne peut pas être dans le futur",
       "incompleteDate": "Date incomplète. Format: jj/mm/aaaa",
-      
+
       // Boutons
       "save": "Enregistrer",
       "saving": "Enregistrement...",
@@ -91,7 +91,7 @@ const resources = {
       "previous": "Retour",
       "confirm": "Confirmer",
       "back": "Retour",
-      
+
       // Messages
       "invalidLocation": "Emplacement invalide",
       "saveSuccess": "Résidence enregistrée avec succès",
@@ -100,7 +100,7 @@ const resources = {
       "noCoordinates": "Cette résidence n'a pas de coordonnées géographiques enregistrées",
       "personNoAddress": "Cette personne n'a pas d'adresse associée",
       "personNoCoordinates": "Cette personne n'a pas d'adresse avec coordonnées géographiques",
-      
+
       // Contrôles carte
       "zoomIn": "Zoom avant",
       "zoomOut": "Zoom arrière",
@@ -109,13 +109,13 @@ const resources = {
       "switchToSatellite": "Passer en vue satellite",
       "satelliteView": "Vue satellite",
       "planView": "Vue plan",
-      
+
       // Erreurs
       "connectionError": "Erreur de connexion",
       "allFieldsRequired": "Tous les champs sont obligatoires",
       "passwordsDontMatch": "Les mots de passe ne correspondent pas",
       "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères",
-      
+
       // Page utilisateur
       "profileSettings": "Paramètres du profil",
       "changePhoto": "Changer la photo de profil",
@@ -134,7 +134,7 @@ const resources = {
       "photoTooLarge": "La photo est trop volumineuse (max 5MB)",
       "invalidImage": "Format d'image invalide",
       "photoUpdated": "Photo mise à jour avec succès",
-      
+
       // Résidences
       "residencesList": "Liste des résidences",
       "residences": "Résidences",
@@ -146,7 +146,14 @@ const resources = {
       "map": "Carte",
       "actions": "Actions",
       "photo": "Photo",
-      "address": "Adresse",
+      "tracePerimeter": "Tracer le périmètre",
+      "fokontanyInfo": "Informations du fokontany",
+      "neighborhoods": "Quartiers",
+      "density": "Densité",
+      "residentsPerHouse": "résidents/maison",
+      "households": "Ménages",
+      "densityByZone": "Densité par zone",
+      "noCoordinatesForFokontany": "Aucune coordonnée disponible pour ce fokontany",
       "residentsCount": "Résidents",
       "ownerInfo": "Propriétaire",
       "residentsListTitle": "Liste des résidents",
@@ -166,7 +173,7 @@ const resources = {
       "addPhoto": "Ajouter une photo",
       "addImage": "Ajouter une image",
       "noResultsFor": "Aucun résultat trouvé pour",
-      
+
       // Statistiques
       "statistics": "Statistiques",
       "overviewOfPopulationData": "Aperçu des données démographiques",
@@ -195,7 +202,7 @@ const resources = {
       "total": "Total",
       "years": "ans",
       "generatedBy": "Généré par",
-      
+
       // Autres
       "switchLanguage": "Changer la langue",
       "neighborhoodNotSpecified": "Quartier non spécifié",
@@ -271,7 +278,7 @@ const resources = {
       "member": "Membre",
       "moderator": "Modérateur",
       "owner": "Propriétaire",
-      
+
       // Traductions pour PendingResidences
       "pendingRequests": "Demandes en attente",
       "loadingRequests": "Chargement des demandes...",
@@ -303,7 +310,7 @@ const resources = {
       "submittedBy": "Soumis par",
       "unknownDate": "Date inconnue",
       "locale": "fr-FR",
-      
+
       // Traductions pour UserPage
       "profilePhoto": "Photo de profil",
       "security": "Sécurité",
@@ -414,7 +421,7 @@ const resources = {
       "tooManyRequests": "Trop de requêtes",
       "gatewayTimeout": "Délai de la passerelle",
       "badGateway": "Passerelle incorrecte",
-      
+
       // Nouvelles traductions pour AdminPanel
       "adminTitle": "Administration SIGAP",
       "connectedAs": "Connecté en tant que",
@@ -487,20 +494,20 @@ const resources = {
       "switchToFrench": "Mivily amin'ny frantsay",
       "switchToMalagasy": "Mivily amin'ny malagasy",
       "title": "Toetoetra sy kaonty",
-      
+
       // Menu
       "menu": "Lisitra",
       "residence": "Trano fonenana",
       "statistics": "Statistika",
       "requests": "Fangatahana",
       "myProfile": "Ny mombamomba ahy",
-      
+
       // Notifications
       "noUnreadNotifications": "Tsy misy fampandrenesana tsy voavaky",
       "markAsRead": "Marika ho voavaky",
       "notification": "fampandrenesana",
       "notificationsCount": "fampandrenesana",
-      
+
       // Recherche
       "searchResults": "Vokatra fikarohana",
       "resultsFound": "vokatra hita",
@@ -512,7 +519,7 @@ const resources = {
       "addresses": "Adiresy",
       "otherAddresses": "adiresy hafa",
       "viewOnMap": "Hijery amin'ny sarintany",
-      
+
       // Ajout d'adresse
       "addResidence": "Manampy trano fonenana",
       "zoneLimited": "Faritra voafetra :",
@@ -522,7 +529,7 @@ const resources = {
       "selectAddress": "Tsindrio eo amin'ny sarintany mba hisafidianana adiresy",
       "cancel": "Ajanona",
       "selectedFokontany": "Fokontany voafidy",
-      
+
       // Formulaire d'adresse
       "lotLabel": "Nomeraon'ny lot *",
       "lotError": "Ilaina ny lot",
@@ -533,7 +540,7 @@ const resources = {
       "addResident": "Manampy mponina",
       "noResidentAdded": "Tsy nisy mponina nampiana — afaka manoroso ianao.",
       "resident": "Mponina",
-      
+
       // Formulaire résident
       "firstName": "Anarana",
       "lastName": "Fanampin'anarana",
@@ -553,7 +560,7 @@ const resources = {
       "minYearError": "Ny taona dia toa ela loatra",
       "futureDateError": "Ny daty nahaterahana tsy afaka ho any aoriana",
       "incompleteDate": "Daty tsy feno. Endrika: jj/mm/aaaa",
-      
+
       // Boutons
       "save": "Tehirizo",
       "saving": "Tehirizana...",
@@ -561,7 +568,7 @@ const resources = {
       "previous": "Miverina",
       "confirm": "Manamafy",
       "back": "Miverina",
-      
+
       // Messages
       "invalidLocation": "Toerana tsy manan-kery",
       "saveSuccess": "Voatahiry soa aman-tsara ny trano fonenana",
@@ -570,7 +577,7 @@ const resources = {
       "noCoordinates": "Tsy misy teboka jeografika voatahiry ho an'ity trano fonenana ity",
       "personNoAddress": "Tsy misy adiresy mifandray amin'ity olona ity",
       "personNoCoordinates": "Tsy misy adiresy misy teboka jeografika ho an'ity olona ity",
-      
+
       // Contrôles carte
       "zoomIn": "Zoom atsimo",
       "zoomOut": "Zoom avaratra",
@@ -579,13 +586,13 @@ const resources = {
       "switchToSatellite": "Mivily amin'ny fomba sarin'ny zanabolana",
       "satelliteView": "Fomba sarin'ny zanabolana",
       "planView": "Fomba sarintany",
-      
+
       // Erreurs
       "connectionError": "Hadisoana amin'ny fifandraisana",
       "allFieldsRequired": "Ilaina ny fenoina ny saha rehetra",
       "passwordsDontMatch": "Tsy mitovy ny tenimiafina",
       "passwordTooShort": "Tokony ho 6 farafahakeliny ny isan'ny litera ao amin'ny tenimiafina",
-      
+
       // Page utilisateur
       "profileSettings": "Toe-javatra momba ny mombamomba",
       "changePhoto": "Ovay ny sary mombamomba",
@@ -604,7 +611,7 @@ const resources = {
       "photoTooLarge": "Be loatra ny haben'ny sary (5MB farafahakeliny)",
       "invalidImage": "Endrika sary tsy azo ekena",
       "photoUpdated": "Nohavaozina soa aman-tsara ny sary",
-      
+
       // Résidences
       "residencesList": "Lisitry ny trano fonenana",
       "residences": "Trano fonenana",
@@ -636,7 +643,7 @@ const resources = {
       "addPhoto": "Manampy sary",
       "addImage": "Manampy sary",
       "noResultsFor": "Tsy misy vokatra hita ho an'ny",
-      
+
       // Statistiques
       "statistics": "Statistika",
       "overviewOfPopulationData": "Fijery ny angon-drakitra momba ny mponina",
@@ -665,7 +672,7 @@ const resources = {
       "total": "Totaly",
       "years": "taona",
       "generatedBy": "Nataon'i",
-      
+
       // Autres
       "switchLanguage": "Hanova fiteny",
       "neighborhoodNotSpecified": "Fari-tany tsy voafaritra",
@@ -741,7 +748,7 @@ const resources = {
       "member": "Mpikambana",
       "moderator": "Mpandrindra",
       "owner": "Tompony",
-      
+
       // Traductions pour PendingResidences
       "pendingRequests": "Fangatahana miandry",
       "loadingRequests": "Fanaterana fangatahana...",
@@ -773,7 +780,7 @@ const resources = {
       "submittedBy": "Nampitondrain'i",
       "unknownDate": "Daty tsy fantatra",
       "locale": "mg-MG",
-      
+
       // Traductions pour UserPage
       "profilePhoto": "Sary mombamomba",
       "security": "Fiarovana",
@@ -884,7 +891,7 @@ const resources = {
       "tooManyRequests": "Be loatra ny fangatahana",
       "gatewayTimeout": "Tapitra ny fotoana amin'ny vavahady",
       "badGateway": "Vavahady diso",
-      
+
       // Nouvelles traductions pour AdminPanel
       "adminTitle": "Fitantanana SIGAP",
       "connectedAs": "Niditra amin'ny anarana",

@@ -15,7 +15,8 @@ import {
   Lock,
   RefreshCw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  XCircle
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -157,6 +158,49 @@ const AdminPanel = ({ onLogout, currentUser }) => {
     }
   };
 
+  // FONCTION POUR REJETER LA RÉINITIALISATION
+  const handleRejectReset = async (requestId) => {
+    if (!confirm(i18n.language === 'fr' 
+      ? 'Êtes-vous sûr de vouloir rejeter cette demande de réinitialisation ?'
+      : 'Azo antoka fa te-handà ity fangatahana famerenana ity ve ianao?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/api/auth/reject-reset`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ requestId })
+      });
+
+      if (response.status === 401) {
+        alert(i18n.language === 'fr' 
+          ? 'Session expirée. Veuillez vous reconnecter.'
+          : 'Tapitra ny fotoam-pidirana. Midiram-pidirana indray azafady.');
+        onLogout();
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(i18n.language === 'fr'
+          ? '✅ Demande de réinitialisation rejetée avec succès.'
+          : '✅ Noterenana ny fangatahana famerenana tenimiafina.');
+        fetchAllRequests(); // Recharger les demandes
+      } else {
+        alert(data.message || t('error'));
+      }
+    } catch (error) {
+      console.error('Erreur rejet reset:', error);
+      alert(t('connectionError'));
+    }
+  };
+
   // FONCTION POUR APPROUVER LE CHANGEMENT DE MOT DE PASSE
   const handleApprovePasswordChange = async (requestId) => {
     if (!confirm(i18n.language === 'fr'
@@ -194,6 +238,49 @@ const AdminPanel = ({ onLogout, currentUser }) => {
       }
     } catch (error) {
       console.error('Erreur approbation changement:', error);
+      alert(t('connectionError'));
+    }
+  };
+
+  // FONCTION POUR REJETER LE CHANGEMENT DE MOT DE PASSE
+  const handleRejectPasswordChange = async (requestId) => {
+    if (!confirm(i18n.language === 'fr'
+      ? 'Êtes-vous sûr de vouloir rejeter ce changement de mot de passe ?'
+      : 'Azo antoka fa te-handà ity fanovana tenimiafina ity ve ianao?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/api/auth/reject-password-change`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ requestId })
+      });
+
+      if (response.status === 401) {
+        alert(i18n.language === 'fr'
+          ? 'Session expirée. Veuillez vous reconnecter.'
+          : 'Tapitra ny fotoam-pidirana. Midiram-pidirana indray azafady.');
+        onLogout();
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(i18n.language === 'fr'
+          ? '✅ Demande de changement de mot de passe rejetée avec succès.'
+          : '✅ Noterenana ny fangatahana fanovana tenimiafina.');
+        fetchAllRequests(); // Recharger les demandes
+      } else {
+        alert(data.message || t('error'));
+      }
+    } catch (error) {
+      console.error('Erreur rejet changement:', error);
       alert(t('connectionError'));
     }
   };
@@ -740,13 +827,22 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                             </div>
                           </div>
                           
-                          <button
-                            onClick={() => handleApproveReset(request.id)}
-                            className="flex items-center space-x-2 bg-gradient-to-r from-gray-700 to-gray-900 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-                          >
-                            <CheckCircle size={16} />
-                            <span>{t('generateNewPassword')}</span>
-                          </button>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleRejectReset(request.id)}
+                              className="flex items-center space-x-2 bg-red-100 text-red-600 px-4 py-2.5 rounded-xl font-medium shadow-sm hover:bg-red-200 transition-all duration-200 hover:scale-105"
+                            >
+                              <XCircle size={16} />
+                              <span>{t('reject')}</span>
+                            </button>
+                            <button
+                              onClick={() => handleApproveReset(request.id)}
+                              className="flex items-center space-x-2 bg-gradient-to-r from-gray-700 to-gray-900 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                            >
+                              <CheckCircle size={16} />
+                              <span>{t('generateNewPassword')}</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -791,13 +887,22 @@ const AdminPanel = ({ onLogout, currentUser }) => {
                             </div>
                           </div>
                           
-                          <button
-                            onClick={() => handleApprovePasswordChange(request.id)}
-                            className="flex items-center space-x-2 bg-gradient-to-r from-gray-700 to-gray-900 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-                          >
-                            <CheckCircle size={16} />
-                            <span>{t('approveChange')}</span>
-                          </button>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleRejectPasswordChange(request.id)}
+                              className="flex items-center space-x-2 bg-red-100 text-red-600 px-4 py-2.5 rounded-xl font-medium shadow-sm hover:bg-red-200 transition-all duration-200 hover:scale-105"
+                            >
+                              <XCircle size={16} />
+                              <span>{t('reject')}</span>
+                            </button>
+                            <button
+                              onClick={() => handleApprovePasswordChange(request.id)}
+                              className="flex items-center space-x-2 bg-gradient-to-r from-gray-700 to-gray-900 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                            >
+                              <CheckCircle size={16} />
+                              <span>{t('approveChange')}</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );

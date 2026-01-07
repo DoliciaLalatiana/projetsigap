@@ -21,9 +21,10 @@ const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 const Statistique = ({ onBack }) => {
   const { t, i18n } = useTranslation();
-  const [selectedFokontany, setSelectedFokontany] = useState("Ampasikibo");
+  const [selectedFokontany, setSelectedFokontany] = useState("");
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
 
   // Fonction pour obtenir les noms des mois selon la langue
   const getLocalizedMonths = () => {
@@ -40,14 +41,56 @@ const Statistique = ({ onBack }) => {
             "Juil", "Août", "Sep", "Oct", "Nov", "Dec"];
   };
 
-  // Charger les données réelles depuis l'API
+  // Charger l'utilisateur courant et son fokontany
+  useEffect(() => {
+    const loadCurrentUser = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        
+        const headers = { 
+          "Content-Type": "application/json", 
+          Authorization: `Bearer ${token}` 
+        };
+        
+        // Récupérer l'utilisateur connecté
+        const userResponse = await fetch(`${API_BASE}/api/auth/me`, { headers });
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          setCurrentUser(userData);
+          
+          // Déterminer le fokontany de l'utilisateur
+          let userFokontany = "Ampasikibo"; // Valeur par défaut
+          
+          if (userData.fokontany && userData.fokontany.nom) {
+            userFokontany = userData.fokontany.nom;
+          } else if (userData.fokontany_name) {
+            userFokontany = userData.fokontany_name;
+          } else if (userData.fokontany) {
+            userFokontany = userData.fokontany;
+          }
+          
+          console.log("Fokontany de l'utilisateur:", userFokontany);
+          setSelectedFokontany(userFokontany);
+        }
+      } catch (error) {
+        console.error("Erreur chargement utilisateur:", error);
+      }
+    };
+
+    loadCurrentUser();
+  }, []);
+
+  // Charger les données réelles depuis l'API en fonction du fokontany sélectionné
   useEffect(() => {
     const fetchStatistics = async () => {
+      if (!selectedFokontany) return;
+      
       try {
         setLoading(true);
         
-        // 1. Charger toutes les résidences
-        const residencesResp = await fetch(`${API_BASE}/api/residences`);
+        // 1. Charger les résidences du fokontany sélectionné
+        const residencesResp = await fetch(`${API_BASE}/api/residences?fokontany=${encodeURIComponent(selectedFokontany)}`);
         const residences = residencesResp.ok ? await residencesResp.json() : [];
         
         // 2. Charger toutes les personnes
@@ -62,7 +105,7 @@ const Statistique = ({ onBack }) => {
         // 3. Calculer les statistiques
         const totalResidences = residences.length;
         
-        // Filtrer les personnes qui sont dans les résidences
+        // Filtrer les personnes qui sont dans les résidences du fokontany sélectionné
         const residentsInResidences = allPersons.filter(person => 
           residences.some(residence => residence.id === person.residence_id)
         );
@@ -94,8 +137,8 @@ const Statistique = ({ onBack }) => {
           totalFemmes,
           densite: parseFloat(densite),
           zones: new Set(residences.map(r => r.quartier).filter(Boolean)).size,
-          menages: totalResidences, // Approximation : 1 résidence = 1 ménage
-          messages: 0, // À adapter selon vos besoins
+          menages: totalResidences,
+          messages: 0,
           croissanceData,
           densiteData,
           pyramideAges
@@ -108,8 +151,10 @@ const Statistique = ({ onBack }) => {
       }
     };
 
-    fetchStatistics();
-  }, []);
+    if (selectedFokontany) {
+      fetchStatistics();
+    }
+  }, [selectedFokontany]);
 
   // Recharger les données quand la langue change
   useEffect(() => {
@@ -180,7 +225,7 @@ const Statistique = ({ onBack }) => {
     const data = [];
     
     // Simulation de croissance progressive
-    let residences = Math.max(1, Math.round(totalResidences * 0.3)); // Commence à 30%
+    let residences = Math.max(1, Math.round(totalResidences * 0.3));
     let habitants = Math.max(1, Math.round(totalResidents * 0.3));
     
     mois.forEach(mois => {
@@ -221,14 +266,13 @@ const Statistique = ({ onBack }) => {
       zone,
       densite: data.residences > 0 ? Math.round(data.residents / data.residences) : 0,
       residences: data.residences,
-      progression: Math.round(Math.random() * 20) + 5 // Simulation
+      progression: Math.round(Math.random() * 20) + 5
     }));
   };
 
   const genererPDF = () => {
     if (!statistics) return;
 
-    // Format de date selon la langue
     const locale = i18n.language === 'mg' ? 'mg-MG' : 'fr-FR';
     const date = new Date().toLocaleDateString(locale, {
       weekday: "long",
@@ -363,21 +407,19 @@ const Statistique = ({ onBack }) => {
             {t("statistics")}
           </h1>
           <p className="text-gray-600 text-sm mt-1">
-            {t("overviewOfPopulationData")}
+            {t("overviewOfPopulationData")} - {selectedFokontany}
           </p>
         </div>
         
-        {/* Contrôles en haut à droite */}
+        {/* Contrôles en haut à droite - SEULEMENT le bouton PDF */}
         <div className="flex items-center space-x-4">
+          {/* Affichage simple du fokontany (non éditable) */}
           <div className="flex items-center space-x-2 bg-white backdrop-blur-sm border border-gray-300/60 rounded-lg px-3 py-2">
-            <select
-              value={selectedFokontany}
-              onChange={(e) => setSelectedFokontany(e.target.value)}
-              className="bg-transparent outline-none text-sm focus:ring-0 focus:border-transparent text-gray-800"
-            >
-              <option value="Ampasikibo">Ampasikibo</option>
-            </select>
+            <span className="text-sm text-gray-800">
+              {selectedFokontany || t("loading")}
+            </span>
           </div>
+          
           <button
             onClick={genererPDF}
             className="flex items-center space-x-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-all duration-200 text-sm"
@@ -473,7 +515,6 @@ const Statistique = ({ onBack }) => {
       {/* Contenu scrollable SEULEMENT */}
       <div className="flex-1 min-h-0 overflow-y-auto mb-10">
         <div className="p-6 space-y-6 bg-transparent h-full">
-          
           {/* Graphiques */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
@@ -545,7 +586,7 @@ const Statistique = ({ onBack }) => {
                 ))}
               </div>
             </div>
-          </div>          
+          </div>
         </div>
       </div>
     </div>
