@@ -26,6 +26,21 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 
+// Fonction pour normaliser les URLs d'images (HTTP → HTTPS)
+const normalizeImageUrl = (url) => {
+  if (!url || typeof url !== 'string') return url;
+  
+  // Remplacer http:// par https://
+  const normalized = url.replace('http://', 'https://');
+  
+  // Si c'est une URL relative, ajouter le base URL
+  if (normalized.startsWith('/uploads/') && !normalized.startsWith('http')) {
+    return `${API_BASE}${normalized}`;
+  }
+  
+  return normalized;
+};
+
 const ImageModal = ({ 
   isOpen, 
   onClose, 
@@ -856,6 +871,65 @@ const ResidentsList = ({
   const currentResidents = residents.slice(indexOfFirstResident, indexOfLastResident);
   const totalPages = Math.ceil(residents.length / residentsPerPage);
 
+  // Fonction pour générer les boutons de pagination (de la deuxième version)
+  const generatePaginationButtons = () => {
+    const buttons = [];
+    const maxVisibleButtons = 5;
+    
+    if (totalPages <= maxVisibleButtons) {
+      // Afficher toutes les pages
+      for (let i = 1; i <= totalPages; i++) {
+        buttons.push(i);
+      }
+    } else {
+      // Toujours afficher la première page
+      buttons.push(1);
+      
+      // Déterminer quelle page afficher après la première
+      if (currentPage <= 4) {
+        // Si on est sur les pages 1-4, afficher 2, 3, 4
+        for (let i = 2; i <= Math.min(4, totalPages - 1); i++) {
+          buttons.push(i);
+        }
+        
+        // Ajouter "..." seulement si on n'est pas proche de la fin
+        if (totalPages > 5 && currentPage < totalPages - 2) {
+          buttons.push('...');
+        }
+        
+        // Toujours afficher la dernière page
+        if (totalPages > 1) {
+          buttons.push(totalPages);
+        }
+      } 
+      else if (currentPage >= totalPages - 3) {
+        // Si on est sur les dernières pages
+        buttons.push('...');
+        
+        // Afficher les dernières pages
+        for (let i = totalPages - 3; i < totalPages; i++) {
+          if (i > 1) {
+            buttons.push(i);
+          }
+        }
+        
+        // Dernière page
+        buttons.push(totalPages);
+      } 
+      else {
+        // Si on est au milieu
+        buttons.push('...');
+        buttons.push(currentPage - 1);
+        buttons.push(currentPage);
+        buttons.push(currentPage + 1);
+        buttons.push('...');
+        buttons.push(totalPages);
+      }
+    }
+    
+    return buttons;
+  };
+
   const formatGenre = (genre) => {
     if (genre === "homme") return t('male');
     if (genre === "femme") return t('female');
@@ -896,24 +970,25 @@ const ResidentsList = ({
           <div className="flex items-center">
             <button
               onClick={onBackToResidences}
-              className="mr-3 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center"
-              style={{ 
-                width: '20px', 
-                height: '20px',
-                color: '#374151'
+              className="mr-4 flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors"
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '999px',
+                borderColor: '#D1D5DB'
               }}
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={18} style={{ color: '#000000' }} />
             </button>
             <h1 
               className="text-black"
               style={{
-                fontSize: '32px',
+                fontSize: '28px',
                 fontWeight: '700',
                 color: '#000000'
               }}
             >
-              {t('searchResults')}: "{searchQuery}"
+              {t('searchResults')}
             </h1>
           </div>
         </div>
@@ -1193,7 +1268,7 @@ const ResidentsList = ({
                             className="text-sm text-gray-600"
                             style={{ textAlign: 'left' }}
                           >
-                            {resident.telephone ? `+261 ${resident.telephone}` : "-"}
+                            {resident.telephone ? ` ${resident.telephone}` : "-"}
                           </div>
                         </div>
                         
@@ -1236,7 +1311,9 @@ const ResidentsList = ({
                       borderRadius: '999px',
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
                       height: '40px',
-                      width: '220px',
+                      width: 'auto',
+                      minWidth: '220px',
+                      maxWidth: '400px',
                       justifyContent: 'center'
                     }}
                   >
@@ -1254,45 +1331,46 @@ const ResidentsList = ({
                       <ChevronLeft size={16} style={{ color: '#000000' }} />
                     </button>
 
-                    <div className="flex items-center space-x-2">
-                      {[...Array(totalPages)].map((_, i) => {
-                        const pageNum = i + 1;
-                        if (
-                          pageNum === 1 ||
-                          pageNum === totalPages ||
-                          (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
-                        ) {
+                    <div className="flex items-center space-x-1">
+                      {generatePaginationButtons().map((pageNum, index) => {
+                        if (pageNum === '...') {
                           return (
-                            <button
-                              key={pageNum}
-                              onClick={() => setCurrentPage(pageNum)}
-                              className={`flex items-center justify-center font-medium transition-colors ${
-                                currentPage === pageNum
-                                  ? "bg-gray-900 text-white"
-                                  : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
-                              }`}
-                              style={{
+                            <span 
+                              key={`ellipsis-${index}`} 
+                              className="text-gray-400 flex items-center justify-center"
+                              style={{ 
                                 width: '32px',
                                 height: '32px',
-                                borderRadius: '8px',
                                 fontSize: '14px',
-                                borderColor: '#D1D5DB'
+                                color: '#6B7280'
                               }}
                             >
-                              {pageNum}
-                            </button>
-                          );
-                        } else if (
-                          pageNum === currentPage - 2 ||
-                          pageNum === currentPage + 2
-                        ) {
-                          return (
-                            <span className="text-gray-400" style={{ fontSize: '14px', color: '#6B7280' }}>
                               ...
                             </span>
                           );
                         }
-                        return null;
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`flex items-center justify-center font-medium transition-colors ${
+                              currentPage === pageNum
+                                ? "bg-gray-900 text-white"
+                                : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
+                            }`}
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              borderColor: '#D1D5DB',
+                              color: currentPage === pageNum ? '#FFFFFF' : '#6B7280'
+                            }}
+                          >
+                            {pageNum}
+                          </button>
+                        );
                       })}
                     </div>
 
@@ -1383,6 +1461,7 @@ export default function ResidencePage({
     let mounted = true;
     const fetchResidences = async () => {
       try {
+        console.log("Chargement des résidences depuis:", `${API_BASE}/api/residences`);
         const resp = await fetch(`${API_BASE}/api/residences`);
         if (!resp.ok) {
           console.warn("Erreur lors du chargement des résidences");
@@ -1391,43 +1470,43 @@ export default function ResidencePage({
         }
         const rows = await resp.json();
 
-        const normalized = (rows || []).map((r) => ({
-          id: r.id,
-          name: r.nom_residence || r.name || r.lot || `Lot ${r.id}`,
-          photos: Array.isArray(r.photos)
+        console.log("Résidences reçues de l'API:", rows.length, "résidences");
+
+        const normalized = (rows || []).map((r) => {
+          // Normaliser les URLs des photos
+          const normalizedPhotos = Array.isArray(r.photos)
             ? r.photos
                 .filter((photo) => photo && photo.trim() !== "")
                 .map((photo) => {
-                  // CORRECTION ICI : Utiliser directement l'URL retournée par l'API
-                  if (typeof photo === "string") {
-                    // Si l'API retourne déjà une URL complète, l'utiliser directement
-                    if (photo.startsWith("http")) {
-                      return photo;
-                    }
-                    // Sinon, ajouter le BASE_URL si nécessaire
-                    return `${API_BASE}${photo.startsWith("/") ? "" : "/"}${photo}`;
-                  }
-                  return photo;
+                  const normalizedUrl = normalizeImageUrl(photo);
+                  console.log("Normalisation URL photo:", { avant: photo, après: normalizedUrl });
+                  return normalizedUrl;
                 })
-            : [],
-          lot: r.lot || "",
-          quartier: r.quartier || "",
-          ville: r.ville || "",
-          proprietaire: r.nom_proprietaire || r.proprietaire || "",
-          nom_residence: r.nom_residence || "",
-          nom_proprietaire: r.nom_proprietaire || "",
-          totalResidents: r.total_residents || 0,
-          hommes: r.hommes || 0,
-          femmes: r.femmes || 0,
-          adresse: r.adresse || `${r.quartier || ""} ${r.ville || ""}`.trim(),
-          telephone: r.telephone || "",
-          email: r.email || "",
-          latitude: r.lat || r.latitude || null,
-          longitude: r.lng || r.longitude || null,
-          status: r.status || "active",
-          dateCreation: r.created_at || r.dateCreation || null,
-          residents: [],
-        }));
+            : [];
+
+          return {
+            id: r.id,
+            name: r.nom_residence || r.name || r.lot || `Lot ${r.id}`,
+            photos: normalizedPhotos,
+            lot: r.lot || "",
+            quartier: r.quartier || "",
+            ville: r.ville || "",
+            proprietaire: r.nom_proprietaire || r.proprietaire || "",
+            nom_residence: r.nom_residence || "",
+            nom_proprietaire: r.nom_proprietaire || "",
+            totalResidents: r.total_residents || 0,
+            hommes: r.hommes || 0,
+            femmes: r.femmes || 0,
+            adresse: r.adresse || `${r.quartier || ""} ${r.ville || ""}`.trim(),
+            telephone: r.telephone || "",
+            email: r.email || "",
+            latitude: r.lat || r.latitude || null,
+            longitude: r.lng || r.longitude || null,
+            status: r.status || "active",
+            dateCreation: r.created_at || r.dateCreation || null,
+            residents: [],
+          };
+        });
 
         if (mounted) {
           const sortedByDate = normalized.sort((a, b) => {
@@ -1440,6 +1519,7 @@ export default function ResidencePage({
             return dateB - dateA;
           });
 
+          console.log("Résidences normalisées:", sortedByDate.length, "résidences");
           setResList(sortedByDate);
         }
       } catch (e) {
@@ -1559,7 +1639,7 @@ export default function ResidencePage({
       : { "Content-Type": "application/json" };
   };
 
-  // CORRECTION PRINCIPALE : Fonction pour charger les photos
+  // Fonction pour charger les photos
   const loadResidencePhotos = async (residenceId) => {
     try {
       console.log("Chargement des photos pour la résidence:", residenceId);
@@ -1570,10 +1650,14 @@ export default function ResidencePage({
         const photos = await resp.json();
         console.log("Photos reçues de l'API:", photos);
         
-        // Retourner directement les URLs complètes
-        return photos.map((photo) => {
-          return photo.url || `${API_BASE}/uploads/residences/${photo.filename}`;
+        // Normaliser les URLs (HTTP → HTTPS)
+        const normalizedPhotos = photos.map((photo) => {
+          const normalizedUrl = normalizeImageUrl(photo.url);
+          console.log("Normalisation URL photo détail:", { avant: photo.url, après: normalizedUrl });
+          return normalizedUrl;
         });
+        
+        return normalizedPhotos;
       }
     } catch (err) {
       console.warn("Erreur chargement photos:", err);
@@ -1614,7 +1698,8 @@ export default function ResidencePage({
 
       if (result.photos && result.photos.length > 0) {
         const newPhotoUrls = result.photos.map((photo) => {
-          return photo.url;
+          const normalizedUrl = normalizeImageUrl(photo.url);
+          return normalizedUrl;
         });
 
         setSelectedResidence((prev) => ({
@@ -1650,7 +1735,8 @@ export default function ResidencePage({
         const photosList = await photosResp.json();
 
         const photoToDelete = photosList.find((p) => {
-          return p.url === photoUrl;
+          const normalizedUrl = normalizeImageUrl(p.url);
+          return normalizedUrl === photoUrl;
         });
 
         if (photoToDelete) {
@@ -2190,6 +2276,124 @@ export default function ResidencePage({
     return genre;
   };
 
+  // Fonction pour générer les boutons de pagination dans la modal (de la deuxième version)
+  const generateResidentPaginationButtons = () => {
+    const buttons = [];
+    const maxVisibleButtons = 5;
+    
+    if (totalResidentPages <= maxVisibleButtons) {
+      // Afficher toutes les pages
+      for (let i = 1; i <= totalResidentPages; i++) {
+        buttons.push(i);
+      }
+    } else {
+      // Toujours afficher la première page
+      buttons.push(1);
+      
+      // Déterminer quelle page afficher après la première
+      if (residentPage <= 4) {
+        // Si on est sur les pages 1-4, afficher 2, 3, 4
+        for (let i = 2; i <= Math.min(4, totalResidentPages - 1); i++) {
+          buttons.push(i);
+        }
+        
+        // Ajouter "..." seulement si on n'est pas proche de la fin
+        if (totalResidentPages > 5 && residentPage < totalResidentPages - 2) {
+          buttons.push('...');
+        }
+        
+        // Toujours afficher la dernière page
+        if (totalResidentPages > 1) {
+          buttons.push(totalResidentPages);
+        }
+      } 
+      else if (residentPage >= totalResidentPages - 3) {
+        // Si on est sur les dernières pages
+        buttons.push('...');
+        
+        // Afficher les dernières pages
+        for (let i = totalResidentPages - 3; i < totalResidentPages; i++) {
+          if (i > 1) {
+            buttons.push(i);
+          }
+        }
+        
+        // Dernière page
+        buttons.push(totalResidentPages);
+      } 
+      else {
+        // Si on est au milieu
+        buttons.push('...');
+        buttons.push(residentPage - 1);
+        buttons.push(residentPage);
+        buttons.push(residentPage + 1);
+        buttons.push('...');
+        buttons.push(totalResidentPages);
+      }
+    }
+    
+    return buttons;
+  };
+
+  // Fonction pour générer les boutons de pagination dans la liste principale (de la deuxième version)
+  const generateMainPaginationButtons = () => {
+    const buttons = [];
+    const maxVisibleButtons = 5;
+    
+    if (totalPages <= maxVisibleButtons) {
+      // Afficher toutes les pages
+      for (let i = 1; i <= totalPages; i++) {
+        buttons.push(i);
+      }
+    } else {
+      // Toujours afficher la première page
+      buttons.push(1);
+      
+      // Déterminer quelle page afficher après la première
+      if (currentPage <= 4) {
+        // Si on est sur les pages 1-4, afficher 2, 3, 4
+        for (let i = 2; i <= Math.min(4, totalPages - 1); i++) {
+          buttons.push(i);
+        }
+        
+        // Ajouter "..." seulement si on n'est pas proche de la fin
+        if (totalPages > 5 && currentPage < totalPages - 2) {
+          buttons.push('...');
+        }
+        
+        // Toujours afficher la dernière page
+        if (totalPages > 1) {
+          buttons.push(totalPages);
+        }
+      } 
+      else if (currentPage >= totalPages - 3) {
+        // Si on est sur les dernières pages
+        buttons.push('...');
+        
+        // Afficher les dernières pages
+        for (let i = totalPages - 3; i < totalPages; i++) {
+          if (i > 1) {
+            buttons.push(i);
+          }
+        }
+        
+        // Dernière page
+        buttons.push(totalPages);
+      } 
+      else {
+        // Si on est au milieu
+        buttons.push('...');
+        buttons.push(currentPage - 1);
+        buttons.push(currentPage);
+        buttons.push(currentPage + 1);
+        buttons.push('...');
+        buttons.push(totalPages);
+      }
+    }
+    
+    return buttons;
+  };
+
   const ResidentListHeader = () => (
     <thead className="bg-gray-50 sticky top-0 z-10">
       <tr>
@@ -2309,7 +2513,7 @@ export default function ResidencePage({
           style={{ textAlign: 'left', width: '150px' }}
         >
           <div className="text-sm text-gray-600">
-            {resident.telephone ? `+261 ${resident.telephone}` : "-"}
+            {resident.telephone ? ` ${resident.telephone}` : "-"}
           </div>
         </td>
       </tr>
@@ -2717,6 +2921,7 @@ export default function ResidencePage({
                                           "Image failed to load in list:",
                                           residence.photos[0]
                                         );
+                                        console.log("URL de l'image qui échoue:", residence.photos[0]);
                                         e.target.style.display = "none";
                                         e.target.parentElement.classList.add("flex", "items-center", "justify-center");
                                       }}
@@ -2858,7 +3063,9 @@ export default function ResidencePage({
                           borderRadius: '999px',
                           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
                           height: '40px',
-                          width: '220px',
+                          width: 'auto',
+                          minWidth: '220px',
+                          maxWidth: '400px',
                           justifyContent: 'center'
                         }}
                       >
@@ -2876,43 +3083,16 @@ export default function ResidencePage({
                           <ChevronLeft size={16} style={{ color: '#000000' }} />
                         </button>
 
-                        <div className="flex items-center space-x-2">
-                          {[...Array(totalPages)].map((_, i) => {
-                            const pageNum = i + 1;
-                            if (
-                              pageNum === 1 ||
-                              pageNum === totalPages ||
-                              (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
-                            ) {
-                              return (
-                                <button
-                                  key={pageNum}
-                                  onClick={() => setCurrentPage(pageNum)}
-                                  className={`flex items-center justify-center font-medium transition-colors ${
-                                    currentPage === pageNum
-                                      ? "bg-gray-900 text-white"
-                                      : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
-                                  }`}
-                                  style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    borderRadius: '8px',
-                                    fontSize: '14px',
-                                    borderColor: '#D1D5DB',
-                                    color: currentPage === pageNum ? '#FFFFFF' : '#6B7280'
-                                  }}
-                                >
-                                  {pageNum}
-                                </button>
-                              );
-                            } else if (
-                              pageNum === currentPage - 2 ||
-                              pageNum === currentPage + 2
-                            ) {
+                        <div className="flex items-center space-x-1">
+                          {generateMainPaginationButtons().map((pageNum, index) => {
+                            if (pageNum === '...') {
                               return (
                                 <span 
-                                  className="text-gray-400"
+                                  key={`ellipsis-${index}`} 
+                                  className="text-gray-400 flex items-center justify-center"
                                   style={{ 
+                                    width: '32px',
+                                    height: '32px',
                                     fontSize: '14px',
                                     color: '#6B7280'
                                   }}
@@ -2921,7 +3101,28 @@ export default function ResidencePage({
                                 </span>
                               );
                             }
-                            return null;
+                            
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => setCurrentPage(pageNum)}
+                                className={`flex items-center justify-center font-medium transition-colors ${
+                                  currentPage === pageNum
+                                    ? "bg-gray-900 text-white"
+                                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
+                                }`}
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '8px',
+                                  fontSize: '14px',
+                                  borderColor: '#D1D5DB',
+                                  color: currentPage === pageNum ? '#FFFFFF' : '#6B7280'
+                                }}
+                              >
+                                {pageNum}
+                              </button>
+                            );
                           })}
                         </div>
 
@@ -3018,6 +3219,7 @@ export default function ResidencePage({
                               "Image failed to load in details:",
                               selectedResidence.photos[currentPhotoIndex]
                             );
+                            console.log("URL de l'image détail qui échoue:", selectedResidence.photos[currentPhotoIndex]);
                             e.target.style.display = "none";
                             e.target.parentElement.classList.add("flex", "items-center", "justify-center", "bg-gray-200");
                           }}
@@ -3219,12 +3421,6 @@ export default function ResidencePage({
                           />
                         ))
                       )}
-                      
-                      {Array.from({ length: Math.max(0, residentsPerPageInModal - currentResidentsInModal.length) }).map((_, index) => (
-                        <tr key={`empty-${index}`} className="border-b border-gray-200" style={{ height: '60px' }}>
-                          <td colSpan="6" className="px-4 py-3 bg-white"></td>
-                        </tr>
-                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -3237,7 +3433,9 @@ export default function ResidencePage({
                           borderRadius: '999px',
                           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
                           height: '40px',
-                          width: '220px',
+                          width: 'auto',
+                          minWidth: '220px',
+                          maxWidth: '400px',
                           justifyContent: 'center'
                         }}
                       >
@@ -3255,45 +3453,46 @@ export default function ResidencePage({
                           <ChevronLeft size={16} style={{ color: '#000000' }} />
                         </button>
 
-                        <div className="flex items-center space-x-2">
-                          {[...Array(totalResidentPages)].map((_, i) => {
-                            const pageNum = i + 1;
-                            if (
-                              pageNum === 1 ||
-                              pageNum === totalResidentPages ||
-                              (pageNum >= residentPage - 1 && pageNum <= residentPage + 1)
-                            ) {
+                        <div className="flex items-center space-x-1">
+                          {generateResidentPaginationButtons().map((pageNum, index) => {
+                            if (pageNum === '...') {
                               return (
-                                <button
-                                  key={pageNum}
-                                  onClick={() => setResidentPage(pageNum)}
-                                  className={`flex items-center justify-center font-medium transition-colors ${
-                                    residentPage === pageNum
-                                      ? "bg-gray-900 text-white"
-                                      : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
-                                  }`}
-                                  style={{
+                                <span 
+                                  key={`ellipsis-${index}`} 
+                                  className="text-gray-400 flex items-center justify-center"
+                                  style={{ 
                                     width: '32px',
                                     height: '32px',
-                                    borderRadius: '8px',
                                     fontSize: '14px',
-                                    borderColor: '#D1D5DB'
+                                    color: '#6B7280'
                                   }}
                                 >
-                                  {pageNum}
-                                </button>
-                              );
-                            } else if (
-                              pageNum === residentPage - 2 ||
-                              pageNum === residentPage + 2
-                            ) {
-                              return (
-                                <span className="text-gray-400" style={{ fontSize: '14px', color: '#6B7280' }}>
                                   ...
                                 </span>
                               );
                             }
-                            return null;
+                            
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => setResidentPage(pageNum)}
+                                className={`flex items-center justify-center font-medium transition-colors ${
+                                  residentPage === pageNum
+                                    ? "bg-gray-900 text-white"
+                                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
+                                }`}
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '8px',
+                                  fontSize: '14px',
+                                  borderColor: '#D1D5DB',
+                                  color: residentPage === pageNum ? '#FFFFFF' : '#6B7280'
+                                }}
+                              >
+                                {pageNum}
+                              </button>
+                            );
                           })}
                         </div>
 

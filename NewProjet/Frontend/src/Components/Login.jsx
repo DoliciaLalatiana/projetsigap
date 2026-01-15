@@ -12,6 +12,7 @@ const Login = ({ onLogin }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [showForgotPassword, setShowForgotPassword] = useState(false);
     const [attempts, setAttempts] = useState(0);
+    const [showErrorStyle, setShowErrorStyle] = useState(false);
 
     const handleChange = (e) => {
         setFormData({
@@ -19,12 +20,14 @@ const Login = ({ onLogin }) => {
             [e.target.name]: e.target.value
         });
         setError('');
+        setShowErrorStyle(false);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
+        setShowErrorStyle(false);
 
         try {
             const response = await fetch('https://sigap-backend2.onrender.com/api/auth/login', {
@@ -44,10 +47,12 @@ const Login = ({ onLogin }) => {
             } else {
                 const newAttempts = attempts + 1;
                 setAttempts(newAttempts);
-                setError(data.message || 'Erreur de connexion');
+                setError(data.message || 'Identifiants invalides');
+                setShowErrorStyle(true);
             }
         } catch (error) {
             setError('Erreur de connexion au serveur');
+            setShowErrorStyle(true);
         } finally {
             setLoading(false);
         }
@@ -85,10 +90,10 @@ const Login = ({ onLogin }) => {
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Error Message */}
                     {error && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 flex items-center space-x-3 animate-shake">
-                            <AlertCircle className="text-gray-700 w-5 h-5 flex-shrink-0" />
+                        <div className={`${showErrorStyle ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'} border rounded-2xl p-4 flex items-center space-x-3 animate-shake`}>
+                            <AlertCircle className={`${showErrorStyle ? 'text-red-600' : 'text-gray-700'} w-5 h-5 flex-shrink-0`} />
                             <div>
-                                <span className="text-gray-800 text-sm font-medium">{error}</span>
+                                <span className={`${showErrorStyle ? 'text-red-700' : 'text-gray-800'} text-sm font-medium`}>{error}</span>
                             </div>
                         </div>
                     )}
@@ -142,15 +147,15 @@ const Login = ({ onLogin }) => {
                     </div>
 
                     {/* Error Message mot de passe */}
-                    {error && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 flex items-center justify-center space-x-2 animate-shake">
-                            <AlertCircle className="text-gray-700 w-5 h-5 flex-shrink-0" />
+                    {error && showErrorStyle && (
+                        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center justify-center space-x-2 animate-shake">
+                            <AlertCircle className="text-red-600 w-5 h-5 flex-shrink-0" />
                             <div>
                                 {attempts >= 1 && (
                                     <button
                                         type="button"
                                         onClick={() => setShowForgotPassword(true)}
-                                        className="block text-gray-700 text-xs underline mt-1 hover:text-black transition-colors"
+                                        className="block text-red-600 text-xs underline mt-1 hover:text-red-800 transition-colors font-medium"
                                     >
                                         Mot de passe oublié ?
                                     </button>

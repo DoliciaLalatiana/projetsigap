@@ -123,6 +123,19 @@ const ForgotPassword = ({ onClose }) => {
               </div>
             )}
 
+            {/* Section info - Gris noir */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+              <div className="flex items-start space-x-3">
+                <Shield className="text-gray-700 w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-gray-900 text-sm font-medium">Processus sécurisé</p>
+                  <p className="text-gray-700 text-xs mt-1">
+                    <strong className="text-gray-900">🛡️ Sécurité renforcée :</strong> Votre ancien mot de passe est immédiatement invalidé. L'administrateur devra approuver la réinitialisation pour générer un nouveau mot de passe définitif.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-3">
               <label className="text-sm font-medium text-gray-800 flex items-center space-x-2">
                 <User size={16} />
@@ -145,18 +158,7 @@ const ForgotPassword = ({ onClose }) => {
               </p>
             </div>
 
-            {/* Section info - Gris noir */}
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-              <div className="flex items-start space-x-3">
-                <Shield className="text-gray-700 w-5 h-5 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-gray-900 text-sm font-medium">Processus sécurisé</p>
-                  <p className="text-gray-700 text-xs mt-1">
-                    <strong className="text-gray-900">🛡️ Sécurité renforcée :</strong> Votre ancien mot de passe est immédiatement invalidé. L'administrateur devra approuver la réinitialisation pour générer un nouveau mot de passe définitif.
-                  </p>
-                </div>
-              </div>
-            </div>
+            
 
             <div className="flex space-x-3 pt-2">
               <button
