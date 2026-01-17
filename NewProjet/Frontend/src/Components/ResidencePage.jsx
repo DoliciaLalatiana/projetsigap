@@ -1449,6 +1449,9 @@ export default function ResidencePage({
   const isMountedRef = useRef(true);
   const [residentPage, setResidentPage] = useState(1);
   const [residentsPerPageInModal] = useState(3);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [residencePhotos, setResidencePhotos] = useState({});
+  const [residenceResidents, setResidenceResidents] = useState({});
 
   // Fonction pour changer de langue
   const switchLanguage = () => {
@@ -1521,6 +1524,16 @@ export default function ResidencePage({
 
           console.log("Résidences normalisées:", sortedByDate.length, "résidences");
           setResList(sortedByDate);
+          
+          // Précharger les photos pour toutes les résidences
+          sortedByDate.forEach(residence => {
+            if (residence.photos && residence.photos.length > 0) {
+              setResidencePhotos(prev => ({
+                ...prev,
+                [residence.id]: residence.photos
+              }));
+            }
+          });
         }
       } catch (e) {
         console.warn("fetchResidences error", e);
@@ -1560,6 +1573,18 @@ export default function ResidencePage({
           }));
 
           setAllResidents(formattedPersons);
+          
+          // Organiser les résidents par résidence pour un accès rapide
+          const residentsByResidence = {};
+          formattedPersons.forEach(person => {
+            if (person.residence_id) {
+              if (!residentsByResidence[person.residence_id]) {
+                residentsByResidence[person.residence_id] = [];
+              }
+              residentsByResidence[person.residence_id].push(person);
+            }
+          });
+          setResidenceResidents(residentsByResidence);
         }
       } catch (error) {
         console.warn("Erreur chargement tous les résidents:", error);
@@ -1639,9 +1664,14 @@ export default function ResidencePage({
       : { "Content-Type": "application/json" };
   };
 
-  // Fonction pour charger les photos
+  // Fonction pour charger les photos (en arrière-plan)
   const loadResidencePhotos = async (residenceId) => {
     try {
+      // Vérifier d'abord si les photos sont déjà en cache
+      if (residencePhotos[residenceId]) {
+        return residencePhotos[residenceId];
+      }
+      
       console.log("Chargement des photos pour la résidence:", residenceId);
       const resp = await fetch(
         `${API_BASE}/api/residences/${residenceId}/photos`
@@ -1653,9 +1683,14 @@ export default function ResidencePage({
         // Normaliser les URLs (HTTP → HTTPS)
         const normalizedPhotos = photos.map((photo) => {
           const normalizedUrl = normalizeImageUrl(photo.url);
-          console.log("Normalisation URL photo détail:", { avant: photo.url, après: normalizedUrl });
           return normalizedUrl;
         });
+        
+        // Mettre en cache les photos
+        setResidencePhotos(prev => ({
+          ...prev,
+          [residenceId]: normalizedPhotos
+        }));
         
         return normalizedPhotos;
       }
@@ -1712,6 +1747,12 @@ export default function ResidencePage({
             r.id === selectedResidence.id ? { ...r, photos: [...(r.photos || []), ...newPhotoUrls] } : r
           )
         );
+        
+        // Mettre à jour le cache des photos
+        setResidencePhotos(prev => ({
+          ...prev,
+          [selectedResidence.id]: [...(prev[selectedResidence.id] || []), ...newPhotoUrls]
+        }));
       }
     } catch (err) {
       console.warn("handlePhotoSelect upload error", err);
@@ -1763,6 +1804,12 @@ export default function ResidencePage({
           r.id === selectedResidence.id ? { ...r, photos: updatedPhotos } : r
         )
       );
+      
+      // Mettre à jour le cache des photos
+      setResidencePhotos(prev => ({
+        ...prev,
+        [selectedResidence.id]: updatedPhotos
+      }));
 
       if (currentPhotoIndex >= updatedPhotos.length) {
         setCurrentPhotoIndex(Math.max(0, updatedPhotos.length - 1));
@@ -1774,111 +1821,125 @@ export default function ResidencePage({
   };
 
   const handleViewDetails = async (residence) => {
-    try {
-      console.log("Opening details for residence:", residence.id);
-      
-      if (onEnterDetail) {
-        onEnterDetail();
-      }
-
-      const photos = await loadResidencePhotos(residence.id);
-      console.log("Loaded photos URLs:", photos);
-
-      const base = resList.find((r) => r.id === residence.id) || residence;
-      const resp = await fetch(
-        `${API_BASE}/api/persons?residence_id=${residence.id}`,
-        { headers: getHeaders() }
-      );
-
-      if (!resp.ok) {
-        throw new Error(`HTTP error! status: ${resp.status}`);
-      }
-
-      const persons = await resp.json();
-      console.log("Loaded persons:", persons.length);
-
-      const normalizedPersons = (persons || []).map((p) => ({
-        id: p.id,
-        nomComplet: p.nom_complet || p.nomComplet || "",
-        dateNaissance: p.date_naissance || p.dateNaissance || "",
-        cin: p.cin || p.cin || "",
-        genre: p.genre || p.genre || "homme",
-        telephone: p.telephone || p.telephone || "",
-        relation_type: p.relation_type || "",
-        is_proprietaire: p.is_proprietaire || false,
-      }));
-
-      const totalRealResidents = normalizedPersons.length;
-      const hommesReal = normalizedPersons.filter(
-        (person) =>
-          person.genre === "homme" ||
-          person.genre === "Homme" ||
-          person.genre === "male"
-      ).length;
-      const femmesReal = normalizedPersons.filter(
-        (person) =>
-          person.genre === "femme" ||
-          person.genre === "Femme" ||
-          person.genre === "female"
-      ).length;
-
-      const nomResidence = residence.nom_residence || residence.nomResidence || residence.name || residence.lot || "";
-      const nomProprietaire = residence.nom_proprietaire || residence.nomProprietaire || residence.proprietaire || "";
-
-      setSelectedResidence({
-        ...base,
-        photos: photos,
-        residents: normalizedPersons,
-        totalResidents: totalRealResidents,
-        hommes: hommesReal,
-        femmes: femmesReal,
-        name: nomResidence,
-        proprietaire: nomProprietaire,
-        nom_residence: nomResidence,
-        nom_proprietaire: nomProprietaire
-      });
-
-      setIsPhotoExpanded(false);
-      setIsFullScreenPhoto(false);
-      setResidentPage(1);
-
-      setShowModal(true);
-    } catch (e) {
-      console.error("Error loading residence details:", e);
-      const totalRealResidents = residence.residents ? residence.residents.length : 0;
-      const hommesReal = residence.residents ? residence.residents.filter(
-        (person) =>
-          person.genre === "homme" ||
-          person.genre === "Homme" ||
-          person.genre === "male"
-      ).length : 0;
-      const femmesReal = residence.residents ? residence.residents.filter(
-        (person) =>
-          person.genre === "femme" ||
-          person.genre === "Femme" ||
-          person.genre === "female"
-      ).length : 0;
-
-      const nomResidence = residence.nom_residence || residence.nomResidence || residence.name || residence.lot || "";
-      const nomProprietaire = residence.nom_proprietaire || residence.nomProprietaire || residence.proprietaire || "";
-
-      setSelectedResidence({
-        ...residence,
-        photos: residence.photos || [],
-        residents: residence.residents || [],
-        totalResidents: totalRealResidents,
-        hommes: hommesReal,
-        femmes: femmesReal,
-        name: nomResidence,
-        proprietaire: nomProprietaire,
-        nom_residence: nomResidence,
-        nom_proprietaire: nomProprietaire
-      });
-      setResidentPage(1);
-      setShowModal(true);
+    // 1. Afficher immédiatement les détails avec les données disponibles
+    if (onEnterDetail) {
+      onEnterDetail();
     }
+
+    const base = resList.find((r) => r.id === residence.id) || residence;
+    
+    // Utiliser les données déjà disponibles
+    const cachedPhotos = residencePhotos[residence.id] || base.photos || [];
+    const cachedResidents = residenceResidents[residence.id] || [];
+    
+    const totalRealResidents = cachedResidents.length;
+    const hommesReal = cachedResidents.filter(
+      (person) =>
+        person.genre === "homme" ||
+        person.genre === "Homme" ||
+        person.genre === "male"
+    ).length;
+    const femmesReal = cachedResidents.filter(
+      (person) =>
+        person.genre === "femme" ||
+        person.genre === "Femme" ||
+        person.genre === "female"
+    ).length;
+
+    const nomResidence = residence.nom_residence || residence.nomResidence || residence.name || residence.lot || "";
+    const nomProprietaire = residence.nom_proprietaire || residence.nomProprietaire || residence.proprietaire || "";
+
+    setSelectedResidence({
+      ...base,
+      photos: cachedPhotos,
+      residents: cachedResidents,
+      totalResidents: totalRealResidents,
+      hommes: hommesReal,
+      femmes: femmesReal,
+      name: nomResidence,
+      proprietaire: nomProprietaire,
+      nom_residence: nomResidence,
+      nom_proprietaire: nomProprietaire
+    });
+
+    setIsPhotoExpanded(false);
+    setIsFullScreenPhoto(false);
+    setResidentPage(1);
+
+    // 2. Afficher immédiatement la modal
+    setShowModal(true);
     setCurrentPhotoIndex(0);
     setIsEditMode(false);
+    
+    // 3. Charger les données supplémentaires en arrière-plan
+    setLoadingDetails(true);
+    
+    try {
+      // Charger les photos en arrière-plan si pas encore en cache
+      if (!residencePhotos[residence.id]) {
+        const photos = await loadResidencePhotos(residence.id);
+        if (photos.length > 0) {
+          setSelectedResidence(prev => ({
+            ...prev,
+            photos: photos
+          }));
+        }
+      }
+      
+      // Charger les résidents en arrière-plan si pas encore en cache
+      if (!residenceResidents[residence.id]) {
+        const resp = await fetch(
+          `${API_BASE}/api/persons?residence_id=${residence.id}`,
+          { headers: getHeaders() }
+        );
+
+        if (resp.ok) {
+          const persons = await resp.json();
+          const normalizedPersons = (persons || []).map((p) => ({
+            id: p.id,
+            nomComplet: p.nom_complet || p.nomComplet || "",
+            dateNaissance: p.date_naissance || p.dateNaissance || "",
+            cin: p.cin || p.cin || "",
+            genre: p.genre || p.genre || "homme",
+            telephone: p.telephone || p.telephone || "",
+            relation_type: p.relation_type || "",
+            is_proprietaire: p.is_proprietaire || false,
+          }));
+
+          const updatedTotalResidents = normalizedPersons.length;
+          const updatedHommesReal = normalizedPersons.filter(
+            (person) =>
+              person.genre === "homme" ||
+              person.genre === "Homme" ||
+              person.genre === "male"
+          ).length;
+          const updatedFemmesReal = normalizedPersons.filter(
+            (person) =>
+              person.genre === "femme" ||
+              person.genre === "Femme" ||
+              person.genre === "female"
+          ).length;
+
+          setSelectedResidence(prev => ({
+            ...prev,
+            residents: normalizedPersons,
+            totalResidents: updatedTotalResidents,
+            hommes: updatedHommesReal,
+            femmes: updatedFemmesReal,
+          }));
+
+          // Mettre en cache les résidents
+          setResidenceResidents(prev => ({
+            ...prev,
+            [residence.id]: normalizedPersons
+          }));
+        }
+      }
+    } catch (e) {
+      console.error("Error loading additional details:", e);
+    } finally {
+      setLoadingDetails(false);
+    }
   };
 
   const handleCloseModal = () => {
@@ -2089,6 +2150,12 @@ export default function ResidencePage({
           is_proprietaire: false,
         },
       ]);
+      
+      // Mettre à jour le cache des résidents
+      setResidenceResidents(prev => ({
+        ...prev,
+        [selectedResidence.id]: updatedResidents
+      }));
 
       setNewResident({
         nom: "",
@@ -2859,7 +2926,7 @@ export default function ResidencePage({
                     ) : (
                       <div>
                         {currentResidences.map((residence, index) => {
-                          const realResidents = allResidents.filter(
+                          const realResidents = residenceResidents[residence.id] || allResidents.filter(
                             (resident) => resident.residence_id === residence.id
                           );
                           const totalRealResidents = realResidents.length;
@@ -2883,11 +2950,12 @@ export default function ResidencePage({
                           return (
                             <div 
                               key={residence.id} 
-                              className="flex items-center border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                              className="flex items-center border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
                               style={{ 
                                 height: '72px',
                                 borderBottomColor: '#E5E7EB'
                               }}
+                              onClick={() => handleViewDetails(residence)}
                             >
                               <div style={{ width: '40px', padding: '0 12px' }}>
                                 <span 
@@ -3014,7 +3082,10 @@ export default function ResidencePage({
                                 <div className="flex items-center justify-end space-x-2">
                                   {onViewOnMap && (
                                     <button
-                                      onClick={() => onViewOnMap(residence)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onViewOnMap(residence);
+                                      }}
                                       className="flex items-center justify-center bg-white border border-gray-300 text-black hover:bg-gray-50 transition-colors font-medium"
                                       style={{
                                         height: '32px',
@@ -3031,7 +3102,10 @@ export default function ResidencePage({
                                     </button>
                                   )}
                                   <button
-                                    onClick={() => handleViewDetails(residence)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewDetails(residence);
+                                    }}
                                     className="flex items-center justify-center bg-white border border-gray-300 text-black hover:bg-gray-50 transition-colors font-medium"
                                     style={{
                                       height: '32px',

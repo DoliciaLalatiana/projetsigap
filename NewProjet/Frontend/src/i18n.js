@@ -6,8 +6,9 @@ const resources = {
   fr: {
     translation: {
       // Interface générale
-      "searchPlaceholder": "Rechercher un lieu, une adresse ou une personne...",
-      "searchPlaceholderResidences": "Rechercher dans les résidences... (saisissez et appuyez sur Entrée)",
+      "searchPlaceholder": "Rechercher une adresse ou une personne",
+      "searchPlaceholderResidences": "Rechercher une adresse ou une personne",
+      "searchPlaceholderPersons": "Rechercher une personne",
       "searchDisabled": "Recherche désactivée",
       "addAddress": "Ajouter une nouvelle adresse",
       "clickOnMap": "Cliquez sur la carte",
@@ -410,8 +411,9 @@ const resources = {
   mg: {
     translation: {
       // Interface générale
-      "searchPlaceholder": "Mitady toerana, adiresy na olona...",
-      "searchPlaceholderResidences": "Mitady amin'ny trano fonenana... (soraty ary tsindrio Enter)",
+      "searchPlaceholder": "Mitady adiresy na olona",
+      "searchPlaceholderResidences": "Mitady adiresy na olona",
+      "searchPlaceholderPersons": "Mitady olona",
       "searchDisabled": "Tsy azo atao ny fikarohana",
       "addAddress": "Manampy adiresy vaovao",
       "clickOnMap": "Tsindrio eo amin'ny sarintany",

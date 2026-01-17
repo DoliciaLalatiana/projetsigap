@@ -352,6 +352,25 @@ export default function Interface({ user }) {
     return translateNotificationMessage(message, t, i18n);
   };
 
+  // Fonction pour obtenir le placeholder de recherche CORRIGÉE
+  const getSearchPlaceholder = () => {
+    if (showResidence) {
+      // Si on est dans la page résidence en mode détail
+      if (residenceDetailMode) {
+        return t('searchPlaceholderPersons');
+      }
+      // Si on est dans la page résidence en mode liste
+      return t('searchPlaceholderResidences');
+    } else if (showStatistique || showUserPage || showPendingResidences) {
+      return t('searchDisabled');
+    } else {
+      return t('searchPlaceholder');
+    }
+  };
+
+  // Variable pour désactiver la recherche - DÉFINIE APRÈS getSearchPlaceholder
+  const isSearchDisabled = showStatistique || showUserPage || showPendingResidences;
+
   const createCustomMarkerIcon = (color) => {
     let svg = '';
 
@@ -1251,6 +1270,36 @@ export default function Interface({ user }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showSearchResults, menuDropdownOpen, isAnyPageOpen]);
 
+  // USE EFFECT POUR GÉRER LES CLICS EN DEHORS DU MODAL DE NOTIFICATIONS
+useEffect(() => {
+  const handleClickOutsideNotification = (event) => {
+    // Si le modal de notifications est ouvert
+    if (showNotifications) {
+      // Vérifier si le clic est sur le bouton notification
+      const notificationButton = document.querySelector('[title="notifications"], [title*="notification"]');
+      const isClickOnNotificationButton = notificationButton?.contains(event.target);
+      
+      // Vérifier si le clic est dans le modal de notifications
+      const notificationModal = document.querySelector('.absolute.top-18.right-4.z-60.w-80');
+      const isClickInsideModal = notificationModal?.contains(event.target);
+      
+      // Si le clic n'est ni sur le bouton ni dans le modal, fermer le modal
+      if (!isClickOnNotificationButton && !isClickInsideModal) {
+        console.log('[LOG] Clic en dehors du modal de notifications, fermeture');
+        setShowNotifications(false);
+      }
+    }
+  };
+
+  // Ajouter l'écouteur d'événement
+  document.addEventListener("mousedown", handleClickOutsideNotification);
+  
+  // Nettoyer l'écouteur d'événement
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutsideNotification);
+  };
+}, [showNotifications]); // Dépendance à showNotifications
+
   useEffect(() => {
     if (isAnyPageOpen && isSelectingLocation) {
       setIsSelectingLocation(false);
@@ -1285,19 +1334,6 @@ export default function Interface({ user }) {
       handleCloseResidenceInfo();
     }
   }, [isAnyPageOpen]);
-
-  const getSearchPlaceholder = () => {
-    if (showResidence) {
-      return t('searchPlaceholderResidences');
-    } else if (showStatistique || showUserPage || showPendingResidences) {
-      return t('searchDisabled');
-    } else {
-      return t('searchPlaceholder');
-    }
-  };
-
-  const isSearchDisabled = showStatistique || showUserPage || showPendingResidences;
-
 
   const handleLogout = () => {
     localStorage.removeItem('interfaceState');
@@ -2622,51 +2658,41 @@ export default function Interface({ user }) {
       </div>
 
       {showNotifications && (
-        <div className="absolute top-18 right-4 z-60 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
-          <div className="p-4 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-800">{t('notifications')}</h3>
-            <p className="text-xs text-gray-500 mt-1">
-              {notifications.length} {notifications.length !== 1 ? t('notificationsCount') : t('notification')}
-            </p>
+  <div className="absolute top-18 right-4 z-60 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
+    <div className="p-4 border-b border-gray-200">
+      <h3 className="font-semibold text-gray-800">{t('notifications')}</h3>
+      <p className="text-xs text-gray-500 mt-1">
+        {notifications.length} {notifications.length !== 1 ? t('notificationsCount') : t('notification')}
+      </p>
+    </div>
+    <div className="p-2">
+      {notifications.length === 0 ? (
+        <p className="text-gray-500 text-center py-4">{t('noUnreadNotifications')}</p>
+      ) : (
+        notifications.map(notification => (
+          <div
+            key={notification.id}
+            className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors duration-200"
+            onClick={() => handleNotificationClick(notification)}
+          >
+            <div className="flex justify-between items-start mb-2">
+              <h4 className="font-medium text-sm text-gray-800">{translateMessage(notification.title)}</h4>
+              {/* Icône X supprimée ici */}
+            </div>
+            <p className="text-xs text-gray-600 mb-2">{translateMessage(notification.message)}</p>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-400">
+                {formatNotificationDate(notification.created_at)}
+              </span>
+              <span className={`w-2 h-2 rounded-full ${notification.type === 'pending' ? 'bg-blue-500' : 'bg-yellow-400'
+                }`}></span>
+            </div>
           </div>
-          <div className="p-2">
-            {notifications.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">{t('noUnreadNotifications')}</p>
-            ) : (
-              notifications.map(notification => (
-                <div
-                  key={notification.id}
-                  className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors duration-200"
-                  onClick={() => handleNotificationClick(notification)}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-medium text-sm text-gray-800">{translateMessage(notification.title)}</h4>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        console.log('[LOG] Clic sur bouton X pour marquer comme lu');
-                        markAsRead(notification.id);
-                      }}
-                      className="text-gray-400 hover:text-red-500 text-xs"
-                      title={t('markAsRead')}
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-600 mb-2">{translateMessage(notification.message)}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-400">
-                      {formatNotificationDate(notification.created_at)}
-                    </span>
-                    <span className={`w-2 h-2 rounded-full ${notification.type === 'pending' ? 'bg-blue-500' : 'bg-yellow-400'
-                      }`}></span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        ))
       )}
+    </div>
+  </div>
+)}
 
       {isSelectingLocation && !isAnyPageOpen && (
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-end pb-8 pointer-events-none">
@@ -3099,14 +3125,11 @@ export default function Interface({ user }) {
           {/* Nouvelle section placée au-dessus du menu */}
           <div className="p-4 border-b border-gray-200/60 bg-white/30">
             {!isAnyPageOpen ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <MapPin size={18} className="text-gray-700 mr-2" />
-                  <span className="text-sm font-medium text-gray-800">
-                    {t('map')} {fokontanyName}
-                  </span>
-                </div>
-                
+              <div className="flex items-center">
+                <MapPin size={18} className="text-gray-700 mr-2" />
+                <span className="text-sm font-medium text-gray-800">
+                  {t('map')} {fokontanyName}
+                </span>
               </div>
             ) : (
               <div className="flex items-center justify-between">
@@ -3128,125 +3151,101 @@ export default function Interface({ user }) {
           </div>
 
           <div className="p-4">
-            {/* Titre "Menu" toujours affiché */}
-            <div className="mb-4">
-              <div className="flex items-center gap-3 mb-3">
-                <Menu size={18} className="text-gray-700" />
-                <span className="text-sm font-semibold text-gray-900">
-                  {t('menu')}
-                </span>
-              </div>
-            
-              {/* MENU FIXE - Pas de collapse/expand */}
-              <div className="space-y-1">
-                {/* Résidences */}
-                <button
-                  onClick={() => {
-                    console.log('[LOG] Clic sur menu Résidences');
-                    if (showResidence) {
-                      if (residenceDetailMode) {
-                        setResidenceDetailMode(false);
-                      } else {
-                        setShowResidence(false);
-                      }
-                    } else {
-                      openPage('residence');
-                    }
-                  }}
-                  className={`w-full flex items-center rounded-xl transition-all duration-200 hover:bg-gray-100 hover:border hover:border-gray-200 ${
-                    showResidence ? "bg-gray-100 border border-gray-200" : ""
-                  }`}
-                  style={{
-                    height: "44px",
-                    padding: "0 12px"
-                  }}
-                >
-                  <div style={{
-                    width: "36px",
-                    display: "flex",
-                    justifyContent: "center",
-                    marginRight: "10px"
-                  }}>
-                    <MapPin size={20} className={showResidence ? "text-gray-800" : "text-gray-700"} />
-                  </div>
-                  <span style={{
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    color: showResidence ? "#111827" : "#374151"
-                  }}>{t('residence')}</span>
-                </button>
+  {/* Section Menu avec le même padding que les items */}
+  <div className="mb-4 pl-4">
+    <span className="text-xs font-medium text-gray-900">
+      Menu
+    </span>
+  </div>
 
-                {/* Statistiques */}
-                <button
-                  onClick={() => {
-                    console.log('[LOG] Clic sur menu Statistiques');
-                    if (showStatistique) {
-                      setShowStatistique(false);
-                    } else {
-                      openPage('statistique');
-                    }
-                  }}
-                  className={`w-full flex items-center rounded-xl transition-all duration-200 hover:bg-gray-100 hover:border hover:border-gray-200 ${
-                    showStatistique ? "bg-gray-100 border border-gray-200" : ""
-                  }`}
-                  style={{
-                    height: "44px",
-                    padding: "0 12px"
-                  }}
-                >
-                  <div style={{
-                    width: "36px",
-                    display: "flex",
-                    justifyContent: "center",
-                    marginRight: "10px"
-                  }}>
-                    <BarChart3 size={20} className={showStatistique ? "text-gray-800" : "text-gray-700"} />
-                  </div>
-                  <span style={{
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    color: showStatistique ? "#111827" : "#374151"
-                  }}>{t('statistics')}</span>
-                </button>
+  {/* MENU FIXE - Boutons alignés à gauche avec icônes alignées avec le mot "Menu" */}
+  <div className="space-y-2">
+    {/* Résidences */}
+    <button
+      onClick={() => {
+        console.log('[LOG] Clic sur menu Résidences');
+        if (showResidence) {
+          if (residenceDetailMode) {
+            setResidenceDetailMode(false);
+          } else {
+            setShowResidence(false);
+          }
+        } else {
+          openPage('residence');
+        }
+      }}
+      className={`w-full flex items-center rounded-xl transition-all duration-200 hover:bg-gray-100 hover:border hover:border-gray-200 ${
+        showResidence ? "bg-gray-100 border border-gray-200" : ""
+      }`}
+      style={{
+        height: "44px",
+        paddingLeft: "12px"
+      }}
+    >
+      <MapPin size={20} className={`${showResidence ? "text-gray-800" : "text-gray-700"} mr-2`} />
+      <span style={{
+        fontSize: "14px",
+        fontWeight: 500,
+        color: showResidence ? "#111827" : "#374151"
+      }}>{t('residence')}</span>
+    </button>
 
-                {/* Demandes en attente (seulement pour secrétaire) */}
-                {currentUser?.role === 'secretaire' && (
-                  <button
-                    onClick={() => {
-                      console.log('[LOG] Clic sur menu Demandes en attente');
-                      if (showPendingResidences) {
-                        setShowPendingResidences(false);
-                        setResidenceToSelect(null);
-                      } else {
-                        openPage('pending');
-                      }
-                    }}
-                    className={`w-full flex items-center rounded-xl transition-all duration-200 hover:bg-gray-100 hover:border hover:border-gray-200 ${
-                      showPendingResidences ? "bg-gray-100 border border-gray-200" : ""
-                    }`}
-                    style={{
-                      height: "44px",
-                      padding: "0 12px"
-                    }}
-                  >
-                    <div style={{
-                      width: "36px",
-                      display: "flex",
-                      justifyContent: "center",
-                      marginRight: "10px"
-                    }}>
-                      <ClipboardList size={20} className={showPendingResidences ? "text-gray-800" : "text-gray-700"} />
-                    </div>
-                    <span style={{
-                      fontSize: "14px",
-                      fontWeight: 500,
-                      color: showPendingResidences ? "#111827" : "#374151"
-                    }}>{t('requests')}</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+    {/* Statistiques */}
+    <button
+      onClick={() => {
+        console.log('[LOG] Clic sur menu Statistiques');
+        if (showStatistique) {
+          setShowStatistique(false);
+        } else {
+          openPage('statistique');
+        }
+      }}
+      className={`w-full flex items-center rounded-xl transition-all duration-200 hover:bg-gray-100 hover:border hover:border-gray-200 ${
+        showStatistique ? "bg-gray-100 border border-gray-200" : ""
+      }`}
+      style={{
+        height: "44px",
+        paddingLeft: "12px"
+      }}
+    >
+      <BarChart3 size={20} className={`${showStatistique ? "text-gray-800" : "text-gray-700"} mr-2`} />
+      <span style={{
+        fontSize: "14px",
+        fontWeight: 500,
+        color: showStatistique ? "#111827" : "#374151"
+      }}>{t('statistics')}</span>
+    </button>
+
+    {/* Demandes en attente (seulement pour secrétaire) */}
+    {currentUser?.role === 'secretaire' && (
+      <button
+        onClick={() => {
+          console.log('[LOG] Clic sur menu Demandes en attente');
+          if (showPendingResidences) {
+            setShowPendingResidences(false);
+            setResidenceToSelect(null);
+          } else {
+            openPage('pending');
+          }
+        }}
+        className={`w-full flex items-center rounded-xl transition-all duration-200 hover:bg-gray-100 hover:border hover:border-gray-200 ${
+          showPendingResidences ? "bg-gray-100 border border-gray-200" : ""
+        }`}
+        style={{
+          height: "44px",
+          paddingLeft: "12px"
+        }}
+      >
+        <ClipboardList size={20} className={`${showPendingResidences ? "text-gray-800" : "text-gray-700"} mr-2`} />
+        <span style={{
+          fontSize: "14px",
+          fontWeight: 500,
+          color: showPendingResidences ? "#111827" : "#374151"
+        }}>{t('requests')}</span>
+      </button>
+    )}
+  </div>
+</div>
         </div>
       </div>
 
