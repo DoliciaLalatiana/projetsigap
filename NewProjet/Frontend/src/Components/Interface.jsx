@@ -2815,7 +2815,7 @@ export default function Interface({ user }) {
           <div className="p-4">
             {/* Titre "Menu" toujours affiché */}
             <div className="mb-4">
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3 mb-3 ml-5">
                 <Menu size={18} className="text-gray-700" />
                 <span className="text-sm font-semibold text-gray-900">
                   {t('menu')}
@@ -2850,7 +2850,7 @@ export default function Interface({ user }) {
                     width: "36px",
                     display: "flex",
                     justifyContent: "center",
-                    marginRight: "10px"
+                    marginRight: "2px"
                   }}>
                     <MapPin size={20} className={showResidence ? "text-gray-800" : "text-gray-700"} />
                   </div>
@@ -2883,7 +2883,7 @@ export default function Interface({ user }) {
                     width: "36px",
                     display: "flex",
                     justifyContent: "center",
-                    marginRight: "10px"
+                    marginRight: "2px"
                   }}>
                     <BarChart3 size={20} className={showStatistique ? "text-gray-800" : "text-gray-700"} />
                   </div>
@@ -2918,7 +2918,7 @@ export default function Interface({ user }) {
                       width: "36px",
                       display: "flex",
                       justifyContent: "center",
-                      marginRight: "10px"
+                      marginRight: "2px"
                     }}>
                       <ClipboardList size={20} className={showPendingResidences ? "text-gray-800" : "text-gray-700"} />
                     </div>

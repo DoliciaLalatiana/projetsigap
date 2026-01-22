@@ -979,7 +979,6 @@ const ResidentsList = ({
               overflow: 'hidden'
             }}
           >
-            {/* En-tête du tableau avec des colonnes alignées */}
             <div className="flex-shrink-0 mb-1">
               <div className="flex items-center" style={{ height: '48px' }}>
                 <div style={{ width: '60px', padding: '0 12px' }}>
@@ -1113,7 +1112,6 @@ const ResidentsList = ({
                         className="flex items-center border-b border-gray-200 hover:bg-gray-50 transition-colors"
                         style={{ height: '60px' }}
                       >
-                        {/* Numéro - aligné avec l'en-tête */}
                         <div style={{ width: '60px', padding: '0 12px' }}>
                           <span 
                             className="font-medium block text-center"
@@ -1127,7 +1125,6 @@ const ResidentsList = ({
                           </span>
                         </div>
                         
-                        {/* Nom - aligné avec l'en-tête */}
                         <div style={{ flex: 1, padding: '0 12px' }}>
                           <div 
                             className="font-semibold"
@@ -1140,7 +1137,6 @@ const ResidentsList = ({
                           </div>
                         </div>
                         
-                        {/* Prénom - aligné avec l'en-tête */}
                         <div style={{ flex: 1, padding: '0 12px' }}>
                           <div 
                             className="font-semibold"
@@ -1153,7 +1149,6 @@ const ResidentsList = ({
                           </div>
                         </div>
                         
-                        {/* Genre - aligné avec l'en-tête (centré) */}
                         <div style={{ width: '120px', padding: '0 12px' }}>
                           <div className="flex items-center justify-center">
                             {formatGenre(resident.genre) === t('male') ? (
@@ -1167,7 +1162,6 @@ const ResidentsList = ({
                           </div>
                         </div>
                         
-                        {/* Date de naissance - aligné avec l'en-tête */}
                         <div style={{ width: '150px', padding: '0 12px' }}>
                           <div 
                             className="text-sm text-gray-600"
@@ -1177,7 +1171,6 @@ const ResidentsList = ({
                           </div>
                         </div>
                         
-                        {/* CIN - aligné avec l'en-tête */}
                         <div style={{ width: '120px', padding: '0 12px' }}>
                           <div 
                             className="text-sm font-mono text-gray-600"
@@ -1187,7 +1180,6 @@ const ResidentsList = ({
                           </div>
                         </div>
                         
-                        {/* Téléphone - aligné avec l'en-tête */}
                         <div style={{ width: '150px', padding: '0 12px' }}>
                           <div 
                             className="text-sm text-gray-600"
@@ -1197,7 +1189,6 @@ const ResidentsList = ({
                           </div>
                         </div>
                         
-                        {/* Actions - aligné avec l'en-tête (centré) */}
                         <div style={{ width: '120px', padding: '0 12px' }}>
                           <div className="text-center">
                             {residence && onViewOnMap && (
@@ -2240,7 +2231,6 @@ export default function ResidencePage({
 
     return (
       <tr className="border-b border-gray-200 hover:bg-gray-50">
-        {/* Nom - aligné avec l'en-tête */}
         <td 
           className="px-4 py-3"
           style={{ textAlign: 'left', width: '200px' }}
@@ -2250,7 +2240,6 @@ export default function ResidencePage({
           </div>
         </td>
         
-        {/* Prénom - aligné avec l'en-tête */}
         <td 
           className="px-4 py-3"
           style={{ textAlign: 'left', width: '200px' }}
@@ -2260,7 +2249,6 @@ export default function ResidencePage({
           </div>
         </td>
         
-        {/* Genre - aligné avec l'en-tête (centré) */}
         <td 
           className="px-4 py-3"
           style={{ textAlign: 'center', width: '120px' }}
@@ -2277,7 +2265,6 @@ export default function ResidencePage({
           </div>
         </td>
         
-        {/* Date de naissance - aligné avec l'en-tête */}
         <td 
           className="px-4 py-3"
           style={{ textAlign: 'left', width: '150px' }}
@@ -2289,7 +2276,6 @@ export default function ResidencePage({
           </div>
         </td>
         
-        {/* CIN - aligné avec l'en-tête */}
         <td 
           className="px-4 py-3"
           style={{ textAlign: 'left', width: '120px' }}
@@ -2303,7 +2289,6 @@ export default function ResidencePage({
           </div>
         </td>
         
-        {/* Téléphone - aligné avec l'en-tête */}
         <td 
           className="px-4 py-3"
           style={{ textAlign: 'left', width: '150px' }}
@@ -2679,11 +2664,12 @@ export default function ResidencePage({
                           return (
                             <div 
                               key={residence.id} 
-                              className="flex items-center border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                              className="flex items-center border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
                               style={{ 
                                 height: '72px',
                                 borderBottomColor: '#E5E7EB'
                               }}
+                              onClick={() => handleViewDetails(residence)}
                             >
                               <div style={{ width: '40px', padding: '0 12px' }}>
                                 <span 
@@ -2809,7 +2795,10 @@ export default function ResidencePage({
                                 <div className="flex items-center justify-end space-x-2">
                                   {onViewOnMap && (
                                     <button
-                                      onClick={() => onViewOnMap(residence)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onViewOnMap(residence);
+                                      }}
                                       className="flex items-center justify-center bg-white border border-gray-300 text-black hover:bg-gray-50 transition-colors font-medium"
                                       style={{
                                         height: '32px',
@@ -2825,22 +2814,6 @@ export default function ResidencePage({
                                       {t('map')}
                                     </button>
                                   )}
-                                  <button
-                                    onClick={() => handleViewDetails(residence)}
-                                    className="flex items-center justify-center bg-white border border-gray-300 text-black hover:bg-gray-50 transition-colors font-medium"
-                                    style={{
-                                      height: '32px',
-                                      borderRadius: '999px',
-                                      padding: '0 12px',
-                                      fontSize: '13px',
-                                      borderColor: '#D1D5DB',
-                                      color: '#000000'
-                                    }}
-                                    title={t('viewDetails')}
-                                  >
-                                    <Eye size={14} className="mr-2" style={{ color: '#000000' }} />
-                                    {t('details')}
-                                  </button>
                                 </div>
                               </div>
                             </div>

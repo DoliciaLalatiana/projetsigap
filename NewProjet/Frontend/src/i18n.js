@@ -19,7 +19,7 @@ const resources = {
       "title": "Paramètres et compte",
 
       // Menu
-      "menu": "MENU",
+      "menu": "Menu",
       "residence": "Résidence",
       "statistics": "Statistiques",
       "requests": "Demande",
