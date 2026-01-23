@@ -26,12 +26,12 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 
-const ImageModal = ({ 
-  isOpen, 
-  onClose, 
-  images, 
-  currentIndex, 
-  onNext, 
+const ImageModal = ({
+  isOpen,
+  onClose,
+  images,
+  currentIndex,
+  onNext,
   onPrev,
   onAddImage
 }) => {
@@ -59,33 +59,53 @@ const ImageModal = ({
 
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      <div 
+      <div
         className="absolute inset-0 bg-black/20"
         onClick={handleOverlayClick}
       />
-      
-      <div 
-        className="relative rounded-xl overflow-hidden shadow-2xl bg-black"
+     
+      <div
+        className="relative rounded-xl overflow-hidden shadow-2xl bg-black flex flex-col"
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxWidth: '85vw',
-          maxHeight: '75vh',
-          height: 'auto',
-          width: 'auto'
+          width: '500px',
+          height: '500px',
+          maxWidth: '90vw',
+          maxHeight: '90vh',
         }}
       >
-        <img
-          src={images[currentIndex]}
-          alt={`Image ${currentIndex + 1}`}
-          className="max-w-full max-h-[75vh] object-contain"
-        />
+        {/* Zone d'affichage de l'image avec conteneur carré */}
+        <div className="relative w-full h-full flex items-center justify-center bg-black">
+          <div
+            className="relative overflow-hidden"
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <img
+              src={images[currentIndex]}
+              alt={`Image ${currentIndex + 1}`}
+              className="object-contain"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '100%',
+                width: 'auto',
+                height: 'auto'
+              }}
+            />
+          </div>
+        </div>
 
         <div className="absolute top-4 right-4 flex items-center gap-2">
           <button
             onClick={handleAddImageClick}
             className="flex items-center justify-center hover:bg-white/90 rounded-full transition-all duration-200"
-            style={{ 
-              width: '36px', 
+            style={{
+              width: '36px',
               height: '36px',
               color: '#374151',
               backgroundColor: 'rgba(243, 244, 246, 0.9)',
@@ -96,12 +116,12 @@ const ImageModal = ({
           >
             <Plus size={18} />
           </button>
-          
+         
           <button
             onClick={onClose}
             className="flex items-center justify-center hover:bg-white/90 rounded-full transition-all duration-200"
-            style={{ 
-              width: '36px', 
+            style={{
+              width: '36px',
               height: '36px',
               color: '#374151',
               backgroundColor: 'rgba(243, 244, 246, 0.9)',
@@ -128,8 +148,8 @@ const ImageModal = ({
             <button
               onClick={onPrev}
               className="absolute top-1/2 left-4 transform -translate-y-1/2 flex items-center justify-center hover:bg-white/90 rounded-full transition-all duration-200"
-              style={{ 
-                width: '44px', 
+              style={{
+                width: '44px',
                 height: '44px',
                 color: '#374151',
                 backgroundColor: 'rgba(243, 244, 243, 0.9)',
@@ -142,8 +162,8 @@ const ImageModal = ({
             <button
               onClick={onNext}
               className="absolute top-1/2 right-4 transform -translate-y-1/2 flex items-center justify-center shadow-2xl hover:bg-white/90 rounded-full transition-all duration-200"
-              style={{ 
-                width: '44px', 
+              style={{
+                width: '44px',
                 height: '44px',
                 color: '#374151',
                 backgroundColor: 'rgba(243, 244, 246, 0.9)',
@@ -161,11 +181,11 @@ const ImageModal = ({
   );
 };
 
-const AddResidentModal = ({ 
-  isOpen, 
-  onClose, 
-  onSave, 
-  newResident, 
+const AddResidentModal = ({
+  isOpen,
+  onClose,
+  onSave,
+  newResident,
   setNewResident,
   dateInput,
   setDateInput,
@@ -592,12 +612,12 @@ const AddResidentModal = ({
 
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      <div 
+      <div
         className="absolute inset-0 bg-black/20"
         onClick={handleCancel}
       />
-      
-      <div 
+     
+      <div
         className="relative bg-gray-100 rounded-3xl shadow-2xl w-[480px] h-auto max-h-[600px] overflow-hidden flex flex-col transform transition-all ml-24"
         style={{
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
@@ -611,14 +631,14 @@ const AddResidentModal = ({
           <button
             onClick={handleCancel}
             className="flex items-center justify-center hover:bg-gray-200 rounded-full transition-colors p-2 shadow-2xl"
-            style={{ 
-              width: '40px', 
+            style={{
+              width: '40px',
               height: '40px',
               backgroundColor: 'white',
               boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
             }}
           >
-            <X size={20} className="text-gray-600" />
+            <X size={25} className="text-gray-600" />
           </button>
         </div>
 
@@ -840,21 +860,80 @@ const AddResidentModal = ({
   );
 };
 
-const ResidentsList = ({ 
-  residents, 
-  onBackToResidences, 
+const ResidentsList = ({
+  residents,
+  onBackToResidences,
   searchQuery,
   onViewOnMap,
-  residencesList 
+  residencesList
 }) => {
   const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState(1);
   const residentsPerPage = 10;
-  
+ 
   const indexOfLastResident = currentPage * residentsPerPage;
   const indexOfFirstResident = indexOfLastResident - residentsPerPage;
   const currentResidents = residents.slice(indexOfFirstResident, indexOfLastResident);
   const totalPages = Math.ceil(residents.length / residentsPerPage);
+
+  // Fonction pour générer les boutons de pagination (de la deuxième version)
+  const generatePaginationButtons = () => {
+    const buttons = [];
+    const maxVisibleButtons = 5;
+   
+    if (totalPages <= maxVisibleButtons) {
+      // Afficher toutes les pages
+      for (let i = 1; i <= totalPages; i++) {
+        buttons.push(i);
+      }
+    } else {
+      // Toujours afficher la première page
+      buttons.push(1);
+     
+      // Déterminer quelle page afficher après la première
+      if (currentPage <= 4) {
+        // Si on est sur les pages 1-4, afficher 2, 3, 4
+        for (let i = 2; i <= Math.min(4, totalPages - 1); i++) {
+          buttons.push(i);
+        }
+       
+        // Ajouter "..." seulement si on n'est pas proche de la fin
+        if (totalPages > 5 && currentPage < totalPages - 2) {
+          buttons.push('...');
+        }
+       
+        // Toujours afficher la dernière page
+        if (totalPages > 1) {
+          buttons.push(totalPages);
+        }
+      }
+      else if (currentPage >= totalPages - 3) {
+        // Si on est sur les dernières pages
+        buttons.push('...');
+       
+        // Afficher les dernières pages
+        for (let i = totalPages - 3; i < totalPages; i++) {
+          if (i > 1) {
+            buttons.push(i);
+          }
+        }
+       
+        // Dernière page
+        buttons.push(totalPages);
+      }
+      else {
+        // Si on est au milieu
+        buttons.push('...');
+        buttons.push(currentPage - 1);
+        buttons.push(currentPage);
+        buttons.push(currentPage + 1);
+        buttons.push('...');
+        buttons.push(totalPages);
+      }
+    }
+   
+    return buttons;
+  };
 
   const formatGenre = (genre) => {
     if (genre === "homme") return t('male');
@@ -896,31 +975,32 @@ const ResidentsList = ({
           <div className="flex items-center">
             <button
               onClick={onBackToResidences}
-              className="mr-3 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center"
-              style={{ 
-                width: '20px', 
-                height: '20px',
-                color: '#374151'
+              className="mr-4 flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors"
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '999px',
+                borderColor: '#D1D5DB'
               }}
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={18} style={{ color: '#000000' }} />
             </button>
-            <h1 
+            <h1
               className="text-black"
               style={{
-                fontSize: '32px',
+                fontSize: '28px',
                 fontWeight: '700',
                 color: '#000000'
               }}
             >
-              {t('searchResults')}: "{searchQuery}"
+              {t('searchResults')}
             </h1>
           </div>
         </div>
 
         <div>
           <div className="grid grid-cols-4 gap-5">
-            <div 
+            <div
               className="flex items-center p-4"
               style={{
                 height: '92px',
@@ -931,19 +1011,19 @@ const ResidentsList = ({
               }}
             >
               <div className="flex items-center w-full">
-                <div 
+                <div
                   className="flex items-center justify-center mr-4"
                   style={{ width: '48px', height: '48px' }}
                 >
-                  <Users 
-                    size={24} 
+                  <Users
+                    size={24}
                     style={{ color: '#000000' }}
                   />
                 </div>
                 <div>
-                  <div 
+                  <div
                     className="font-semibold text-black"
-                    style={{ 
+                    style={{
                       fontSize: '20px',
                       fontWeight: '600',
                       color: '#000000'
@@ -951,9 +1031,9 @@ const ResidentsList = ({
                   >
                     {residents.length}
                   </div>
-                  <div 
+                  <div
                     className="text-gray-600"
-                    style={{ 
+                    style={{
                       fontSize: '12.5px',
                       color: '#6B7280'
                     }}
@@ -967,7 +1047,7 @@ const ResidentsList = ({
         </div>
 
         <div className="flex-1 mb-4">
-          <div 
+          <div
             className="bg-white rounded-2xl flex flex-col"
             style={{
               width: '100%',
@@ -979,12 +1059,13 @@ const ResidentsList = ({
               overflow: 'hidden'
             }}
           >
+            {/* En-tête du tableau avec des colonnes alignées */}
             <div className="flex-shrink-0 mb-1">
               <div className="flex items-center" style={{ height: '48px' }}>
                 <div style={{ width: '60px', padding: '0 12px' }}>
-                  <div 
+                  <div
                     className="font-semibold"
-                    style={{ 
+                    style={{
                       fontSize: '13px',
                       fontWeight: '600',
                       color: '#6B7280'
@@ -993,11 +1074,11 @@ const ResidentsList = ({
                     {t('number')}
                   </div>
                 </div>
-                
+               
                 <div style={{ flex: 1, padding: '0 12px' }}>
-                  <div 
+                  <div
                     className="font-semibold"
-                    style={{ 
+                    style={{
                       fontSize: '13px',
                       fontWeight: '600',
                       color: '#6B7280'
@@ -1006,11 +1087,11 @@ const ResidentsList = ({
                     {t('lastName')}
                   </div>
                 </div>
-                
+               
                 <div style={{ flex: 1, padding: '0 12px' }}>
-                  <div 
+                  <div
                     className="font-semibold"
-                    style={{ 
+                    style={{
                       fontSize: '13px',
                       fontWeight: '600',
                       color: '#6B7280'
@@ -1019,11 +1100,11 @@ const ResidentsList = ({
                     {t('firstName')}
                   </div>
                 </div>
-                
+               
                 <div style={{ width: '120px', padding: '0 12px' }}>
-                  <div 
+                  <div
                     className="font-semibold text-center"
-                    style={{ 
+                    style={{
                       fontSize: '13px',
                       fontWeight: '600',
                       color: '#6B7280'
@@ -1032,11 +1113,11 @@ const ResidentsList = ({
                     {t('gender')}
                   </div>
                 </div>
-                
+               
                 <div style={{ width: '150px', padding: '0 12px' }}>
-                  <div 
+                  <div
                     className="font-semibold"
-                    style={{ 
+                    style={{
                       fontSize: '13px',
                       fontWeight: '600',
                       color: '#6B7280'
@@ -1045,11 +1126,11 @@ const ResidentsList = ({
                     {t('birthDate')}
                   </div>
                 </div>
-                
+               
                 <div style={{ width: '120px', padding: '0 12px' }}>
-                  <div 
+                  <div
                     className="font-semibold"
-                    style={{ 
+                    style={{
                       fontSize: '13px',
                       fontWeight: '600',
                       color: '#6B7280'
@@ -1058,11 +1139,11 @@ const ResidentsList = ({
                     {t('cin')}
                   </div>
                 </div>
-                
+               
                 <div style={{ width: '150px', padding: '0 12px' }}>
-                  <div 
+                  <div
                     className="font-semibold"
-                    style={{ 
+                    style={{
                       fontSize: '13px',
                       fontWeight: '600',
                       color: '#6B7280'
@@ -1071,11 +1152,11 @@ const ResidentsList = ({
                     {t('phone')}
                   </div>
                 </div>
-                
+               
                 <div style={{ width: '120px', padding: '0 12px' }}>
-                  <div 
+                  <div
                     className="font-semibold text-center"
-                    style={{ 
+                    style={{
                       fontSize: '13px',
                       fontWeight: '600',
                       color: '#6B7280'
@@ -1105,18 +1186,19 @@ const ResidentsList = ({
                     const { nom, prenom } = extractNomPrenom(resident.nomComplet);
                     const displayNom = nom ? nom.toUpperCase() : "-";
                     const residence = findResidenceForResident(resident.id);
-                    
+                   
                     return (
-                      <div 
-                        key={resident.id} 
+                      <div
+                        key={resident.id}
                         className="flex items-center border-b border-gray-200 hover:bg-gray-50 transition-colors"
                         style={{ height: '60px' }}
                       >
+                        {/* Numéro - aligné avec l'en-tête */}
                         <div style={{ width: '60px', padding: '0 12px' }}>
-                          <span 
+                          <span
                             className="font-medium block text-center"
-                            style={{ 
-                              fontSize: '14px', 
+                            style={{
+                              fontSize: '14px',
                               color: '#6B7280',
                               textAlign: 'center'
                             }}
@@ -1124,31 +1206,34 @@ const ResidentsList = ({
                             {(currentPage - 1) * residentsPerPage + index + 1}
                           </span>
                         </div>
-                        
+                       
+                        {/* Nom - aligné avec l'en-tête */}
                         <div style={{ flex: 1, padding: '0 12px' }}>
-                          <div 
+                          <div
                             className="font-semibold"
-                            style={{ 
-                              fontSize: '14px', 
+                            style={{
+                              fontSize: '14px',
                               color: '#000000'
                             }}
                           >
                             {displayNom}
                           </div>
                         </div>
-                        
+                       
+                        {/* Prénom - aligné avec l'en-tête */}
                         <div style={{ flex: 1, padding: '0 12px' }}>
-                          <div 
+                          <div
                             className="font-semibold"
-                            style={{ 
-                              fontSize: '14px', 
+                            style={{
+                              fontSize: '14px',
                               color: '#000000'
                             }}
                           >
                             {prenom || "-"}
                           </div>
                         </div>
-                        
+                       
+                        {/* Genre - aligné avec l'en-tête (centré) */}
                         <div style={{ width: '120px', padding: '0 12px' }}>
                           <div className="flex items-center justify-center">
                             {formatGenre(resident.genre) === t('male') ? (
@@ -1161,34 +1246,38 @@ const ResidentsList = ({
                             </span>
                           </div>
                         </div>
-                        
+                       
+                        {/* Date de naissance - aligné avec l'en-tête */}
                         <div style={{ width: '150px', padding: '0 12px' }}>
-                          <div 
+                          <div
                             className="text-sm text-gray-600"
                             style={{ textAlign: 'left' }}
                           >
                             {resident.dateNaissance ? formatDateHyphen(resident.dateNaissance) : "-"}
                           </div>
                         </div>
-                        
+                       
+                        {/* CIN - aligné avec l'en-tête */}
                         <div style={{ width: '120px', padding: '0 12px' }}>
-                          <div 
+                          <div
                             className="text-sm font-mono text-gray-600"
                             style={{ textAlign: 'left' }}
                           >
                             {resident.cin || "-"}
                           </div>
                         </div>
-                        
+                       
+                        {/* Téléphone - aligné avec l'en-tête */}
                         <div style={{ width: '150px', padding: '0 12px' }}>
-                          <div 
+                          <div
                             className="text-sm text-gray-600"
                             style={{ textAlign: 'left' }}
                           >
-                            {resident.telephone ? `+261 ${resident.telephone}` : "-"}
+                            {resident.telephone ? ` ${resident.telephone}` : "-"}
                           </div>
                         </div>
-                        
+                       
+                        {/* Actions - aligné avec l'en-tête (centré) */}
                         <div style={{ width: '120px', padding: '0 12px' }}>
                           <div className="text-center">
                             {residence && onViewOnMap && (
@@ -1227,78 +1316,80 @@ const ResidentsList = ({
                       borderRadius: '999px',
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
                       height: '40px',
-                      width: '220px',
+                      width: 'auto',
+                      minWidth: '220px',
+                      maxWidth: '400px',
                       justifyContent: 'center'
                     }}
                   >
                     <button
                       onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                       disabled={currentPage === 1}
-                      className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={`flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        currentPage === 1 ? 'text-gray-400' : 'text-gray-600'
+                      }`}
                       style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '999px',
-                        borderColor: '#D1D5DB'
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '999px'
                       }}
                     >
-                      <ChevronLeft size={16} style={{ color: '#000000' }} />
+                      <ChevronLeft size={20} />
                     </button>
 
-                    <div className="flex items-center space-x-2">
-                      {[...Array(totalPages)].map((_, i) => {
-                        const pageNum = i + 1;
-                        if (
-                          pageNum === 1 ||
-                          pageNum === totalPages ||
-                          (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
-                        ) {
+                    <div className="flex items-center space-x-1">
+                      {generatePaginationButtons().map((pageNum, index) => {
+                        if (pageNum === '...') {
                           return (
-                            <button
-                              key={pageNum}
-                              onClick={() => setCurrentPage(pageNum)}
-                              className={`flex items-center justify-center font-medium transition-colors ${
-                                currentPage === pageNum
-                                  ? "bg-gray-900 text-white"
-                                  : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
-                              }`}
+                            <span
+                              key={`ellipsis-${index}`}
+                              className="text-gray-400 flex items-center justify-center"
                               style={{
                                 width: '32px',
                                 height: '32px',
-                                borderRadius: '8px',
-                                fontSize: '14px',
-                                borderColor: '#D1D5DB'
+                                fontSize: '14px'
                               }}
                             >
-                              {pageNum}
-                            </button>
-                          );
-                        } else if (
-                          pageNum === currentPage - 2 ||
-                          pageNum === currentPage + 2
-                        ) {
-                          return (
-                            <span className="text-gray-400" style={{ fontSize: '14px', color: '#6B7280' }}>
                               ...
                             </span>
                           );
                         }
-                        return null;
+                       
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`flex items-center justify-center font-medium transition-colors ${
+                              currentPage === pageNum
+                                ? "text-grenat font-bold"
+                                : "text-gray-600 hover:text-gray-800"
+                            }`}
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '8px',
+                              fontSize: '14px'
+                            }}
+                          >
+                            {pageNum}
+                          </button>
+                        );
                       })}
                     </div>
 
                     <button
                       onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                       disabled={currentPage === totalPages}
-                      className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={`flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        currentPage === totalPages ? 'text-gray-400' : 'text-gray-600'
+                      }`}
                       style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '999px',
-                        borderColor: '#D1D5DB'
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '999px'
                       }}
                     >
-                      <ChevronRight size={16} style={{ color: '#000000' }} />
+                      <ChevronRight size={20} />
                     </button>
                   </div>
                 </div>
@@ -1362,6 +1453,8 @@ export default function ResidencePage({
   const isMountedRef = useRef(true);
   const [residentPage, setResidentPage] = useState(1);
   const [residentsPerPageInModal] = useState(3);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [residenceResidents, setResidenceResidents] = useState({});
 
   // Fonction pour changer de langue
   const switchLanguage = () => {
@@ -1369,7 +1462,7 @@ export default function ResidencePage({
     i18n.changeLanguage(newLang);
   };
 
-  // LOAD residences from backend on mount
+  // LOAD residences from backend on mount - CORRIGÉ pour utiliser la même logique que le premier code
   useEffect(() => {
     let mounted = true;
     const fetchResidences = async () => {
@@ -1389,7 +1482,7 @@ export default function ResidencePage({
             ? r.photos
                 .filter((photo) => photo && photo.trim() !== "")
                 .map((photo) => {
-                  // CORRECTION ICI : Utiliser directement l'URL retournée par l'API
+                  // CORRECTION: Utiliser directement l'URL retournée par l'API comme dans le premier code
                   if (typeof photo === "string") {
                     // Si l'API retourne déjà une URL complète, l'utiliser directement
                     if (photo.startsWith("http")) {
@@ -1471,6 +1564,18 @@ export default function ResidencePage({
           }));
 
           setAllResidents(formattedPersons);
+         
+          // Organiser les résidents par résidence pour un accès rapide
+          const residentsByResidence = {};
+          formattedPersons.forEach(person => {
+            if (person.residence_id) {
+              if (!residentsByResidence[person.residence_id]) {
+                residentsByResidence[person.residence_id] = [];
+              }
+              residentsByResidence[person.residence_id].push(person);
+            }
+          });
+          setResidenceResidents(residentsByResidence);
         }
       } catch (error) {
         console.warn("Erreur chargement tous les résidents:", error);
@@ -1484,7 +1589,7 @@ export default function ResidencePage({
   useEffect(() => {
     if (searchQuery && searchQuery.trim() !== "") {
       const searchTerm = searchQuery.toLowerCase().trim();
-      
+     
       const filtered = allResidents.filter((resident) => {
         const nomComplet = resident.nomComplet?.toLowerCase() || "";
         const nom = resident.nom?.toLowerCase() || "";
@@ -1500,9 +1605,9 @@ export default function ResidencePage({
           telephone.includes(searchTerm)
         );
       });
-      
+     
       setFilteredResidents(filtered);
-      
+     
       if (filtered.length > 0) {
         setSearchMode("residents");
       } else {
@@ -1550,7 +1655,7 @@ export default function ResidencePage({
       : { "Content-Type": "application/json" };
   };
 
-  // CORRECTION PRINCIPALE : Fonction pour charger les photos
+  // CORRECTION PRINCIPALE : Fonction pour charger les photos (comme dans le premier code)
   const loadResidencePhotos = async (residenceId) => {
     try {
       console.log("Chargement des photos pour la résidence:", residenceId);
@@ -1561,7 +1666,7 @@ export default function ResidencePage({
         const photos = await resp.json();
         console.log("Photos reçues de l'API:", photos);
         
-        // Retourner directement les URLs complètes
+        // Retourner directement les URLs complètes comme dans le premier code
         return photos.map((photo) => {
           return photo.url || `${API_BASE}/uploads/residences/${photo.filename}`;
         });
@@ -1686,6 +1791,7 @@ export default function ResidencePage({
         onEnterDetail();
       }
 
+      // CORRECTION: Utiliser la même logique que le premier code pour charger les photos
       const photos = await loadResidencePhotos(residence.id);
       console.log("Loaded photos URLs:", photos);
 
@@ -1732,7 +1838,7 @@ export default function ResidencePage({
 
       setSelectedResidence({
         ...base,
-        photos: photos,
+        photos: photos, // CORRECTION: Utiliser les photos chargées directement
         residents: normalizedPersons,
         totalResidents: totalRealResidents,
         hommes: hommesReal,
@@ -1769,7 +1875,7 @@ export default function ResidencePage({
 
       setSelectedResidence({
         ...residence,
-        photos: residence.photos || [],
+        photos: residence.photos || [], // CORRECTION: Utiliser les photos existantes
         residents: residence.residents || [],
         totalResidents: totalRealResidents,
         hommes: hommesReal,
@@ -1804,7 +1910,7 @@ export default function ResidencePage({
     });
     setDateInput("");
     setDateError("");
-    
+   
     if (onExitDetail) {
       onExitDetail();
     }
@@ -1852,7 +1958,7 @@ export default function ResidencePage({
 
   const handleAddImageInModal = () => {
     console.log("Ouvrir le sélecteur de fichiers ou le formulaire d'ajout");
-    
+   
     if (photoInputRef.current) {
       photoInputRef.current.click();
     }
@@ -1994,18 +2100,12 @@ export default function ResidencePage({
           is_proprietaire: false,
         },
       ]);
-
-      setNewResident({
-        nom: "",
-        prenom: "",
-        dateNaissance: "",
-        cin: "",
-        telephone: "",
-        sexe: "homme",
-      });
-      setDateInput("");
-      setDateError("");
-      setShowAddResidentModal(false);
+     
+      // Mettre à jour le cache des résidents
+      setResidenceResidents(prev => ({
+        ...prev,
+        [selectedResidence.id]: updatedResidents
+      }));
     } catch (err) {
       console.warn("handleSaveEdit error", err);
       alert("Erreur lors de la sauvegarde du résident");
@@ -2060,7 +2160,7 @@ export default function ResidencePage({
     }
 
     const searchTerm = searchQuery.toLowerCase().trim();
-    
+   
     return resList.filter((residence) => {
       const name = residence.name?.toLowerCase() || "";
       const lot = residence.lot?.toLowerCase() || "";
@@ -2181,40 +2281,158 @@ export default function ResidencePage({
     return genre;
   };
 
+  // Fonction pour générer les boutons de pagination dans la modal (de la deuxième version)
+  const generateResidentPaginationButtons = () => {
+    const buttons = [];
+    const maxVisibleButtons = 5;
+   
+    if (totalResidentPages <= maxVisibleButtons) {
+      // Afficher toutes les pages
+      for (let i = 1; i <= totalResidentPages; i++) {
+        buttons.push(i);
+      }
+    } else {
+      // Toujours afficher la première page
+      buttons.push(1);
+     
+      // Déterminer quelle page afficher après la première
+      if (residentPage <= 4) {
+        // Si on est sur les pages 1-4, afficher 2, 3, 4
+        for (let i = 2; i <= Math.min(4, totalResidentPages - 1); i++) {
+          buttons.push(i);
+        }
+       
+        // Ajouter "..." seulement si on n'est pas proche de la fin
+        if (totalResidentPages > 5 && residentPage < totalResidentPages - 2) {
+          buttons.push('...');
+        }
+       
+        // Toujours afficher la dernière page
+        if (totalResidentPages > 1) {
+          buttons.push(totalResidentPages);
+        }
+      }
+      else if (residentPage >= totalResidentPages - 3) {
+        // Si on est sur les dernières pages
+        buttons.push('...');
+       
+        // Afficher les dernières pages
+        for (let i = totalResidentPages - 3; i < totalResidentPages; i++) {
+          if (i > 1) {
+            buttons.push(i);
+          }
+        }
+       
+        // Dernière page
+        buttons.push(totalResidentPages);
+      }
+      else {
+        // Si on est au milieu
+        buttons.push('...');
+        buttons.push(residentPage - 1);
+        buttons.push(residentPage);
+        buttons.push(residentPage + 1);
+        buttons.push('...');
+        buttons.push(totalResidentPages);
+      }
+    }
+   
+    return buttons;
+  };
+
+  // Fonction pour générer les boutons de pagination dans la liste principale (de la deuxième version)
+  const generateMainPaginationButtons = () => {
+    const buttons = [];
+    const maxVisibleButtons = 5;
+   
+    if (totalPages <= maxVisibleButtons) {
+      // Afficher toutes les pages
+      for (let i = 1; i <= totalPages; i++) {
+        buttons.push(i);
+      }
+    } else {
+      // Toujours afficher la première page
+      buttons.push(1);
+     
+      // Déterminer quelle page afficher après la première
+      if (currentPage <= 4) {
+        // Si on est sur les pages 1-4, afficher 2, 3, 4
+        for (let i = 2; i <= Math.min(4, totalPages - 1); i++) {
+          buttons.push(i);
+        }
+       
+        // Ajouter "..." seulement si on n'est pas proche de la fin
+        if (totalPages > 5 && currentPage < totalPages - 2) {
+          buttons.push('...');
+        }
+       
+        // Toujours afficher la dernière page
+        if (totalPages > 1) {
+          buttons.push(totalPages);
+        }
+      }
+      else if (currentPage >= totalPages - 3) {
+        // Si on est sur les dernières pages
+        buttons.push('...');
+       
+        // Afficher les dernières pages
+        for (let i = totalPages - 3; i < totalPages; i++) {
+          if (i > 1) {
+            buttons.push(i);
+          }
+        }
+       
+        // Dernière page
+        buttons.push(totalPages);
+      }
+      else {
+        // Si on est au milieu
+        buttons.push('...');
+        buttons.push(currentPage - 1);
+        buttons.push(currentPage);
+        buttons.push(currentPage + 1);
+        buttons.push('...');
+        buttons.push(totalPages);
+      }
+    }
+   
+    return buttons;
+  };
+
   const ResidentListHeader = () => (
     <thead className="bg-gray-50 sticky top-0 z-10">
       <tr>
-        <th 
+        <th
           className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
           style={{ textAlign: 'left', width: '200px' }}
         >
           {t('lastName')}
         </th>
-        <th 
+        <th
           className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
           style={{ textAlign: 'left', width: '200px' }}
         >
           {t('firstName')}
         </th>
-        <th 
+        <th
           className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
           style={{ textAlign: 'center', width: '120px' }}
         >
           {t('gender')}
         </th>
-        <th 
+        <th
           className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
           style={{ textAlign: 'left', width: '150px' }}
         >
           {t('birthDate')}
         </th>
-        <th 
+        <th
           className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
           style={{ textAlign: 'left', width: '120px' }}
         >
           {t('cin')}
         </th>
-        <th 
+        <th
           className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50"
           style={{ textAlign: 'left', width: '150px' }}
         >
@@ -2231,7 +2449,8 @@ export default function ResidencePage({
 
     return (
       <tr className="border-b border-gray-200 hover:bg-gray-50">
-        <td 
+        {/* Nom - aligné avec l'en-tête */}
+        <td
           className="px-4 py-3"
           style={{ textAlign: 'left', width: '200px' }}
         >
@@ -2239,8 +2458,9 @@ export default function ResidencePage({
             {displayNom}
           </div>
         </td>
-        
-        <td 
+       
+        {/* Prénom - aligné avec l'en-tête */}
+        <td
           className="px-4 py-3"
           style={{ textAlign: 'left', width: '200px' }}
         >
@@ -2248,8 +2468,9 @@ export default function ResidencePage({
             {prenom || "-"}
           </div>
         </td>
-        
-        <td 
+       
+        {/* Genre - aligné avec l'en-tête (centré) */}
+        <td
           className="px-4 py-3"
           style={{ textAlign: 'center', width: '120px' }}
         >
@@ -2264,23 +2485,25 @@ export default function ResidencePage({
             </span>
           </div>
         </td>
-        
-        <td 
+       
+        {/* Date de naissance - aligné avec l'en-tête */}
+        <td
           className="px-4 py-3"
           style={{ textAlign: 'left', width: '150px' }}
         >
           <div className="text-sm text-gray-600">
-            {resident.dateNaissance 
-              ? formatDateHyphen(resident.dateNaissance) 
+            {resident.dateNaissance
+              ? formatDateHyphen(resident.dateNaissance)
               : "-"}
           </div>
         </td>
-        
-        <td 
+       
+        {/* CIN - aligné avec l'en-tête */}
+        <td
           className="px-4 py-3"
           style={{ textAlign: 'left', width: '120px' }}
         >
-          <div 
+          <div
             className={`text-sm font-mono ${
               isMineur ? "text-gray-500 italic" : "text-gray-600"
             }`}
@@ -2288,13 +2511,14 @@ export default function ResidencePage({
             {isMineur ? `-- ${t('minor')} --` : resident.cin || "-"}
           </div>
         </td>
-        
-        <td 
+       
+        {/* Téléphone - aligné avec l'en-tête */}
+        <td
           className="px-4 py-3"
           style={{ textAlign: 'left', width: '150px' }}
         >
           <div className="text-sm text-gray-600">
-            {resident.telephone ? `+261 ${resident.telephone}` : "-"}
+            {resident.telephone ? ` ${resident.telephone}` : "-"}
           </div>
         </td>
       </tr>
@@ -2303,7 +2527,7 @@ export default function ResidencePage({
 
   if (searchMode === "residents" && searchQuery && searchQuery.trim() !== "") {
     return (
-      <ResidentsList 
+      <ResidentsList
         residents={filteredResidents}
         onBackToResidences={handleBackToResidences}
         searchQuery={searchQuery}
@@ -2318,14 +2542,14 @@ export default function ResidencePage({
       <div className="h-full flex">
         {!showModal && (
           <div className="w-full">
-            <div 
+            <div
               className="h-full flex flex-col p-6 space-y-6 min-h-screen"
-              style={{ 
+              style={{
                 padding: '24px 32px'
               }}
             >
               <div>
-                <h1 
+                <h1
                   className="text-black"
                   style={{
                     fontSize: '32px',
@@ -2339,7 +2563,7 @@ export default function ResidencePage({
 
               <div>
                 <div className="grid grid-cols-4 gap-5">
-                  <div 
+                  <div
                     className="flex items-center p-4"
                     style={{
                       height: '92px',
@@ -2350,19 +2574,19 @@ export default function ResidencePage({
                     }}
                   >
                     <div className="flex items-center w-full">
-                      <div 
+                      <div
                         className="flex items-center justify-center mr-4"
                         style={{ width: '48px', height: '48px' }}
                       >
-                        <Home 
-                          size={24} 
+                        <Home
+                          size={24}
                           style={{ color: '#000000' }}
                         />
                       </div>
                       <div>
-                        <div 
+                        <div
                           className="font-semibold text-black"
-                          style={{ 
+                          style={{
                             fontSize: '20px',
                             fontWeight: '600',
                             color: '#000000'
@@ -2370,9 +2594,9 @@ export default function ResidencePage({
                         >
                           {statistics.totalResidences}
                         </div>
-                        <div 
+                        <div
                           className="text-gray-600"
-                          style={{ 
+                          style={{
                             fontSize: '12.5px',
                             color: '#6B7280'
                           }}
@@ -2383,7 +2607,7 @@ export default function ResidencePage({
                     </div>
                   </div>
 
-                  <div 
+                  <div
                     className="flex items-center p-4"
                     style={{
                       height: '92px',
@@ -2394,19 +2618,19 @@ export default function ResidencePage({
                     }}
                   >
                     <div className="flex items-center w-full">
-                      <div 
+                      <div
                         className="flex items-center justify-center mr-4"
                         style={{ width: '48px', height: '48px' }}
                       >
-                        <Users 
-                          size={24} 
+                        <Users
+                          size={24}
                           style={{ color: '#000000' }}
                         />
                       </div>
                       <div>
-                        <div 
+                        <div
                           className="font-semibold text-black"
-                          style={{ 
+                          style={{
                             fontSize: '20px',
                             fontWeight: '600',
                             color: '#000000'
@@ -2414,9 +2638,9 @@ export default function ResidencePage({
                         >
                           {statistics.totalResidents}
                         </div>
-                        <div 
+                        <div
                           className="text-gray-600"
-                          style={{ 
+                          style={{
                             fontSize: '12.5px',
                             color: '#6B7280'
                           }}
@@ -2427,7 +2651,7 @@ export default function ResidencePage({
                     </div>
                   </div>
 
-                  <div 
+                  <div
                     className="flex items-center p-4"
                     style={{
                       height: '92px',
@@ -2438,19 +2662,19 @@ export default function ResidencePage({
                     }}
                   >
                     <div className="flex items-center w-full">
-                      <div 
+                      <div
                         className="flex items-center justify-center mr-4"
                         style={{ width: '48px', height: '48px' }}
                       >
-                        <Mars 
-                          size={24} 
+                        <Mars
+                          size={24}
                           style={{ color: '#000000' }}
                         />
                       </div>
                       <div>
-                        <div 
+                        <div
                           className="font-semibold text-black"
-                          style={{ 
+                          style={{
                             fontSize: '20px',
                             fontWeight: '600',
                             color: '#000000'
@@ -2458,9 +2682,9 @@ export default function ResidencePage({
                         >
                           {statistics.totalHommes}
                         </div>
-                        <div 
+                        <div
                           className="text-gray-600"
-                          style={{ 
+                          style={{
                             fontSize: '12.5px',
                             color: '#6B7280'
                           }}
@@ -2471,7 +2695,7 @@ export default function ResidencePage({
                     </div>
                   </div>
 
-                  <div 
+                  <div
                     className="flex items-center p-4"
                     style={{
                       height: '92px',
@@ -2482,19 +2706,19 @@ export default function ResidencePage({
                     }}
                   >
                     <div className="flex items-center w-full">
-                      <div 
+                      <div
                         className="flex items-center justify-center mr-4"
                         style={{ width: '48px', height: '48px' }}
                       >
-                        <Venus 
-                          size={24} 
+                        <Venus
+                          size={24}
                           style={{ color: '#000000' }}
                         />
                       </div>
                       <div>
-                        <div 
+                        <div
                           className="font-semibold text-black"
-                          style={{ 
+                          style={{
                             fontSize: '20px',
                             fontWeight: '600',
                             color: '#000000'
@@ -2502,9 +2726,9 @@ export default function ResidencePage({
                         >
                           {statistics.totalFemmes}
                         </div>
-                        <div 
+                        <div
                           className="text-gray-600"
-                          style={{ 
+                          style={{
                             fontSize: '12.5px',
                             color: '#6B7280'
                           }}
@@ -2518,7 +2742,7 @@ export default function ResidencePage({
               </div>
 
               <div className="flex-1 mb-4">
-                <div 
+                <div
                   className="bg-white rounded-2xl flex flex-col"
                   style={{
                     width: '100%',
@@ -2533,9 +2757,9 @@ export default function ResidencePage({
                   <div className="flex-shrink-0 mb-1">
                     <div className="flex items-center" style={{ height: '48px' }}>
                       <div style={{ width: '40px', padding: '0 12px' }}>
-                        <div 
+                        <div
                           className="font-semibold"
-                          style={{ 
+                          style={{
                             fontSize: '13px',
                             fontWeight: '600',
                             color: '#6B7280'
@@ -2544,11 +2768,11 @@ export default function ResidencePage({
                           {t('number')}
                         </div>
                       </div>
-                      
-                      <div style={{ width: '90px', padding: '0 12px' }}>
-                        <div 
+                     
+                      <div style={{ width: '100px', padding: '0 12px' }}>
+                        <div
                           className="font-semibold text-center"
-                          style={{ 
+                          style={{
                             fontSize: '13px',
                             fontWeight: '600',
                             color: '#6B7280'
@@ -2557,11 +2781,11 @@ export default function ResidencePage({
                           {t('photo')}
                         </div>
                       </div>
-                      
+                     
                       <div style={{ flex: 1, padding: '0 12px' }}>
-                        <div 
+                        <div
                           className="font-semibold"
-                          style={{ 
+                          style={{
                             fontSize: '13px',
                             fontWeight: '600',
                             color: '#6B7280'
@@ -2570,11 +2794,11 @@ export default function ResidencePage({
                           {t('address')}
                         </div>
                       </div>
-                      
+                     
                       <div style={{ width: '160px', padding: '0 12px' }}>
-                        <div 
+                        <div
                           className="font-semibold text-center"
-                          style={{ 
+                          style={{
                             fontSize: '13px',
                             fontWeight: '600',
                             color: '#6B7280'
@@ -2583,11 +2807,11 @@ export default function ResidencePage({
                           {t('residents')}
                         </div>
                       </div>
-                      
+                     
                       <div style={{ width: '220px', padding: '0 12px' }}>
-                        <div 
+                        <div
                           className="font-semibold text-right"
-                          style={{ 
+                          style={{
                             fontSize: '13px',
                             fontWeight: '600',
                             color: '#6B7280'
@@ -2601,37 +2825,37 @@ export default function ResidencePage({
 
                   <div className="flex-1 overflow-hidden">
                     {currentResidences.length === 0 ? (
-                      <div 
+                      <div
                         className="h-full flex items-center justify-center"
                         style={{ minHeight: '280px' }}
                       >
                         <div className="text-center">
-                          <div 
+                          <div
                             className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4"
                             style={{ backgroundColor: '#E5E7EB' }}
                           >
                             <Home className="w-8 h-8" style={{ color: '#9CA3AF' }} />
                           </div>
-                          <h3 
+                          <h3
                             className="font-semibold mb-2"
-                            style={{ 
+                            style={{
                               fontSize: '18px',
                               fontWeight: '600',
                               color: '#000000'
                             }}
                           >
-                            {searchQuery 
+                            {searchQuery
                               ? `${t('noResultsFor')} "${searchQuery}"`
                               : t('noResidenceFound')}
                           </h3>
-                          <p 
+                          <p
                             className="text-gray-600"
-                            style={{ 
+                            style={{
                               fontSize: '14px',
                               color: '#6B7280'
                             }}
                           >
-                            {searchQuery 
+                            {searchQuery
                               ? t('tryAnotherSearch')
                               : t('noResidenceFound')}
                           </p>
@@ -2640,7 +2864,7 @@ export default function ResidencePage({
                     ) : (
                       <div>
                         {currentResidences.map((residence, index) => {
-                          const realResidents = allResidents.filter(
+                          const realResidents = residenceResidents[residence.id] || allResidents.filter(
                             (resident) => resident.residence_id === residence.id
                           );
                           const totalRealResidents = realResidents.length;
@@ -2662,19 +2886,19 @@ export default function ResidencePage({
                           const femmes = femmesReal > 0 ? femmesReal : (residence.femmes || 0);
 
                           return (
-                            <div 
-                              key={residence.id} 
+                            <div
+                              key={residence.id}
                               className="flex items-center border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
-                              style={{ 
+                              style={{
                                 height: '72px',
                                 borderBottomColor: '#E5E7EB'
                               }}
                               onClick={() => handleViewDetails(residence)}
                             >
                               <div style={{ width: '40px', padding: '0 12px' }}>
-                                <span 
+                                <span
                                   className="font-medium"
-                                  style={{ 
+                                  style={{
                                     fontSize: '14px',
                                     color: '#6B7280'
                                   }}
@@ -2682,15 +2906,16 @@ export default function ResidencePage({
                                   {(currentPage - 1) * residencesPerPage + index + 1}
                                 </span>
                               </div>
-                              
-                              <div style={{ width: '90px', padding: '0 12px' }}>
-                                <div 
+                             
+                              <div style={{ width: '100px', padding: '0 12px' }}>
+                                <div
                                   className="rounded-lg overflow-hidden flex items-center justify-center mx-auto"
-                                  style={{ 
-                                    width: '56px',
+                                  style={{
+                                    width: '80px',
                                     height: '56px',
                                     borderRadius: '8px',
-                                    backgroundColor: residence.photos && residence.photos.length > 0 ? 'transparent' : '#E5E7EB'
+                                    backgroundColor: residence.photos && residence.photos.length > 0 ? 'transparent' : '#E5E7EB',
+                                    marginRight: '20px'
                                   }}
                                 >
                                   {residence.photos && residence.photos.length > 0 ? (
@@ -2714,12 +2939,12 @@ export default function ResidencePage({
                                   )}
                                 </div>
                               </div>
-                              
+                             
                               <div style={{ flex: 1, padding: '0 12px' }}>
                                 <div>
-                                  <div 
+                                  <div
                                     className="font-semibold mb-1"
-                                    style={{ 
+                                    style={{
                                       fontSize: '14.5px',
                                       fontWeight: '600',
                                       color: '#000000'
@@ -2727,9 +2952,9 @@ export default function ResidencePage({
                                   >
                                     {residence.nom_residence || residence.name}
                                   </div>
-                                  <div 
+                                  <div
                                     className="text-gray-600"
-                                    style={{ 
+                                    style={{
                                       fontSize: '12.5px',
                                       color: '#6B7280'
                                     }}
@@ -2738,9 +2963,9 @@ export default function ResidencePage({
                                   </div>
                                   {residence.proprietaire && (
                                     <div className="flex items-center mt-1">
-                                      <span 
+                                      <span
                                         className="text-xs"
-                                        style={{ 
+                                        style={{
                                           fontSize: '12px',
                                           color: '#6B7280'
                                         }}
@@ -2751,12 +2976,12 @@ export default function ResidencePage({
                                   )}
                                 </div>
                               </div>
-                              
+                             
                               <div style={{ width: '160px', padding: '0 12px' }}>
                                 <div className="text-center">
-                                  <div 
+                                  <div
                                     className="font-semibold mb-1"
-                                    style={{ 
+                                    style={{
                                       fontSize: '13px',
                                       color: '#000000'
                                     }}
@@ -2765,9 +2990,9 @@ export default function ResidencePage({
                                   </div>
                                   <div className="flex items-center justify-center space-x-3">
                                     <div className="flex items-center">
-                                      <span 
+                                      <span
                                         className="text-xs"
-                                        style={{ 
+                                        style={{
                                           fontSize: '12px',
                                           color: '#6B7280'
                                         }}
@@ -2777,9 +3002,9 @@ export default function ResidencePage({
                                     </div>
                                     <div className="text-gray-400">•</div>
                                     <div className="flex items-center">
-                                      <span 
+                                      <span
                                         className="text-xs"
-                                        style={{ 
+                                        style={{
                                           fontSize: '12px',
                                           color: '#6B7280'
                                         }}
@@ -2790,7 +3015,7 @@ export default function ResidencePage({
                                   </div>
                                 </div>
                               </div>
-                              
+                             
                               <div style={{ width: '220px', padding: '0 12px' }}>
                                 <div className="flex items-center justify-end space-x-2">
                                   {onViewOnMap && (
@@ -2814,6 +3039,25 @@ export default function ResidencePage({
                                       {t('map')}
                                     </button>
                                   )}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewDetails(residence);
+                                    }}
+                                    className="flex items-center justify-center bg-white border border-gray-300 text-black hover:bg-gray-50 transition-colors font-medium"
+                                    style={{
+                                      height: '32px',
+                                      borderRadius: '999px',
+                                      padding: '0 12px',
+                                      fontSize: '13px',
+                                      borderColor: '#D1D5DB',
+                                      color: '#000000'
+                                    }}
+                                    title={t('viewDetails')}
+                                  >
+                                    <Eye size={14} className="mr-2" style={{ color: '#000000' }} />
+                                    {t('details')}
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -2825,91 +3069,86 @@ export default function ResidencePage({
 
                   <div className="flex-shrink-0 pt-2" style={{ paddingTop: '16px' }}>
                     <div className="flex items-center justify-center">
-                      <div 
+                      <div
                         className="flex items-center space-x-2 bg-white rounded-full px-4 py-2"
                         style={{
                           borderRadius: '999px',
                           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
                           height: '40px',
-                          width: '220px',
+                          width: 'auto',
+                          minWidth: '220px',
+                          maxWidth: '400px',
                           justifyContent: 'center'
                         }}
                       >
                         <button
                           onClick={prevPage}
                           disabled={currentPage === 1}
-                          className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className={`flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            currentPage === 1 ? 'text-gray-400' : 'text-gray-600'
+                          }`}
                           style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '999px',
-                            borderColor: '#D1D5DB'
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '999px'
                           }}
                         >
-                          <ChevronLeft size={16} style={{ color: '#000000' }} />
+                          <ChevronLeft size={20} />
                         </button>
 
-                        <div className="flex items-center space-x-2">
-                          {[...Array(totalPages)].map((_, i) => {
-                            const pageNum = i + 1;
-                            if (
-                              pageNum === 1 ||
-                              pageNum === totalPages ||
-                              (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
-                            ) {
+                        <div className="flex items-center space-x-1">
+                          {generateMainPaginationButtons().map((pageNum, index) => {
+                            if (pageNum === '...') {
                               return (
-                                <button
-                                  key={pageNum}
-                                  onClick={() => setCurrentPage(pageNum)}
-                                  className={`flex items-center justify-center font-medium transition-colors ${
-                                    currentPage === pageNum
-                                      ? "bg-gray-900 text-white"
-                                      : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
-                                  }`}
+                                <span
+                                  key={`ellipsis-${index}`}
+                                  className="text-gray-400 flex items-center justify-center"
                                   style={{
                                     width: '32px',
                                     height: '32px',
-                                    borderRadius: '8px',
-                                    fontSize: '14px',
-                                    borderColor: '#D1D5DB',
-                                    color: currentPage === pageNum ? '#FFFFFF' : '#6B7280'
-                                  }}
-                                >
-                                  {pageNum}
-                                </button>
-                              );
-                            } else if (
-                              pageNum === currentPage - 2 ||
-                              pageNum === currentPage + 2
-                            ) {
-                              return (
-                                <span 
-                                  className="text-gray-400"
-                                  style={{ 
-                                    fontSize: '14px',
-                                    color: '#6B7280'
+                                    fontSize: '14px'
                                   }}
                                 >
                                   ...
                                 </span>
                               );
                             }
-                            return null;
+                           
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => setCurrentPage(pageNum)}
+                                className={`flex items-center justify-center font-medium transition-colors ${
+                                  currentPage === pageNum
+                                    ? "text-grenat font-bold"
+                                    : "text-gray-600 hover:text-gray-800"
+                                }`}
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '8px',
+                                  fontSize: '14px'
+                                }}
+                              >
+                                {pageNum}
+                              </button>
+                            );
                           })}
                         </div>
 
                         <button
                           onClick={nextPage}
                           disabled={currentPage === totalPages}
-                          className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className={`flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            currentPage === totalPages ? 'text-gray-400' : 'text-gray-600'
+                          }`}
                           style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '999px',
-                            borderColor: '#D1D5DB'
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '999px'
                           }}
                         >
-                          <ChevronRight size={16} style={{ color: '#000000' }} />
+                          <ChevronRight size={20} />
                         </button>
                       </div>
                     </div>
@@ -2928,17 +3167,17 @@ export default function ResidencePage({
                   <button
                     onClick={handleCloseModal}
                     className="mr-3 bg-gray-200 border-white-400 hover:bg-white rounded-xl transition-colors flex items-center justify-center shadow-3xl"
-                    style={{ 
-                      width: '30px', 
+                    style={{
+                      width: '30px',
                       height: '30px',
                       color: '#374151'
                     }}
                   >
                     <ArrowLeft size={20} />
                   </button>
-                  <h1 
+                  <h1
                     className="text-black font-bold"
-                    style={{ 
+                    style={{
                       fontSize: '30px',
                       fontWeight: '700',
                       color: '#000000'
@@ -2949,7 +3188,7 @@ export default function ResidencePage({
                 </div>
               </div>
 
-              <div 
+              <div
                 className="mb-6 bg-white rounded-2xl p-6"
                 style={{
                   width: '100%',
@@ -2960,12 +3199,12 @@ export default function ResidencePage({
                 }}
               >
                 <div className="flex h-full">
-                  <div 
+                  <div
                     className="mr-6 flex-shrink-0 cursor-pointer relative group"
                     onClick={() => {
                       if (!selectedResidence.photos || selectedResidence.photos.length === 0) {
                         handleDirectPhotoUpload();
-                      } 
+                      }
                       else {
                         handleOpenImageModal(currentPhotoIndex);
                       }
@@ -2995,7 +3234,7 @@ export default function ResidencePage({
                             e.target.parentElement.classList.add("flex", "items-center", "justify-center", "bg-gray-200");
                           }}
                         />
-                        
+                       
                         {selectedResidence.photos.length > 1 && (
                           <>
                             <button
@@ -3004,8 +3243,8 @@ export default function ResidencePage({
                                 handlePrevImage();
                               }}
                               className="absolute left-2 top-1/2 transform -translate-y-1/2 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm opacity-0 group-hover:opacity-100"
-                              style={{ 
-                                width: '28px', 
+                              style={{
+                                width: '28px',
                                 height: '28px'
                               }}
                             >
@@ -3017,21 +3256,21 @@ export default function ResidencePage({
                                 handleNextImage();
                               }}
                               className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm opacity-0 group-hover:opacity-100"
-                              style={{ 
-                                width: '28px', 
+                              style={{
+                                width: '28px',
                                 height: '28px'
                               }}
                             >
                               <ChevronRight size={16} />
                             </button>
-                            
+                           
                             <div className="absolute bottom-2 left-0 right-0 flex justify-center space-x-1">
                               {selectedResidence.photos.map((_, index) => (
                                 <div
                                   key={index}
                                   className={`w-1.5 h-1.5 rounded-full ${
-                                    index === currentPhotoIndex 
-                                      ? 'bg-white' 
+                                    index === currentPhotoIndex
+                                      ? 'bg-white'
                                       : 'bg-white/50'
                                   }`}
                                 />
@@ -3039,11 +3278,11 @@ export default function ResidencePage({
                             </div>
                           </>
                         )}
-                        
+                       
                         <div className="absolute top-2 right-2 bg-black/60 text-white text-xs rounded-full px-2 py-1 backdrop-blur-sm">
                           {currentPhotoIndex + 1}/{selectedResidence.photos.length}
                         </div>
-                        
+                       
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                           <Eye size={24} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
@@ -3063,9 +3302,9 @@ export default function ResidencePage({
                   <div className="flex-1 flex">
                     <div className="flex-1 pr-8 flex flex-col justify-between">
                       <div>
-                        <h2 
+                        <h2
                           className="font-semibold text-black mb-3"
-                          style={{ 
+                          style={{
                             fontSize: '19px',
                             fontWeight: '600',
                             color: '#000000'
@@ -3073,12 +3312,12 @@ export default function ResidencePage({
                         >
                           {selectedResidence.nom_residence || selectedResidence.name || t('nameNotSpecified')}
                         </h2>
-                        
+                       
                         <div className="flex items-center mb-2">
                           <MapPin size={14} className="text-gray-500 mr-2" style={{ color: '#6B7280' }} />
-                          <span 
+                          <span
                             className="text-gray-700"
-                            style={{ 
+                            style={{
                               fontSize: '14px',
                               color: '#374151'
                             }}
@@ -3086,12 +3325,12 @@ export default function ResidencePage({
                             {selectedResidence.adresse || t('addressNotAvailable')}
                           </span>
                         </div>
-                        
+                       
                         <div className="flex items-center mb-2">
                           <Users size={14} className="text-gray-500 mr-2" style={{ color: '#6B7280' }} />
-                          <span 
+                          <span
                             className="font-medium text-gray-700"
-                            style={{ 
+                            style={{
                               fontSize: '14px',
                               color: '#374151'
                             }}
@@ -3099,12 +3338,12 @@ export default function ResidencePage({
                             {selectedResidence.totalResidents || 0} {t('residents')}
                           </span>
                         </div>
-                        
+                       
                         <div className="flex items-center pt-2">
                           <div className="flex items-center mr-4">
-                            <span 
+                            <span
                               className="font-medium"
-                              style={{ 
+                              style={{
                                 fontSize: '14px',
                                 color: '#000000'
                               }}
@@ -3114,9 +3353,9 @@ export default function ResidencePage({
                           </div>
                           <div className="text-gray-400 mr-4">•</div>
                           <div className="flex items-center">
-                            <span 
+                            <span
                               className="font-medium"
-                              style={{ 
+                              style={{
                                 fontSize: '14px',
                                 color: '#000000'
                               }}
@@ -3132,9 +3371,9 @@ export default function ResidencePage({
               </div>
 
               <div className="mb-4 flex items-center justify-between">
-                <div 
+                <div
                   className="font-semibold"
-                  style={{ 
+                  style={{
                     fontSize: '16px',
                     fontWeight: '600',
                     color: '#000000'
@@ -3172,9 +3411,9 @@ export default function ResidencePage({
                           <td colSpan="6" className="px-4 py-16 text-center">
                             <div className="text-center">
                               <Users className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                              <div 
+                              <div
                                 className="text-gray-500 mb-4"
-                                style={{ 
+                                style={{
                                   fontSize: '14px',
                                   color: '#6B7280'
                                 }}
@@ -3192,12 +3431,6 @@ export default function ResidencePage({
                           />
                         ))
                       )}
-                      
-                      {Array.from({ length: Math.max(0, residentsPerPageInModal - currentResidentsInModal.length) }).map((_, index) => (
-                        <tr key={`empty-${index}`} className="border-b border-gray-200" style={{ height: '60px' }}>
-                          <td colSpan="6" className="px-4 py-3 bg-white"></td>
-                        </tr>
-                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -3210,78 +3443,80 @@ export default function ResidencePage({
                           borderRadius: '999px',
                           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
                           height: '40px',
-                          width: '220px',
+                          width: 'auto',
+                          minWidth: '220px',
+                          maxWidth: '400px',
                           justifyContent: 'center'
                         }}
                       >
                         <button
                           onClick={() => setResidentPage(prev => Math.max(1, prev - 1))}
                           disabled={residentPage === 1}
-                          className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className={`flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            residentPage === 1 ? 'text-gray-400' : 'text-gray-600'
+                          }`}
                           style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '999px',
-                            borderColor: '#D1D5DB'
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '999px'
                           }}
                         >
-                          <ChevronLeft size={16} style={{ color: '#000000' }} />
+                          <ChevronLeft size={20} />
                         </button>
 
-                        <div className="flex items-center space-x-2">
-                          {[...Array(totalResidentPages)].map((_, i) => {
-                            const pageNum = i + 1;
-                            if (
-                              pageNum === 1 ||
-                              pageNum === totalResidentPages ||
-                              (pageNum >= residentPage - 1 && pageNum <= residentPage + 1)
-                            ) {
+                        <div className="flex items-center space-x-1">
+                          {generateResidentPaginationButtons().map((pageNum, index) => {
+                            if (pageNum === '...') {
                               return (
-                                <button
-                                  key={pageNum}
-                                  onClick={() => setResidentPage(pageNum)}
-                                  className={`flex items-center justify-center font-medium transition-colors ${
-                                    residentPage === pageNum
-                                      ? "bg-gray-900 text-white"
-                                      : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
-                                  }`}
+                                <span
+                                  key={`ellipsis-${index}`}
+                                  className="text-gray-400 flex items-center justify-center"
                                   style={{
                                     width: '32px',
                                     height: '32px',
-                                    borderRadius: '8px',
-                                    fontSize: '14px',
-                                    borderColor: '#D1D5DB'
+                                    fontSize: '14px'
                                   }}
                                 >
-                                  {pageNum}
-                                </button>
-                              );
-                            } else if (
-                              pageNum === residentPage - 2 ||
-                              pageNum === residentPage + 2
-                            ) {
-                              return (
-                                <span className="text-gray-400" style={{ fontSize: '14px', color: '#6B7280' }}>
                                   ...
                                 </span>
                               );
                             }
-                            return null;
+                           
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => setResidentPage(pageNum)}
+                                className={`flex items-center justify-center font-medium transition-colors ${
+                                  residentPage === pageNum
+                                    ? "text-grenat font-bold"
+                                    : "text-gray-600 hover:text-gray-800"
+                                }`}
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '8px',
+                                  fontSize: '14px'
+                                }}
+                              >
+                                {pageNum}
+                              </button>
+                            );
                           })}
                         </div>
 
                         <button
                           onClick={() => setResidentPage(prev => Math.min(totalResidentPages, prev + 1))}
                           disabled={residentPage === totalResidentPages}
-                          className="flex items-center justify-center bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className={`flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            residentPage === totalResidentPages ? 'text-gray-400' : 'text-gray-600'
+                          }`}
                           style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '999px',
-                            borderColor: '#D1D5DB'
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '999px'
                           }}
                         >
-                          <ChevronRight size={16} style={{ color: '#000000' }} />
+                          <ChevronRight size={20} />
                         </button>
                       </div>
                     </div>

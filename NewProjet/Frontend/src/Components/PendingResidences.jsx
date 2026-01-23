@@ -127,9 +127,9 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
         
         markNotificationAsRead(foundResidence.id);
         
-        setReviewNotes(t('notification') + ' ' + t('for') + ' ' + t('residence') + ' "' + 
-                      (foundResidence.residence_data?.lot || '') + '" - ' +
-                      t('submittedBy') + ': ' + (foundResidence.submitter_name || ''));
+        // Ne pas pré-remplir les notes pour les notifications
+        // Laisser la zone de texte vide
+        setReviewNotes('');
         
         setTimeout(() => {
           const selectedElement = document.querySelector(`[data-residence-id="${foundResidence.id}"]`);
@@ -152,8 +152,8 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
   // GESTIONNAIRE POUR CLIQUER SUR UNE RÉSIDENCE
   const handleResidenceClick = (residence) => {
     setSelectedResidence(residence);
-    setReviewNotes(t('residence') + ' "' + (residence.residence_data?.lot || '') + '" - ' +
-                  t('neighborhood') + ': ' + translateValue(residence.residence_data?.quartier) || '');
+    // Réinitialiser les notes à vide lorsqu'on clique sur une résidence
+    setReviewNotes('');
     
     if (residence.id === residenceToSelect && !notificationCleared) {
       markNotificationAsRead(residence.id);
@@ -346,47 +346,45 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
 
             <div className="space-y-4 mb-6">
               <div className="bg-white/50 p-4 rounded-lg border border-gray-200/60">
-                <h4 className="font-semibold text-gray-700 mb-2">{t('residenceInformation')}</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">{t('lotNumber')}:</span>
-                    <span className="font-medium text-gray-800">{translateValue(selectedResidence.residence_data?.lot) || t('notSpecified')}</span>
+                <h4 className="font-semibold text-gray-700 mb-3">{t('residenceInformation')}</h4>
+                <div className="space-y-3 text-sm">
+                  <div className="text-gray-800">
+                    <span className="font-medium text-gray-600">{t('lotNumber')} : </span>
+                    {translateValue(selectedResidence.residence_data?.lot) || t('notSpecified')}
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">{t('neighborhood')}:</span>
-                    <span className="font-medium text-gray-800">{translateValue(selectedResidence.residence_data?.quartier) || t('notSpecified')}</span>
+                  <div className="text-gray-800">
+                    <span className="font-medium text-gray-600">{t('neighborhood')} : </span>
+                    {translateValue(selectedResidence.residence_data?.quartier) || t('notSpecified')}
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">{t('city')}:</span>
-                    <span className="font-medium text-gray-800">{translateValue(selectedResidence.residence_data?.ville) || t('notSpecified')}</span>
+                  <div className="text-gray-800">
+                    <span className="font-medium text-gray-600">{t('city')} : </span>
+                    {translateValue(selectedResidence.residence_data?.ville) || t('notSpecified')}
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">{t('coordinates')}:</span>
-                    <span className="font-medium text-gray-800">
-                      {selectedResidence.residence_data?.lat?.toFixed(6) || 'N/A'}, {selectedResidence.residence_data?.lng?.toFixed(6) || 'N/A'}
-                    </span>
+                  <div className="text-gray-800">
+                    <span className="font-medium text-gray-600">{t('coordinates')} : </span>
+                    {selectedResidence.residence_data?.lat?.toFixed(6) || 'N/A'}, {selectedResidence.residence_data?.lng?.toFixed(6) || 'N/A'}
                   </div>
                 </div>
               </div>
 
               <div className="bg-white/50 p-4 rounded-lg border border-gray-200/60">
-                <h4 className="font-semibold text-gray-700 mb-2">{t('agentInformation')}</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">{t('name')}:</span>
-                    <span className="font-medium text-gray-800">{selectedResidence.submitter_name || t('notSpecified')}</span>
+                <h4 className="font-semibold text-gray-700 mb-3">{t('agentInformation')}</h4>
+                <div className="space-y-3 text-sm">
+                  <div className="text-gray-800">
+                    <span className="font-medium text-gray-600">{t('name')}: </span>
+                    {selectedResidence.submitter_name || t('notSpecified')}
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">{t('registration')}:</span>
-                    <span className="font-medium text-gray-800">{selectedResidence.submitter_immatricule || t('notSpecified')}</span>
+                  <div className="text-gray-800">
+                    <span className="font-medium text-gray-600">{t('registration')}: </span>
+                    {selectedResidence.submitter_immatricule || t('notSpecified')}
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">{t('fokontany')}:</span>
-                    <span className="font-medium text-gray-800">{selectedResidence.fokontany_nom || t('notSpecified')}</span>
+                  <div className="text-gray-800">
+                    <span className="font-medium text-gray-600">{t('fokontany')}: </span>
+                    {selectedResidence.fokontany_nom || t('notSpecified')}
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">{t('submissionDate')}:</span>
-                    <span className="font-medium text-gray-800">{formatDate(selectedResidence.created_at)}</span>
+                  <div className="text-gray-800">
+                    <span className="font-medium text-gray-600">{t('submissionDate')}: </span>
+                    {formatDate(selectedResidence.created_at)}
                   </div>
                 </div>
               </div>
@@ -407,19 +405,19 @@ const PendingResidences = ({ onBack, onResidenceApproved, residenceToSelect }) =
 
             <div className="flex space-x-4">
               <button
-                onClick={() => handleApprove(selectedResidence.id)}
-                className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
-              >
-                <Check size={20} />
-                <span>{t('approve')}</span>
-              </button>
-              
-              <button
                 onClick={() => handleReject(selectedResidence.id)}
-                className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-white text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <X size={20} />
                 <span>{t('reject')}</span>
+              </button>
+              
+              <button
+                onClick={() => handleApprove(selectedResidence.id)}
+                className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Check size={20} />
+                <span>{t('approve')}</span>
               </button>
             </div>
           </div>

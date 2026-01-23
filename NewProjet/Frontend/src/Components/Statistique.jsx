@@ -41,6 +41,34 @@ const Statistique = ({ onBack }) => {
             "Juil", "Août", "Sep", "Oct", "Nov", "Dec"];
   };
 
+  // Fonction pour formater la date selon la langue
+  const formatLocalizedDate = () => {
+    const now = new Date();
+    const currentLang = i18n.language;
+    
+    if (currentLang === 'mg') {
+      // Formater la date en malagasy
+      const jours = ["Alahady", "Alatsinainy", "Talata", "Alarobia", "Alakamisy", "Zoma", "Sabotsy"];
+      const mois = ["Janoary", "Febroary", "Martsa", "Aprily", "Mey", "Jona", 
+                   "Jolay", "Aogositra", "Septambra", "Oktobra", "Novambra", "Desambra"];
+      
+      const jourSemaine = jours[now.getDay()];
+      const jour = now.getDate();
+      const moisNom = mois[now.getMonth()];
+      const annee = now.getFullYear();
+      
+      return `${jourSemaine}, ${jour} ${moisNom} ${annee}`;
+    }
+    
+    // Par défaut en français
+    return now.toLocaleDateString('fr-FR', {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
   // Charger l'utilisateur courant et son fokontany
   useEffect(() => {
     const loadCurrentUser = async () => {
@@ -273,13 +301,8 @@ const Statistique = ({ onBack }) => {
   const genererPDF = () => {
     if (!statistics) return;
 
-    const locale = i18n.language === 'mg' ? 'mg-MG' : 'fr-FR';
-    const date = new Date().toLocaleDateString(locale, {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    // Utiliser la nouvelle fonction pour formater la date
+    const date = formatLocalizedDate();
 
     const content = `
       <!DOCTYPE html>

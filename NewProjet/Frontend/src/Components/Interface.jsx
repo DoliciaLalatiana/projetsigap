@@ -62,28 +62,6 @@ const ANDABOLY_CENTER = {
   lng: ANDABOLY_POLYGON.reduce((sum, point) => sum + point.lng, 0) / ANDABOLY_POLYGON.length
 };
 
-// Fonction utilitaire pour vérifier si un point est dans un polygon
-const isPointInPolygon = (point, polygon) => {
-  if (!point || !polygon || !Array.isArray(polygon) || polygon.length === 0) return false;
-
-  const x = Number(point.lng), y = Number(point.lat);
-  if (Number.isNaN(x) || Number.isNaN(y)) return false;
-
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const xi = Number(polygon[i].lng), yi = Number(polygon[i].lat);
-    const xj = Number(polygon[j].lng), yj = Number(polygon[j].lat);
-    if ([xi, yi, xj, yj].some(v => Number.isNaN(v))) continue;
-
-    const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-    if (intersect) inside = !inside;
-  }
-  return inside;
-};
-
-// Configuration de l'URL de base pour l'API (compatible Vite)
-const API_BASE = import.meta.env.VITE_API_BASE || '';
-
 // Fonction pour formater la date des notifications
 const formatNotificationDate = (dateString) => {
   const notificationDate = new Date(dateString);
@@ -114,6 +92,167 @@ const formatNotificationDate = (dateString) => {
   }
 };
 
+// Fonction utilitaire pour vérifier si un point est dans un polygon
+const isPointInPolygon = (point, polygon) => {
+  if (!point || !polygon || !Array.isArray(polygon) || polygon.length === 0) return false;
+
+  const x = Number(point.lng), y = Number(point.lat);
+  if (Number.isNaN(x) || Number.isNaN(y)) return false;
+
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = Number(polygon[i].lng), yi = Number(polygon[i].lat);
+    const xj = Number(polygon[j].lng), yj = Number(polygon[j].lat);
+    if ([xi, yi, xj, yj].some(v => Number.isNaN(v))) continue;
+
+    const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
+
+// Configuration de l'URL de base pour l'API (compatible Vite)
+const API_BASE = import.meta.env.VITE_API_BASE || '';
+
+// Fonction pour traduire les messages de notification mixtes - CORRIGÉE ET SIMPLIFIÉE
+const translateNotificationMessage = (message, t, i18n) => {
+  if (!message) return message;
+
+  console.log('[TRAD] Message original à traduire:', message);
+  console.log('[TRAD] Langue actuelle:', i18n.language);
+
+  const isFrenchToMalagasy = i18n.language === "mg";
+ 
+  // Si le message est vide ou null, retourner tel quel
+  if (!message || message.trim() === '') return message;
+ 
+  // Créer une copie pour travailler
+  let translated = message;
+ 
+  if (isFrenchToMalagasy) {
+    // Traduction français -> malgache COMPLÈTE
+    translated = translated
+      // Titres
+      .replace(/Résidence approuvée/g, 'Trano fonenana ekena')
+      .replace(/Résidence rejetée/g, 'Trano fonenana nolavina')  // CORRECTION ICI
+      .replace(/Nouvelle résidence à approuver/g, 'Trano fonenana vaovao tokony ankatoavina')
+      .replace(/Nouvelle Trano fonenana à approuver/g, 'Trano fonenana vaovao tokony ankatoavina')
+     
+      // Phrases complètes
+      .replace(/Votre résidence a été approuvée/g, 'Ny fonenanareo dia ekena')
+      .replace(/Votre résidence a été rejetée/g, 'Ny fonenanareo dia nolavina')  // CORRECTION ICI
+      .replace(/Votre résidence est rejetée/g, 'Ny fonenanareo dia nolavina')    // CORRECTION ICI
+      .replace(/Votre résidence est approuvée/g, 'Ny fonenanareo dia ekena')
+      .replace(/a été approuvée/g, 'dia ekena')
+      .replace(/a été rejetée/g, 'dia nolavina')  // CORRECTION ICI
+      .replace(/est rejetée/g, 'dia nolavina')    // CORRECTION ICI
+      .replace(/est approuvée/g, 'dia ekena')
+      .replace(/a été/g, 'dia')
+      .replace(/est/g, 'dia')
+     
+      // CORRECTION SPÉCIFIQUE pour "nonyvina" -> "nolavina"
+      .replace(/nonyvina/g, 'nolavina')
+     
+      // Autres termes
+      .replace(/Motif:/g, 'Antony:')
+      .replace(/Raison:/g, 'Antony:')
+      .replace(/notification pour Résidence/g, 'fampandrenesana ho an\'ny trano fonenana')
+      .replace(/notification pour le/g, 'fampandrenesana ho an\'ny')
+      .replace(/notification pour/g, 'fampandrenesana ho an\'ny')
+      .replace(/Soumis par/g, 'Nampitondrain\'i')
+      .replace(/Soumis par:/g, 'Nampitondrain\'i:')
+      .replace(/Quartier:/g, 'Fari-tany:')
+      .replace(/Quartier non spécifié/g, 'Fari-tany tsy fantatra')
+      .replace(/Quartier inconnu/g, 'Fari-tany tsy fantatra')
+      .replace(/Agent M/g, 'Agent M')
+      .replace(/Agent inconnu/g, 'Agent tsy fantatra')
+     
+      // Structure des messages
+      .replace(/Résidence "(\d+)" - Quartier:/g, 'Trano fonenana "$1" - Fari-tany:')
+      .replace(/Résidence "([^"]+)" - Soumis par:/g, 'Trano fonenana "$1" - Nampitondrain\'i:')
+     
+      // Mots individuels
+      .replace(/Résidence/g, 'Trano fonenana')
+      .replace(/résidence/g, 'trano fonenana')
+      .replace(/approuvée/g, 'ekena')
+      .replace(/rejetée/g, 'nolavina')  // CORRECTION ICI
+      .replace(/rejetée\./g, 'nolavina.')  // Avec point
+      .replace(/rejetée:/g, 'nolavina:')    // Avec deux-points
+      .replace(/nouvelle/g, 'vaovao')
+      .replace(/notification/g, 'fampandrenesana')
+      .replace(/pour/g, 'ho an\'ny')
+      .replace(/le/g, 'ny')
+      .replace(/la/g, 'ny')
+      .replace(/des/g, 'ny')
+      .replace(/un/g, 'ny');
+     
+    // Correction spécifique pour les messages avec "Lot XX"
+    const lotMatch = translated.match(/\(Lot (\d+)\)/);
+    if (lotMatch) {
+      const lotNumber = lotMatch[1];
+      translated = translated.replace(/\(Lot \d+\)/, `(Lot ${lotNumber})`);
+    }
+   
+  } else {
+    // Traduction malgache -> français COMPLÈTE
+    translated = translated
+      // Titres
+      .replace(/Trano fonenana ekena/g, 'Résidence approuvée')
+      .replace(/Trano fonenana nolavina/g, 'Résidence rejetée')
+      .replace(/Trano fonenana vaovao tokony ankatoavina/g, 'Nouvelle résidence à approuver')
+      .replace(/Trano fonenana nonyvina/g, 'Résidence rejetée')  // CORRECTION pour le typo
+     
+      // Phrases complètes
+      .replace(/Ny fonenanareo dia ekena/g, 'Votre résidence a été approuvée')
+      .replace(/Ny fonenanareo dia nolavina/g, 'Votre résidence a été rejetée')
+      .replace(/Ny fonenanareo dia nonyvina/g, 'Votre résidence a été rejetée')  // CORRECTION pour le typo
+      .replace(/dia ekena/g, 'a été approuvée')
+      .replace(/dia nolavina/g, 'a été rejetée')
+      .replace(/dia nonyvina/g, 'a été rejetée')  // CORRECTION pour le typo
+     
+      // Autres termes
+      .replace(/Antony:/g, 'Motif:')
+      .replace(/fampandrenesana ho an'ny trano fonenana/g, 'notification pour Résidence')
+      .replace(/fampandrenesana ho an'ny/g, 'notification pour le')
+      .replace(/Nampitondrain'i/g, 'Soumis par')
+      .replace(/Nampitondrain'i:/g, 'Soumis par:')
+      .replace(/Fari-tany:/g, 'Quartier:')
+      .replace(/Fari-tany tsy fantatra/g, 'Quartier non spécifié')
+      .replace(/Agent tsy fantatra/g, 'Agent inconnu')
+     
+      // Structure des messages
+      .replace(/Trano fonenana "(\d+)" - Fari-tany:/g, 'Résidence "$1" - Quartier:')
+      .replace(/Trano fonenana "([^"]+)" - Nampitondrain'i:/g, 'Résidence "$1" - Soumis par:')
+     
+      // Mots individuels
+      .replace(/Trano fonenana/g, 'Résidence')
+      .replace(/trano fonenana/g, 'résidence')
+      .replace(/ekena/g, 'approuvée')
+      .replace(/ekena\./g, 'approuvée.')
+      .replace(/nolavina/g, 'rejetée')
+      .replace(/nolavina\./g, 'rejetée.')
+      .replace(/nonyvina/g, 'rejetée')  // CORRECTION pour le typo
+      .replace(/nonyvina\./g, 'rejetée.')  // CORRECTION pour le typo
+      .replace(/vaovao/g, 'nouvelle')
+      .replace(/fampandrenesana/g, 'notification')
+      .replace(/ho an'ny/g, 'pour le')
+      .replace(/ny/g, 'le');
+     
+    // Correction spécifique pour les messages avec "Lot XX" en malgache
+    const lotMatch = translated.match(/\(Lot (\d+)\)/);
+    if (lotMatch) {
+      const lotNumber = lotMatch[1];
+      translated = translated.replace(/\(Lot \d+\)/, `(Lot ${lotNumber})`);
+    }
+  }
+ 
+  // Nettoyer les doublons ou espaces inutiles
+  translated = translated.replace(/\s+/g, ' ').trim();
+ 
+  console.log('[TRAD] Message traduit:', translated);
+  return translated;
+};
+
 // Fonction utilitaire pour gérer les réponses API
 const handleApiResponse = async (response) => {
   if (response.status === 401) {
@@ -141,10 +280,14 @@ export default function Interface({ user }) {
   const { t, i18n } = useTranslation();
   const [openDropdown, setOpenDropdown] = useState(false);
   const [menuDropdownOpen, setMenuDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+ 
+  // ÉTATS DE RECHERCHE SÉPARÉS
+  const [interfaceSearchQuery, setInterfaceSearchQuery] = useState(""); // Pour la recherche dans l'interface/carte
+  const [residenceSearchQuery, setResidenceSearchQuery] = useState(""); // Pour la recherche dans la page résidence
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
+ 
   const [showStatistique, setShowStatistique] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [currentUser, setCurrentUser] = useState(user);
@@ -201,6 +344,33 @@ export default function Interface({ user }) {
   const residentFieldsRef = useRef(null);
   const searchResultsModalRef = useRef(null); // NOUVELLE REF POUR LE MODAL DES RÉSULTATS
 
+  // Références pour les champs des résidents (nouveau du deuxième code)
+  const residentInputRefs = useRef([]);
+
+  // Fonction pour traduire les messages de notification (nouveau du deuxième code)
+  const translateMessage = (message) => {
+    return translateNotificationMessage(message, t, i18n);
+  };
+
+  // Fonction pour obtenir le placeholder de recherche CORRIGÉE
+  const getSearchPlaceholder = () => {
+    if (showResidence) {
+      // Si on est dans la page résidence en mode détail
+      if (residenceDetailMode) {
+        return t('searchPlaceholderPersons');
+      }
+      // Si on est dans la page résidence en mode liste
+      return t('searchPlaceholderResidences');
+    } else if (showStatistique || showUserPage || showPendingResidences) {
+      return t('searchDisabled');
+    } else {
+      return t('searchPlaceholder');
+    }
+  };
+
+  // Variable pour désactiver la recherche - DÉFINIE APRÈS getSearchPlaceholder
+  const isSearchDisabled = showStatistique || showUserPage || showPendingResidences;
+
   const createCustomMarkerIcon = (color) => {
     let svg = '';
 
@@ -239,11 +409,11 @@ export default function Interface({ user }) {
 
   const getUserInitial = () => {
     if (!currentUser) return "U";
-    
+   
     if (currentUser.first_name && currentUser.first_name.trim()) {
       return currentUser.first_name.charAt(0).toUpperCase();
     }
-    
+   
     if (currentUser.nom_complet) {
       const parts = currentUser.nom_complet.trim().split(/\s+/);
       if (parts.length > 0) {
@@ -251,15 +421,15 @@ export default function Interface({ user }) {
       }
       return currentUser.nom_complet.charAt(0).toUpperCase();
     }
-    
+   
     if (currentUser.username && currentUser.username.trim()) {
       return currentUser.username.charAt(0).toUpperCase();
     }
-    
+   
     if (currentUser.nom && currentUser.nom.trim()) {
       return currentUser.nom.charAt(0).toUpperCase();
     }
-    
+   
     return "U";
   };
 
@@ -367,9 +537,8 @@ export default function Interface({ user }) {
   const handleNotificationClick = async (notification) => {
     console.log('=== CLIC SUR NOTIFICATION ===');
     console.log('Notification complète:', notification);
-    console.log('Métadonnées:', notification.metadata);
-    console.log('Message:', notification.message);
-    console.log('Type:', notification.type);
+    console.log('Message original:', notification.message);
+    console.log('Message traduit:', translateMessage(notification.message));
 
     await markAsRead(notification.id);
 
@@ -408,10 +577,10 @@ export default function Interface({ user }) {
     try {
       console.log('[RES] fetchResidences: starting... with fokontanyName:', fokontanyName);
       let url = `${API_BASE}/api/residences`;
-      
+     
       // Utiliser fokontanyName ou le nom de l'utilisateur
       const fokontanyToUse = fokontanyName || currentUser?.fokontany?.nom || 'Andaboly';
-      
+     
       if (fokontanyToUse) {
         url += `?fokontany=${encodeURIComponent(fokontanyToUse)}`;
         console.log('[RES] Fetching with fokontany:', fokontanyToUse);
@@ -434,14 +603,15 @@ export default function Interface({ user }) {
     }
   };
 
-  const performSearch = async (query) => {
+  const performSearch = async (query, isResidenceSearch = false) => {
     if (query.trim() === '') {
       setSearchResults([]);
       setShowSearchResults(false);
       return;
     }
 
-    if (showResidence) {
+    // Si c'est une recherche dans la page résidence, ne pas afficher les résultats dans l'interface
+    if (isResidenceSearch && showResidence) {
       setShowSearchResults(false);
       setSearchResults([]);
       return;
@@ -457,8 +627,8 @@ export default function Interface({ user }) {
         return;
       }
 
-      console.log('[SEARCH] Performing search for:', query);
-      
+      console.log('[SEARCH] Performing search for:', query, 'isResidenceSearch:', isResidenceSearch);
+     
       const response = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -470,13 +640,12 @@ export default function Interface({ user }) {
         const data = await response.json();
         console.log('[SEARCH] Search results received:', data);
         setSearchResults(data);
-        setShowSearchResults(true);
-
-        if (showResidence) {
-          console.log("[SEARCH] Recherche dans les résidences:", data);
+       
+        // Afficher les résultats seulement si c'est une recherche d'interface (pas de résidence)
+        if (!isResidenceSearch && !showResidence) {
+          setShowSearchResults(true);
+        } else {
           setShowSearchResults(false);
-        } else if (!isAnyPageOpen) {
-          console.log("[SEARCH] Résultats de recherche sur carte:", data);
         }
       } else if (response.status === 401) {
         console.error('[SEARCH] Token invalid');
@@ -490,78 +659,84 @@ export default function Interface({ user }) {
     }
   };
 
-  const handleSearchSubmit = (e) => {
+  const handleInterfaceSearchSubmit = (e) => {
     e.preventDefault();
 
-    if (searchQuery.trim() === '') {
+    if (interfaceSearchQuery.trim() === '') {
       setShowSearchResults(false);
       return;
     }
 
-    if (showResidence) {
-      setShowSearchResults(false);
-      console.log("Recherche dans les résidences:", searchQuery);
-      return;
-    }
-
-    performSearch(searchQuery);
-
-    if (showResidence) {
-      console.log("Recherche dans les résidences:", searchQuery);
-    } else if (showStatistique || showUserPage || showPendingResidences) {
-      return;
-    } else {
-      console.log("Recherche sur la carte:", searchQuery);
-    }
+    // Recherche dans l'interface (carte)
+    performSearch(interfaceSearchQuery, false);
   };
 
-  // FONCTION POUR AFFICHER UNE RÉSIDENCE SUR LA CARTE (comme dans ResidencePage.jsx)
+  const handleResidenceSearchSubmit = (e) => {
+    e.preventDefault();
+
+    if (residenceSearchQuery.trim() === '') {
+      return;
+    }
+
+    // Recherche dans la page résidence
+    console.log("Recherche dans les résidences:", residenceSearchQuery);
+    // La recherche dans les résidences est gérée par le composant ResidencePage
+  };
+
+  // NOUVELLE FONCTION MODIFIÉE : CENTRER LA CARTE SUR UNE POSITION EN CONSERVANT LE ZOOM ACTUEL
+  const centerMapToPosition = (lat, lng) => {
+    if (!map) {
+      console.warn('[MAP] Carte non disponible pour centrage');
+      return;
+    }
+
+    console.log('[MAP] Centrage sur position avec zoom actuel:', { lat, lng });
+
+    // Récupérer le niveau de zoom ACTUEL
+    const currentZoom = map.getZoom();
+   
+    // Centrer la carte sur la nouvelle position avec le ZOOM ACTUEL
+    // Utiliser setCenter pour garder exactement le même zoom
+    map.setCenter({ lat: parseFloat(lat), lng: parseFloat(lng) });
+   
+    // S'assurer que le zoom reste exactement le même (déjà le cas avec setCenter)
+    console.log('[MAP] Zoom conservé:', currentZoom);
+
+    // Animer le déplacement avec panTo pour une transition plus fluide
+    map.panTo({ lat: parseFloat(lat), lng: parseFloat(lng) });
+  };
+
   const handleViewOnMapFromResidence = (residence) => {
     console.log('[INTERFACE] Affichage résidence sur carte:', residence);
-
-    // Fermer toutes les pages ouvertes pour afficher la carte
+ 
+    // Fermer les pages
     setShowResidence(false);
     setResidenceDetailMode(false);
     setShowStatistique(false);
     setShowUserPage(false);
     setShowPendingResidences(false);
     setUserPageState({ showPasswordModal: false });
-    
-    // Fermer le menu dropdown et les résultats de recherche
     setMenuDropdownOpen(false);
     setShowSearchResults(false);
-
-    // Vérifier si la carte est disponible
-    if (!map) {
-      console.warn('[INTERFACE] Carte non disponible');
-      return;
-    }
-
-    // Vérifier les coordonnées (comme dans ResidencePage)
+ 
     const lat = residence.latitude || residence.lat;
     const lng = residence.longitude || residence.lng;
-
+ 
     if (lat && lng) {
       console.log('[INTERFACE] Centrage sur:', { lat: parseFloat(lat), lng: parseFloat(lng) });
-
-      // Sauvegarder l'état de la carte
-      setPreviousZoom(map.getZoom());
-      setPreviousCenter(map.getCenter());
-
-      // Centrer la carte
-      map.panTo({ lat: parseFloat(lat), lng: parseFloat(lng) });
-      map.setZoom(18);
-
-      // Mettre à jour les états
+ 
+      if (map) {
+        // JUSTE panTo - garde automatiquement le même zoom
+        map.panTo({ lat: parseFloat(lat), lng: parseFloat(lng) });
+      }
+ 
       setClickedResidenceId(residence.id);
       setSelectedResidenceFromSearch(residence);
-
-      // Ajouter à la liste si nécessaire
+ 
       if (!residences.some(r => r.id === residence.id)) {
         setResidences(prev => [residence, ...prev]);
       }
     } else {
-      console.warn('[INTERFACE] Résidence sans coordonnées:', residence);
       alert(t('noCoordinates'));
     }
   };
@@ -577,7 +752,7 @@ export default function Interface({ user }) {
     setShowUserPage(false);
     setShowPendingResidences(false);
     setUserPageState({ showPasswordModal: false });
-    
+   
     // Fermer les menus
     setMenuDropdownOpen(false);
     setShowSearchResults(false);
@@ -586,7 +761,7 @@ export default function Interface({ user }) {
     if (person.residences && person.residences.length > 0) {
       // Prendre la première résidence (comme dans ResidencePage)
       const residence = person.residences[0];
-      
+     
       if (residence) {
         // Utiliser la même fonction que pour les résidences
         handleViewOnMapFromResidence(residence);
@@ -604,7 +779,7 @@ export default function Interface({ user }) {
     console.log('[LOG] Clic sur le résultat complet (nom/lot/adresse)');
 
     setShowSearchResults(false);
-    setSearchQuery("");
+    setInterfaceSearchQuery("");
 
     if (result.type === 'residence') {
       // Utiliser EXACTEMENT la même logique que dans ResidencePage
@@ -621,7 +796,7 @@ export default function Interface({ user }) {
     console.log('[LOG] Clic spécifique sur le bouton "Voir sur la carte"');
 
     setShowSearchResults(false);
-    setSearchQuery("");
+    setInterfaceSearchQuery("");
 
     if (result.type === 'residence') {
       handleViewOnMapFromResidence(result);
@@ -637,6 +812,7 @@ export default function Interface({ user }) {
   };
 
   const SearchResultsModal = () => {
+    // Ne montrer le modal que pour les recherches d'interface
     if (showResidence || !showSearchResults || searchResults.length === 0) return null;
 
     const searchBar = document.querySelector('.search-bar-container');
@@ -650,8 +826,8 @@ export default function Interface({ user }) {
     }
 
     return (
-      <div 
-        ref={searchResultsModalRef} // REF AJOUTÉE ICI
+      <div
+        ref={searchResultsModalRef}
         className="fixed z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto"
         style={{
           top: `${topPosition}px`,
@@ -685,14 +861,14 @@ export default function Interface({ user }) {
               className="p-3 border-b border-gray-100 hover:bg-gray-50 transition-all duration-200"
             >
               <div className="flex justify-between items-start">
-                <div 
+                <div
                   className="flex-1"
                   onClick={(e) => {
                     // Vérifier si le clic vient du bouton ou de la zone de contenu
                     const target = e.target;
-                    const isButtonClick = target.closest('button') || 
+                    const isButtonClick = target.closest('button') ||
                                           target.closest('[data-view-on-map]');
-                    
+                   
                     if (!isButtonClick) {
                       console.log('[LOG] Clic sur la zone de contenu (nom/lot/adresse) du résultat');
                       console.log('Résultat cliqué:', result);
@@ -708,7 +884,7 @@ export default function Interface({ user }) {
                         <MapPin size={16} className="text-blue-500 mr-2 flex-shrink-0" />
                         <div className="cursor-pointer hover:text-blue-600">
                           <h4 className="font-medium text-sm text-gray-800">
-                            {result.lot || 'Lot non spécifié'}
+                            {result.lot || t('lotNotSpecified')}
                           </h4>
                         </div>
                         <span className="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full flex-shrink-0">
@@ -717,7 +893,7 @@ export default function Interface({ user }) {
                         {/* Indicateur si pas de coordonnées */}
                         {!(result.lat || result.latitude) && !(result.lng || result.longitude) && (
                           <span className="ml-2 text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full flex-shrink-0">
-                            Sans coordonnées
+                            {t('noCoordinatesShort')}
                           </span>
                         )}
                       </div>
@@ -757,7 +933,7 @@ export default function Interface({ user }) {
                           <p className="text-xs text-gray-500 font-medium mb-1">{t('addresses')}:</p>
                           {result.residences.slice(0, 2).map((residence, idx) => (
                             <p key={idx} className="text-xs text-gray-600 cursor-pointer hover:text-green-600">
-                              • {residence.lot || 'Lot non spécifié'} - {residence.quartier}
+                              • {residence.lot || t('lotNotSpecified')} - {residence.quartier}
                             </p>
                           ))}
                           {result.residences.length > 2 && (
@@ -770,7 +946,7 @@ export default function Interface({ user }) {
                     </div>
                   )}
                 </div>
-                
+               
                 <button
                   data-view-on-map="true"
                   onClick={(e) => {
@@ -801,13 +977,13 @@ export default function Interface({ user }) {
     const loadAllData = async () => {
       try {
         console.log('[APP] loadAllData: starting...');
-        
+       
         // 1. Charger les notifications
         await fetchAllNotifications();
-        
+       
         // 2. Charger le fokontany de l'utilisateur
         await loadMyFokontany();
-        
+       
         // 3. Attendre que fokontanyName soit disponible puis charger les résidences
         if (fokontanyName) {
           console.log('[APP] fokontanyName disponible:', fokontanyName);
@@ -819,7 +995,7 @@ export default function Interface({ user }) {
             fetchResidences();
           }, 500);
         }
-        
+       
         setInitialDataLoaded(true);
         console.log('[APP] Toutes les données chargées');
       } catch (error) {
@@ -845,7 +1021,7 @@ export default function Interface({ user }) {
   // USE EFFECT POUR CHARGER LES RÉSIDENCES QUAND fokontanyName CHANGE
   useEffect(() => {
     console.log('[APP] useEffect fokontanyName changed:', fokontanyName);
-    
+   
     if (fokontanyName && initialDataLoaded) {
       console.log('[APP] Rechargement des résidences pour nouveau fokontany:', fokontanyName);
       fetchResidences();
@@ -857,7 +1033,7 @@ export default function Interface({ user }) {
     if (user) {
       console.log('[APP] User prop updated:', user);
       setCurrentUser(user);
-      
+     
       // Si l'utilisateur a un fokontany différent
       if (user.fokontany?.nom && user.fokontany.nom !== fokontanyName) {
         console.log('[APP] Mise à jour fokontanyName depuis user:', user.fokontany.nom);
@@ -875,15 +1051,11 @@ export default function Interface({ user }) {
     }
   }, [showPendingResidences]);
 
+  // USE EFFECT POUR LA RECHERCHE D'INTERFACE
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      if (searchQuery.trim() !== '') {
-        if (showResidence) {
-          setShowSearchResults(false);
-          setSearchResults([]);
-        } else {
-          performSearch(searchQuery);
-        }
+      if (interfaceSearchQuery.trim() !== '' && !showResidence) {
+        performSearch(interfaceSearchQuery, false);
       } else {
         setShowSearchResults(false);
         setSearchResults([]);
@@ -891,7 +1063,16 @@ export default function Interface({ user }) {
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, showResidence]);
+  }, [interfaceSearchQuery, showResidence]);
+
+  // USE EFFECT POUR NETTOYER LA RECHERCHE D'INTERFACE QUAND ON ENTRE DANS LA PAGE RÉSIDENCE
+  useEffect(() => {
+    if (showResidence) {
+      // Quand on entre dans la page résidence, on nettoie la recherche d'interface
+      setShowSearchResults(false);
+      setInterfaceSearchQuery("");
+    }
+  }, [showResidence]);
 
   const handlePolygonMouseOver = (e) => {
     try {
@@ -999,13 +1180,13 @@ export default function Interface({ user }) {
       }
       const f = await resp.json();
       console.log('[FOK] loadMyFokontany: body received', f);
-      
+     
       // Définir le nom du fokontany en premier
       if (f.nom) {
         console.log('[FOK] Setting fokontanyName to:', f.nom);
         setFokontanyName(f.nom);
       }
-      
+     
       let coordsRaw = f.coordinates ?? f.geometry ?? null;
       const poly = normalizeCoordinates(coordsRaw);
       console.log('[FOK] loadMyFokontany: parsed polygon length', poly ? poly.length : 0);
@@ -1060,10 +1241,10 @@ export default function Interface({ user }) {
       if (showSearchResults) {
         // Vérifier si le clic est dans la barre de recherche
         const isClickInsideSearchBar = searchRef.current?.contains(event.target);
-        
+       
         // Vérifier si le clic est dans le modal des résultats
         const isClickInsideResultsModal = searchResultsModalRef.current?.contains(event.target);
-        
+       
         // Si le clic n'est ni dans la barre ni dans le modal
         if (!isClickInsideSearchBar && !isClickInsideResultsModal) {
           console.log('[LOG] Clic vraiment en dehors, fermeture des résultats');
@@ -1076,8 +1257,8 @@ export default function Interface({ user }) {
       // Pour le menu dropdown
       const menuButton = document.querySelector('[data-menu-button]');
       const menuDropdown = menuDropdownRef.current;
-      
-      if (menuDropdownOpen && menuDropdown && !menuDropdown.contains(event.target) && 
+     
+      if (menuDropdownOpen && menuDropdown && !menuDropdown.contains(event.target) &&
           menuButton && !menuButton.contains(event.target)) {
         if (!isAnyPageOpen) {
           setMenuDropdownOpen(false);
@@ -1088,6 +1269,36 @@ export default function Interface({ user }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showSearchResults, menuDropdownOpen, isAnyPageOpen]);
+
+  // USE EFFECT POUR GÉRER LES CLICS EN DEHORS DU MODAL DE NOTIFICATIONS
+useEffect(() => {
+  const handleClickOutsideNotification = (event) => {
+    // Si le modal de notifications est ouvert
+    if (showNotifications) {
+      // Vérifier si le clic est sur le bouton notification
+      const notificationButton = document.querySelector('[title="notifications"], [title*="notification"]');
+      const isClickOnNotificationButton = notificationButton?.contains(event.target);
+     
+      // Vérifier si le clic est dans le modal de notifications
+      const notificationModal = document.querySelector('.absolute.top-18.right-4.z-60.w-80');
+      const isClickInsideModal = notificationModal?.contains(event.target);
+     
+      // Si le clic n'est ni sur le bouton ni dans le modal, fermer le modal
+      if (!isClickOnNotificationButton && !isClickInsideModal) {
+        console.log('[LOG] Clic en dehors du modal de notifications, fermeture');
+        setShowNotifications(false);
+      }
+    }
+  };
+
+  // Ajouter l'écouteur d'événement
+  document.addEventListener("mousedown", handleClickOutsideNotification);
+ 
+  // Nettoyer l'écouteur d'événement
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutsideNotification);
+  };
+}, [showNotifications]); // Dépendance à showNotifications
 
   useEffect(() => {
     if (isAnyPageOpen && isSelectingLocation) {
@@ -1124,19 +1335,6 @@ export default function Interface({ user }) {
     }
   }, [isAnyPageOpen]);
 
-  const getSearchPlaceholder = () => {
-    if (showResidence) {
-      return t('searchPlaceholderResidences');
-    } else if (showStatistique || showUserPage || showPendingResidences) {
-      return t('searchDisabled');
-    } else {
-      return t('searchPlaceholder');
-    }
-  };
-
-  const isSearchDisabled = showStatistique || showUserPage || showPendingResidences;
-
-
   const handleLogout = () => {
     localStorage.removeItem('interfaceState');
     localStorage.removeItem("token");
@@ -1160,78 +1358,78 @@ export default function Interface({ user }) {
       setUserPageState(prev => ({ ...prev, showPasswordModal: false }));
       return;
     }
-    
+   
     if (showUserPage) {
       console.log('CAS 2: Retour carte depuis page utilisateur');
       setShowUserPage(false);
       setUserPageState({ showPasswordModal: false });
-      
+     
       setMenuDropdownOpen(false);
-      
-      setSearchQuery("");
+     
+      setInterfaceSearchQuery("");
       setSearchResults([]);
       setShowSearchResults(false);
       return;
     }
-    
+   
     if (showResidence && residenceDetailMode) {
       console.log('CAS 3: Mode détail - Aucune action (rester sur le détail)');
       return;
     }
-    
+   
     if (showResidence && !residenceDetailMode) {
       console.log('CAS 4: Retour carte depuis liste des résidences');
-      
+     
       setShowResidence(false);
       setResidenceDetailMode(false);
-      
+     
       setMenuDropdownOpen(false);
-      
-      setSearchQuery("");
+     
+      setInterfaceSearchQuery("");
       setSearchResults([]);
       setShowSearchResults(false);
       return;
     }
-    
+   
     if (showStatistique) {
       console.log('CAS 5: Retour carte depuis page Statistique');
       setShowStatistique(false);
-      
+     
       setMenuDropdownOpen(false);
-      
-      setSearchQuery("");
+     
+      setInterfaceSearchQuery("");
       setSearchResults([]);
       setShowSearchResults(false);
       return;
     }
-    
+   
     if (showPendingResidences) {
       console.log('CAS 6: Retour carte depuis page Demandes en attente');
       setShowPendingResidences(false);
       setResidenceToSelect(null);
-      
+     
       setMenuDropdownOpen(false);
-      
-      setSearchQuery("");
+     
+      setInterfaceSearchQuery("");
       setSearchResults([]);
       setShowSearchResults(false);
       return;
     }
-    
+   
     console.log('CAS 7: Déjà sur la carte');
     setMenuDropdownOpen(false);
   };
 
   const openPage = (page) => {
     console.log(`Ouverture page: ${page}`);
-    
+   
     setShowResidence(false);
     setShowStatistique(false);
     setShowUserPage(false);
     setShowPendingResidences(false);
     setUserPageState({ showPasswordModal: false });
     setResidenceDetailMode(false);
-    
+   
     switch(page) {
       case 'residence':
         setShowResidence(true);
@@ -1246,8 +1444,8 @@ export default function Interface({ user }) {
         setShowPendingResidences(true);
         break;
     }
-    
-    setSearchQuery("");
+   
+    setInterfaceSearchQuery("");
     setSearchResults([]);
     setShowSearchResults(false);
   };
@@ -1269,7 +1467,7 @@ export default function Interface({ user }) {
 
   const handleResidenceClick = () => {
     console.log('Residence clicked from menu');
-    
+   
     if (showResidence) {
       if (residenceDetailMode) {
         setResidenceDetailMode(false);
@@ -1284,7 +1482,7 @@ export default function Interface({ user }) {
 
   const handleStatistiqueClick = () => {
     console.log('Statistique clicked from menu');
-    
+   
     if (showStatistique) {
       setShowStatistique(false);
       setMenuDropdownOpen(false);
@@ -1295,7 +1493,7 @@ export default function Interface({ user }) {
 
   const handlePendingResidencesClick = () => {
     console.log('Pending residences clicked from menu');
-    
+   
     if (showPendingResidences) {
       setShowPendingResidences(false);
       setResidenceToSelect(null);
@@ -1615,19 +1813,70 @@ export default function Interface({ user }) {
     setSelectedMarkerColor("yellow");
   };
 
+  // CORRECTION DE LA FONCTION DE CALCUL D'ÂGE (du deuxième code)
   const calculateAgeFromDate = (dateStr) => {
     if (!dateStr) return null;
-    const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) return null;
-    const diff = Date.now() - d.getTime();
-    const ageDt = new Date(diff);
-    return Math.abs(ageDt.getUTCFullYear() - 1970);
+
+    try {
+      const birthDate = new Date(dateStr);
+
+      // Vérifier que la date est valide
+      if (isNaN(birthDate.getTime())) {
+        console.warn("Date de naissance invalide:", dateStr);
+        return null;
+      }
+
+      const today = new Date();
+
+      // Calculer l'âge
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+
+      // Ajuster si l'anniversaire n'est pas encore passé cette année
+      if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && today.getDate() < birthDate.getDate())
+      ) {
+        age--;
+      }
+
+      // Vérifier que l'âge est valide (pas négatif, pas trop grand)
+      if (age < 0 || age > 120) {
+        console.warn("Âge calculé invalide:", age, "pour la date:", dateStr);
+        return null;
+      }
+
+      return age;
+    } catch (error) {
+      console.error("Erreur lors du calcul de l'âge:", error);
+      return null;
+    }
   };
 
   const handleAddPerson = () => {
     console.log('[LOG] Ajout d\'une nouvelle personne');
-    setNewResidents(prev => [...prev, { nom: '', prenom: '', birthdate: '', cin: '', sexe: 'masculin', phone: '' }]);
+    const newResident = {
+      nom: '',
+      prenom: '',
+      birthdate: '',
+      cin: '',
+      sexe: 'masculin',
+      phone: ''
+    };
+    setNewResidents(prev => [...prev, newResident]);
     setResidentFieldsScrollable(true);
+
+    // Mettre à jour les références après le prochain rendu (du deuxième code)
+    setTimeout(() => {
+      if (residentInputRefs.current) {
+        const newIndex = newResidents.length;
+        // Focus sur le premier champ (nom) du nouveau résident
+        const nomInputIndex = newIndex * 6; // 6 champs par résident
+        if (residentInputRefs.current[nomInputIndex]) {
+          residentInputRefs.current[nomInputIndex].focus();
+        }
+      }
+    }, 100);
   };
 
   const handleRemovePerson = (index) => {
@@ -1636,6 +1885,12 @@ export default function Interface({ user }) {
     if (newResidents.length <= 1) {
       setResidentFieldsScrollable(false);
     }
+
+    // Mettre à jour les références (du deuxième code)
+    residentInputRefs.current = residentInputRefs.current.filter((_, i) => {
+      const residentIndex = Math.floor(i / 6);
+      return residentIndex !== index;
+    });
   };
 
   const handlePersonChange = (index, field, value) => {
@@ -1668,6 +1923,62 @@ export default function Interface({ user }) {
       }
       return copy;
     });
+  };
+
+  // FONCTION POUR GÉRER LA NAVIGATION AVEC LA TOUCHE ENTRÉE (du deuxième code)
+  const handleKeyDown = (e, currentIndex, fieldType, residentIndex = null) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+
+      // Calculer l'index du prochain champ
+      let nextIndex = null;
+
+      if (residentIndex !== null) {
+        // Navigation dans les champs d'un résident
+        const fieldsPerResident = 6; // nom, prenom, sexe, birthdate, cin, phone
+        const baseIndex = residentIndex * fieldsPerResident;
+
+        switch (fieldType) {
+          case 'nom':
+            nextIndex = baseIndex + 1; // prénom
+            break;
+          case 'prenom':
+            nextIndex = baseIndex + 2; // sexe
+            break;
+          case 'sexe':
+            nextIndex = baseIndex + 3; // birthdate
+            break;
+          case 'birthdate':
+            nextIndex = baseIndex + 4; // cin
+            break;
+          case 'cin':
+            nextIndex = baseIndex + 5; // phone
+            break;
+          case 'phone':
+            // Aller au nom du résident suivant ou au bouton suivant
+            if (residentIndex < newResidents.length - 1) {
+              nextIndex = (residentIndex + 1) * fieldsPerResident; // nom du résident suivant
+            } else {
+              // Dernier résident, aller au bouton "Ajouter un résident" ou "Suivant"
+              const addResidentBtn = document.querySelector(
+                '[data-add-resident-btn]'
+              );
+              if (addResidentBtn) {
+                addResidentBtn.focus();
+              }
+            }
+            break;
+        }
+      } else {
+        // Navigation dans les champs principaux
+        nextIndex = currentIndex + 1;
+      }
+
+      // Focus sur le prochain champ si disponible
+      if (nextIndex !== null && residentInputRefs.current[nextIndex]) {
+        residentInputRefs.current[nextIndex].focus();
+      }
+    }
   };
 
   const handleNextFromLot = () => {
@@ -1743,15 +2054,15 @@ export default function Interface({ user }) {
 
       if (newResidents.length > 0) {
         console.log('Étape 2: Ajout des personnes', newResidents.length);
-        
-        const validResidents = newResidents.filter(r => 
+       
+        const validResidents = newResidents.filter(r =>
           r.nom?.trim() && r.prenom?.trim()
         );
 
         if (validResidents.length > 0) {
           for (const r of validResidents) {
             const nomComplet = `${r.nom.trim()}${r.prenom ? ' ' + r.prenom.trim() : ''}`.trim();
-            
+           
             const age = calculateAgeFromDate(r.birthdate);
             let cinVal = null;
             if (age === null) {
@@ -1815,10 +2126,10 @@ export default function Interface({ user }) {
         alert(t('saveSuccess'));
       }
 
-      setAddressDetails({ 
-        lot: '', 
-        quartier: '', 
-        ville: '' 
+      setAddressDetails({
+        lot: '',
+        quartier: '',
+        ville: ''
       });
       setSelectedAddress('');
       setSelectedLocation(null);
@@ -1892,7 +2203,7 @@ export default function Interface({ user }) {
       ...prev,
       [field]: value
     }));
-    
+   
     if (field === 'lot' && formError) {
       setFormError("");
     }
@@ -2207,6 +2518,7 @@ export default function Interface({ user }) {
 
   const activePolygon = (fokontanyPolygon && fokontanyPolygon.length > 0) ? fokontanyPolygon : ANDABOLY_POLYGON;
 
+  // Rendu JSX
   return (
     <div className="relative w-full h-screen bg-[#F2F2F2] overflow-hidden">
       {isAnyPageOpen && (
@@ -2216,25 +2528,31 @@ export default function Interface({ user }) {
       <div className="absolute top-6 left-[320px] z-40 search-bar-container">
         <div className="w-96">
           <div className={`
-            rounded-full flex items-center px-6 py-1.5 w-100 border 
-            ${showResidence 
-              ? 'bg-gray-400/30 border-white' 
+            rounded-full flex items-center px-6 py-1.5 w-100 border
+            ${showResidence
+              ? 'bg-gray-400/30 border-white'
               : 'bg-white backdrop-blur-sm border-gray-200/60 hover:border-gray-300/80'
-            } 
+            }
             transition-all duration-300
           `}>
             <Search className="mr-3 flex-shrink-0 text-gray-600" size={20} />
 
-            <form onSubmit={handleSearchSubmit} className="flex-1 flex items-center">
+            <form onSubmit={showResidence ? handleResidenceSearchSubmit : handleInterfaceSearchSubmit} className="flex-1 flex items-center">
               <input
                 ref={searchRef}
                 type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={showResidence ? residenceSearchQuery : interfaceSearchQuery}
+                onChange={(e) => {
+                  if (showResidence) {
+                    setResidenceSearchQuery(e.target.value);
+                  } else {
+                    setInterfaceSearchQuery(e.target.value);
+                  }
+                }}
                 placeholder={getSearchPlaceholder()}
                 disabled={isSearchDisabled || isAddAddressModalOpen}
                 className={`
-                  w-full p-1 bg-transparent outline-none text-sm 
+                  w-full p-1 bg-transparent outline-none text-sm
                   ${isSearchDisabled || isAddAddressModalOpen ? 'text-gray-400' : 'text-gray-700'}
                   placeholder-gray-600
                   ${showResidence ? 'placeholder-gray-300' : ''}
@@ -2270,7 +2588,7 @@ export default function Interface({ user }) {
                   isSelectingLocation
                     ? t('clickOnMap')
                     : isAddAddressModalOpen
-                      ? "Une modal est déjà ouverte"
+                      ? t('modalAlreadyOpen')
                       : t('addAddress')
                 }
               >
@@ -2300,7 +2618,7 @@ export default function Interface({ user }) {
                 ? 'bg-gray-300 text-gray-400 cursor-not-allowed'
                 : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
                 }`}
-              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : showAddAddress ? "Fermez la modal d'ajout d'adresse pour accéder aux notifications" : t('notifications')}
+              title={isAddAddressModalOpen ? t("modalOpenDisabled") : showAddAddress ? t("closeModalToAccessNotifications") : t('notifications')}
             >
               <Bell size={20} className={`${isAddAddressModalOpen ? 'text-gray-400' : showAddAddress ? 'text-gray-400' : 'text-gray-600 hover:text-gray-800 transition-all duration-300'}`} />
               {totalNotificationsCount > 0 && (
@@ -2315,7 +2633,7 @@ export default function Interface({ user }) {
               disabled={isAddAddressModalOpen}
               className={`w-8 h-8 rounded-full flex items-center justify-center ${isAddAddressModalOpen ? 'bg-gray-300 text-gray-400 cursor-not-allowed' : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
                 }`}
-              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : "Changer la langue"}
+              title={isAddAddressModalOpen ? t("modalOpenDisabled") : t("switchLanguage")}
             >
               <span className="text-sm font-medium" style={{ color: isAddAddressModalOpen ? '#9ca3af' : '#374151' }}>{i18n.language === 'fr' ? 'FR' : 'MG'}</span>
             </button>
@@ -2327,7 +2645,7 @@ export default function Interface({ user }) {
                 ? 'bg-gray-300 text-gray-400 cursor-not-allowed'
                 : 'bg-white/50 backdrop-blur-sm hover:bg-white transition-all duration-300 shadow-sm border border-gray-200/60 hover:border-gray-300/80'
                 }`}
-              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : t('profile')}
+              title={isAddAddressModalOpen ? t("modalOpenDisabled") : t('profile')}
             >
               <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center">
                 <span className="text-xs font-bold text-white">
@@ -2340,51 +2658,41 @@ export default function Interface({ user }) {
       </div>
 
       {showNotifications && (
-        <div className="absolute top-18 right-4 z-60 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
-          <div className="p-4 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-800">{t('notifications')}</h3>
-            <p className="text-xs text-gray-500 mt-1">
-              {notifications.length} {notifications.length !== 1 ? t('notificationsCount') : t('notification')}
-            </p>
+  <div className="absolute top-18 right-4 z-60 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto">
+    <div className="p-4 border-b border-gray-200">
+      <h3 className="font-semibold text-gray-800">{t('notifications')}</h3>
+      <p className="text-xs text-gray-500 mt-1">
+        {notifications.length} {notifications.length !== 1 ? t('notificationsCount') : t('notification')}
+      </p>
+    </div>
+    <div className="p-2">
+      {notifications.length === 0 ? (
+        <p className="text-gray-500 text-center py-4">{t('noUnreadNotifications')}</p>
+      ) : (
+        notifications.map(notification => (
+          <div
+            key={notification.id}
+            className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors duration-200"
+            onClick={() => handleNotificationClick(notification)}
+          >
+            <div className="flex justify-between items-start mb-2">
+              <h4 className="font-medium text-sm text-gray-800">{translateMessage(notification.title)}</h4>
+              {/* Icône X supprimée ici */}
+            </div>
+            <p className="text-xs text-gray-600 mb-2">{translateMessage(notification.message)}</p>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-400">
+                {formatNotificationDate(notification.created_at)}
+              </span>
+              <span className={`w-2 h-2 rounded-full ${notification.type === 'pending' ? 'bg-blue-500' : 'bg-yellow-400'
+                }`}></span>
+            </div>
           </div>
-          <div className="p-2">
-            {notifications.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">{t('noUnreadNotifications')}</p>
-            ) : (
-              notifications.map(notification => (
-                <div
-                  key={notification.id}
-                  className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors duration-200"
-                  onClick={() => handleNotificationClick(notification)}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-medium text-sm text-gray-800">{notification.title}</h4>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        console.log('[LOG] Clic sur bouton X pour marquer comme lu');
-                        markAsRead(notification.id);
-                      }}
-                      className="text-gray-400 hover:text-red-500 text-xs"
-                      title={t('markAsRead')}
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-600 mb-2">{notification.message}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-400">
-                      {formatNotificationDate(notification.created_at)}
-                    </span>
-                    <span className={`w-2 h-2 rounded-full ${notification.type === 'pending' ? 'bg-yellow-500' : 'bg-blue-500'
-                      }`}></span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        ))
       )}
+    </div>
+  </div>
+)}
 
       {isSelectingLocation && !isAnyPageOpen && (
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-end pb-8 pointer-events-none">
@@ -2460,8 +2768,12 @@ export default function Interface({ user }) {
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center space-x-2">
-                        <span className="font-medium text-gray-800 text-base">{fokontanyName || 'Non spécifié'}</span>
-                        <span className="text-sm text-gray-500">(-23.352776, 43.684839)</span>
+                        <span className="font-medium text-gray-800 text-base">{fokontanyName || t('notSpecified')}</span>
+                        {selectedLocation && (
+                          <span className="text-sm text-gray-500">
+                            ({selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)})
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2475,6 +2787,15 @@ export default function Interface({ user }) {
                       type="text"
                       value={addressDetails.lot}
                       onChange={(e) => handleAddressDetailsChange('lot', e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          // Focus sur le premier champ du premier résident s'il existe
+                          if (newResidents.length > 0 && residentInputRefs.current[0]) {
+                            residentInputRefs.current[0].focus();
+                          }
+                        }
+                      }}
                       placeholder={t('lotLabel')}
                       className={`w-full px-4 py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formError ? "border-red-500" : "border-gray-300"}`}
                       style={{ height: '42px', fontSize: '14px' }}
@@ -2490,9 +2811,16 @@ export default function Interface({ user }) {
                   <div className="space-y-4 pt-4 border-t border-gray-200">
                     <div className="flex justify-between items-center">
                       <h4 className="font-semibold text-gray-800 text-sm">{t('addResident')}</h4>
-                      <button 
+                      <button
                         onClick={handleAddPerson}
+                        data-add-resident-btn
                         className="text-xs bg-gray-800 text-white px-3 py-1.5 rounded-lg hover:bg-gray-900 transition-all duration-200 flex items-center"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddPerson();
+                          }
+                        }}
                       >
                         <Plus size={14} className="mr-1" />
                         {t('addResident')}
@@ -2504,10 +2832,10 @@ export default function Interface({ user }) {
                         {t('noResidentAdded')}
                       </div>
                     ) : (
-                      <div 
+                      <div
                         ref={residentFieldsRef}
                         className={`space-y-3 ${residentFieldsScrollable ? 'max-h-48 overflow-y-auto pr-2' : ''}`}
-                        style={{ 
+                        style={{
                           scrollbarWidth: 'thin',
                           scrollbarColor: '#cbd5e1 #f1f5f9'
                         }}
@@ -2515,15 +2843,18 @@ export default function Interface({ user }) {
                         {newResidents.map((p, idx) => {
                           const age = calculateAgeFromDate(p.birthdate);
                           const showCinField = age !== null && age >= 18;
-                          
+                         
+                          // Calculer les index pour les références (du deuxième code)
+                          const baseIndex = idx * 6;
+
                           return (
                             <div key={idx} className="border border-gray-200 rounded-xl p-3 space-y-3 bg-white">
                               <div className="flex justify-between items-center">
                                 <strong className="text-sm text-gray-800">
                                   {p.nom || p.prenom ? `${p.nom} ${p.prenom}` : `${t('resident')} ${idx + 1}`}
                                 </strong>
-                                <button 
-                                  onClick={() => handleRemovePerson(idx)} 
+                                <button
+                                  onClick={() => handleRemovePerson(idx)}
                                   className="text-red-600 hover:text-red-800 text-xs flex items-center"
                                 >
                                   <X size={12} className="mr-1" />
@@ -2534,21 +2865,25 @@ export default function Interface({ user }) {
                               <div className="space-y-3">
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
-                                    <input 
-                                      type="text" 
+                                    <input
+                                      ref={(el) => residentInputRefs.current[baseIndex] = el}
+                                      type="text"
                                       placeholder={t('lastName')}
-                                      value={p.nom} 
-                                      onChange={(e) => handlePersonChange(idx, 'nom', e.target.value)} 
+                                      value={p.nom}
+                                      onChange={(e) => handlePersonChange(idx, 'nom', e.target.value)}
+                                      onKeyDown={(e) => handleKeyDown(e, baseIndex, 'nom', idx)}
                                       className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
                                       style={{ height: '36px', fontSize: '12px' }}
                                     />
                                   </div>
                                   <div>
-                                    <input 
-                                      type="text" 
+                                    <input
+                                      ref={(el) => residentInputRefs.current[baseIndex + 1] = el}
+                                      type="text"
                                       placeholder={t('firstName')}
-                                      value={p.prenom} 
-                                      onChange={(e) => handlePersonChange(idx, 'prenom', e.target.value)} 
+                                      value={p.prenom}
+                                      onChange={(e) => handlePersonChange(idx, 'prenom', e.target.value)}
+                                      onKeyDown={(e) => handleKeyDown(e, baseIndex + 1, 'prenom', idx)}
                                       className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
                                       style={{ height: '36px', fontSize: '12px' }}
                                     />
@@ -2588,11 +2923,13 @@ export default function Interface({ user }) {
                                     </div>
                                   </div>
                                   <div>
-                                    <input 
-                                      type="date" 
+                                    <input
+                                      ref={(el) => residentInputRefs.current[baseIndex + 3] = el}
+                                      type="date"
                                       placeholder={t('birthDate')}
-                                      value={p.birthdate} 
-                                      onChange={(e) => handlePersonChange(idx, 'birthdate', e.target.value)} 
+                                      value={p.birthdate}
+                                      onChange={(e) => handlePersonChange(idx, 'birthdate', e.target.value)}
+                                      onKeyDown={(e) => handleKeyDown(e, baseIndex + 3, 'birthdate', idx)}
                                       className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
                                       style={{ height: '36px', fontSize: '12px' }}
                                     />
@@ -2602,28 +2939,30 @@ export default function Interface({ user }) {
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
                                     {showCinField ? (
-                                      <input 
-                                        type="text" 
+                                      <input
+                                        ref={(el) => residentInputRefs.current[baseIndex + 4] = el}
+                                        type="text"
                                         placeholder={t('cin')}
-                                        value={p.cin} 
-                                        onChange={(e) => handlePersonChange(idx, 'cin', e.target.value)} 
+                                        value={p.cin}
+                                        onChange={(e) => handlePersonChange(idx, 'cin', e.target.value)}
+                                        onKeyDown={(e) => handleKeyDown(e, baseIndex + 4, 'cin', idx)}
                                         className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
                                         style={{ height: '36px', fontSize: '12px' }}
-                                    />
+                                      />
                                     ) : p.birthdate ? (
-                                      <input 
-                                        type="text" 
+                                      <input
+                                        type="text"
                                         placeholder={t('cin')}
-                                        value={t('minor')} 
+                                        value={t('minor')}
                                         disabled
                                         className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
                                         style={{ height: '36px', fontSize: '12px' }}
                                       />
                                     ) : (
-                                      <input 
-                                        type="text" 
+                                      <input
+                                        type="text"
                                         placeholder={t('cin')}
-                                        value="" 
+                                        value=""
                                         disabled
                                         className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
                                         style={{ height: '36px', fontSize: '12px' }}
@@ -2631,11 +2970,13 @@ export default function Interface({ user }) {
                                     )}
                                   </div>
                                   <div>
-                                    <input 
-                                      type="text" 
+                                    <input
+                                      ref={(el) => residentInputRefs.current[baseIndex + 5] = el}
+                                      type="text"
                                       placeholder={t('phone')}
-                                      value={p.phone} 
-                                      onChange={(e) => handlePersonChange(idx, 'phone', e.target.value)} 
+                                      value={p.phone}
+                                      onChange={(e) => handlePersonChange(idx, 'phone', e.target.value)}
+                                      onKeyDown={(e) => handleKeyDown(e, baseIndex + 5, 'phone', idx)}
                                       className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-transparent"
                                       style={{ height: '36px', fontSize: '12px' }}
                                     />
@@ -2666,7 +3007,7 @@ export default function Interface({ user }) {
                     {newResidents.map((p, idx) => {
                       const age = calculateAgeFromDate(p.birthdate);
                       const showCinField = age !== null && age >= 18;
-                      
+                     
                       return (
                         <div key={idx} className="border p-3 rounded-lg space-y-2 bg-white">
                           <div className="flex justify-between">
@@ -2748,7 +3089,7 @@ export default function Interface({ user }) {
             minHeight: "400px",
             maxHeight: "85vh"
           }}>
-          
+         
           <button
             onClick={handleLogoClick}
             disabled={isAddAddressModalOpen}
@@ -2784,14 +3125,11 @@ export default function Interface({ user }) {
           {/* Nouvelle section placée au-dessus du menu */}
           <div className="p-4 border-b border-gray-200/60 bg-white/30">
             {!isAnyPageOpen ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <MapPin size={18} className="text-gray-700 mr-2" />
-                  <span className="text-sm font-medium text-gray-800">
-                    Carte {fokontanyName}
-                  </span>
-                </div>
-                
+              <div className="flex items-center">
+                <MapPin size={18} className="text-gray-700 mr-2" />
+                <span className="text-sm font-medium text-gray-800">
+                  {t('map')} {fokontanyName}
+                </span>
               </div>
             ) : (
               <div className="flex items-center justify-between">
@@ -2806,132 +3144,108 @@ export default function Interface({ user }) {
                   className="text-xs text-gray-500 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center"
                 >
                   <Eye size={14} className="mr-1" />
-                  Voir carte
+                  {t('Voir la carte')}
                 </button>
               </div>
             )}
           </div>
 
           <div className="p-4">
-            {/* Titre "Menu" toujours affiché */}
-            <div className="mb-4">
-              <div className="flex items-center gap-3 mb-3 ml-5">
-                <Menu size={18} className="text-gray-700" />
-                <span className="text-sm font-semibold text-gray-900">
-                  {t('menu')}
-                </span>
-              </div>
-            
-              {/* MENU FIXE - Pas de collapse/expand */}
-              <div className="space-y-1">
-                {/* Résidences */}
-                <button
-                  onClick={() => {
-                    console.log('[LOG] Clic sur menu Résidences');
-                    if (showResidence) {
-                      if (residenceDetailMode) {
-                        setResidenceDetailMode(false);
-                      } else {
-                        setShowResidence(false);
-                      }
-                    } else {
-                      openPage('residence');
-                    }
-                  }}
-                  className={`w-full flex items-center rounded-xl transition-all duration-200 hover:bg-gray-100 hover:border hover:border-gray-200 ${
-                    showResidence ? "bg-gray-100 border border-gray-200" : ""
-                  }`}
-                  style={{
-                    height: "44px",
-                    padding: "0 12px"
-                  }}
-                >
-                  <div style={{
-                    width: "36px",
-                    display: "flex",
-                    justifyContent: "center",
-                    marginRight: "2px"
-                  }}>
-                    <MapPin size={20} className={showResidence ? "text-gray-800" : "text-gray-700"} />
-                  </div>
-                  <span style={{
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    color: showResidence ? "#111827" : "#374151"
-                  }}>{t('residence')}</span>
-                </button>
+  {/* Section Menu avec le même padding que les items */}
+  <div className="mb-4 pl-4">
+    <span className="text-xs font-medium text-gray-900">
+      Menu
+    </span>
+  </div>
 
-                {/* Statistiques */}
-                <button
-                  onClick={() => {
-                    console.log('[LOG] Clic sur menu Statistiques');
-                    if (showStatistique) {
-                      setShowStatistique(false);
-                    } else {
-                      openPage('statistique');
-                    }
-                  }}
-                  className={`w-full flex items-center rounded-xl transition-all duration-200 hover:bg-gray-100 hover:border hover:border-gray-200 ${
-                    showStatistique ? "bg-gray-100 border border-gray-200" : ""
-                  }`}
-                  style={{
-                    height: "44px",
-                    padding: "0 12px"
-                  }}
-                >
-                  <div style={{
-                    width: "36px",
-                    display: "flex",
-                    justifyContent: "center",
-                    marginRight: "2px"
-                  }}>
-                    <BarChart3 size={20} className={showStatistique ? "text-gray-800" : "text-gray-700"} />
-                  </div>
-                  <span style={{
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    color: showStatistique ? "#111827" : "#374151"
-                  }}>{t('statistics')}</span>
-                </button>
+  {/* MENU FIXE - Boutons alignés à gauche avec icônes alignées avec le mot "Menu" */}
+  <div className="space-y-2">
+    {/* Résidences */}
+    <button
+      onClick={() => {
+        console.log('[LOG] Clic sur menu Résidences');
+        if (showResidence) {
+          if (residenceDetailMode) {
+            setResidenceDetailMode(false);
+          } else {
+            setShowResidence(false);
+          }
+        } else {
+          openPage('residence');
+        }
+      }}
+      className={`w-full flex items-center rounded-xl transition-all duration-200 hover:bg-gray-100 hover:border hover:border-gray-200 ${
+        showResidence ? "bg-gray-100 border border-gray-200" : ""
+      }`}
+      style={{
+        height: "44px",
+        paddingLeft: "12px"
+      }}
+    >
+      <MapPin size={20} className={`${showResidence ? "text-gray-800" : "text-gray-700"} mr-2`} />
+      <span style={{
+        fontSize: "14px",
+        fontWeight: 500,
+        color: showResidence ? "#111827" : "#374151"
+      }}>{t('residence')}</span>
+    </button>
 
-                {/* Demandes en attente (seulement pour secrétaire) */}
-                {currentUser?.role === 'secretaire' && (
-                  <button
-                    onClick={() => {
-                      console.log('[LOG] Clic sur menu Demandes en attente');
-                      if (showPendingResidences) {
-                        setShowPendingResidences(false);
-                        setResidenceToSelect(null);
-                      } else {
-                        openPage('pending');
-                      }
-                    }}
-                    className={`w-full flex items-center rounded-xl transition-all duration-200 hover:bg-gray-100 hover:border hover:border-gray-200 ${
-                      showPendingResidences ? "bg-gray-100 border border-gray-200" : ""
-                    }`}
-                    style={{
-                      height: "44px",
-                      padding: "0 12px"
-                    }}
-                  >
-                    <div style={{
-                      width: "36px",
-                      display: "flex",
-                      justifyContent: "center",
-                      marginRight: "2px"
-                    }}>
-                      <ClipboardList size={20} className={showPendingResidences ? "text-gray-800" : "text-gray-700"} />
-                    </div>
-                    <span style={{
-                      fontSize: "14px",
-                      fontWeight: 500,
-                      color: showPendingResidences ? "#111827" : "#374151"
-                    }}>{t('requests')}</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+    {/* Statistiques */}
+    <button
+      onClick={() => {
+        console.log('[LOG] Clic sur menu Statistiques');
+        if (showStatistique) {
+          setShowStatistique(false);
+        } else {
+          openPage('statistique');
+        }
+      }}
+      className={`w-full flex items-center rounded-xl transition-all duration-200 hover:bg-gray-100 hover:border hover:border-gray-200 ${
+        showStatistique ? "bg-gray-100 border border-gray-200" : ""
+      }`}
+      style={{
+        height: "44px",
+        paddingLeft: "12px"
+      }}
+    >
+      <BarChart3 size={20} className={`${showStatistique ? "text-gray-800" : "text-gray-700"} mr-2`} />
+      <span style={{
+        fontSize: "14px",
+        fontWeight: 500,
+        color: showStatistique ? "#111827" : "#374151"
+      }}>{t('statistics')}</span>
+    </button>
+
+    {/* Demandes en attente (seulement pour secrétaire) */}
+    {currentUser?.role === 'secretaire' && (
+      <button
+        onClick={() => {
+          console.log('[LOG] Clic sur menu Demandes en attente');
+          if (showPendingResidences) {
+            setShowPendingResidences(false);
+            setResidenceToSelect(null);
+          } else {
+            openPage('pending');
+          }
+        }}
+        className={`w-full flex items-center rounded-xl transition-all duration-200 hover:bg-gray-100 hover:border hover:border-gray-200 ${
+          showPendingResidences ? "bg-gray-100 border border-gray-200" : ""
+        }`}
+        style={{
+          height: "44px",
+          paddingLeft: "12px"
+        }}
+      >
+        <ClipboardList size={20} className={`${showPendingResidences ? "text-gray-800" : "text-gray-700"} mr-2`} />
+        <span style={{
+          fontSize: "14px",
+          fontWeight: 500,
+          color: showPendingResidences ? "#111827" : "#374151"
+        }}>{t('requests')}</span>
+      </button>
+    )}
+  </div>
+</div>
         </div>
       </div>
 
@@ -2943,8 +3257,8 @@ export default function Interface({ user }) {
           }}>
           <ResidencePage
             onBack={handleCloseResidence}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
+            searchQuery={residenceSearchQuery}
+            onSearchChange={setResidenceSearchQuery}
             onViewOnMap={handleViewOnMap}
             detailMode={residenceDetailMode}
             onEnterDetail={handleEnterResidenceDetail}
@@ -3000,7 +3314,7 @@ export default function Interface({ user }) {
               onClick={handleZoomIn}
               disabled={isAddAddressModalOpen}
               className={`w-10 h-10 ${isAddAddressModalOpen ? 'bg-gray-300 cursor-not-allowed' : 'bg-white/95 backdrop-blur-sm hover:bg-white'} rounded-full shadow-lg flex items-center justify-center transition-all duration-300 border ${isAddAddressModalOpen ? 'border-gray-300' : 'border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl'}`}
-              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : t('zoomIn')}
+              title={isAddAddressModalOpen ? t("modalOpenDisabled") : t('zoomIn')}
             >
               <Plus size={20} className={isAddAddressModalOpen ? "text-gray-400" : "text-gray-700 hover:text-gray-800 transition-all duration-300"} />
             </button>
@@ -3008,7 +3322,7 @@ export default function Interface({ user }) {
               onClick={handleZoomOut}
               disabled={isAddAddressModalOpen}
               className={`w-10 h-10 ${isAddAddressModalOpen ? 'bg-gray-300 cursor-not-allowed' : 'bg-white/95 backdrop-blur-sm hover:bg-white'} rounded-full shadow-lg flex items-center justify-center transition-all duration-300 border ${isAddAddressModalOpen ? 'border-gray-300' : 'border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl'}`}
-              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : t('zoomOut')}
+              title={isAddAddressModalOpen ? t("modalOpenDisabled") : t('zoomOut')}
             >
               <Minus size={20} className={isAddAddressModalOpen ? "text-gray-400" : "text-gray-700 hover:text-gray-800 transition-all duration-300"} />
             </button>
@@ -3016,7 +3330,7 @@ export default function Interface({ user }) {
               onClick={handleCenterMap}
               disabled={isAddAddressModalOpen}
               className={`w-10 h-10 ${isAddAddressModalOpen ? 'bg-gray-300 cursor-not-allowed' : 'bg-white/95 backdrop-blur-sm hover:bg-white'} rounded-full shadow-lg flex items-center justify-center transition-all duration-300 border ${isAddAddressModalOpen ? 'border-gray-300' : 'border-gray-200/60 hover:border-gray-300/80 hover:shadow-xl'}`}
-              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : t('viewZone')}
+              title={isAddAddressModalOpen ? t("modalOpenDisabled") : t('viewZone')}
             >
               <LocateFixed size={20} className={isAddAddressModalOpen ? "text-gray-400" : "text-gray-700 hover:text-gray-800 transition-all duration-300"} />
             </button>
@@ -3027,7 +3341,7 @@ export default function Interface({ user }) {
               onClick={handleMapTypeChange}
               disabled={isAddAddressModalOpen}
               className={`w-10 h-10 ${isAddAddressModalOpen ? 'bg-gray-300 cursor-not-allowed' : 'bg-white/95 backdrop-blur-sm hover:bg-white'} rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:shadow-xl border ${isAddAddressModalOpen ? 'border-gray-300' : 'border-gray-200/60 hover:border-gray-300/80'}`}
-              title={isAddAddressModalOpen ? "Modal ouverte - désactivé" : mapType === "satellite" ? t('switchToPlan') : t('switchToSatellite')}
+              title={isAddAddressModalOpen ? t("modalOpenDisabled") : mapType === "satellite" ? t('switchToPlan') : t('switchToSatellite')}
             >
               <Layers size={22} className={isAddAddressModalOpen ? "text-gray-400" : "text-gray-700 hover:text-gray-800 transition-all duration-300"} />
             </button>
@@ -3077,8 +3391,8 @@ export default function Interface({ user }) {
 
             {selectedResidenceFromSearch && (
               <Marker
-                position={{ 
-                  lat: parseFloat(selectedResidenceFromSearch.lat || selectedResidenceFromSearch.latitude), 
+                position={{
+                  lat: parseFloat(selectedResidenceFromSearch.lat || selectedResidenceFromSearch.latitude),
                   lng: parseFloat(selectedResidenceFromSearch.lng || selectedResidenceFromSearch.longitude)
                 }}
                 icon={createCustomMarkerIcon("yellow")}
